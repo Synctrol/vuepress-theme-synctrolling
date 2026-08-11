@@ -60,6 +60,64 @@ function expectDiagnostic(
   }
 }
 
+function withPrototypeProperties<T>(
+  properties: ReadonlyArray<readonly [string, PropertyDescriptor]>,
+  action: () => T,
+): T {
+  const originals = properties.map(
+    ([key]) =>
+      [key, Object.getOwnPropertyDescriptor(Object.prototype, key)] as const,
+  )
+
+  try {
+    for (const [key, descriptor] of properties) {
+      Object.defineProperty(Object.prototype, key, {
+        configurable: true,
+        enumerable: false,
+        ...descriptor,
+      })
+    }
+    return action()
+  } finally {
+    for (const [key, descriptor] of originals.reverse()) {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(Object.prototype, key)
+      } else {
+        Object.defineProperty(Object.prototype, key, descriptor)
+      }
+    }
+  }
+}
+
+function captureError(action: () => unknown): unknown {
+  try {
+    action()
+    return undefined
+  } catch (error) {
+    return error
+  }
+}
+
+function expectDiagnosticError(
+  error: unknown,
+  fixture: ManifestFixture,
+  code: string,
+  message: string,
+): void {
+  expect(error).toBeInstanceOf(SynctrolDiagnosticError)
+  expect(isDiagnosticError(error)).toBe(true)
+  if (isDiagnosticError(error)) {
+    expect(error.diagnostics).toEqual([
+      {
+        severity: 'error',
+        code,
+        message,
+        path: fixture.path,
+      },
+    ])
+  }
+}
+
 describe('parseContentManifest', () => {
   it('parses all release fields and defaults slug to the exact directory name', () => {
     const fixture = writeManifest(
@@ -411,5 +469,158 @@ path: {}
       type: 'page',
       path: {},
     })
+  })
+
+  it('does not obtain a missing type from Object.prototype', () => {
+    const fixture = writeManifest('draft: false\n')
+    const error = captureError(() =>
+      withPrototypeProperties(
+        [['type', { value: 'page', writable: true }]],
+        () => parseContentManifest(fixture.path, fixture.dir),
+      ),
+    )
+
+    expectDiagnosticError(
+      error,
+      fixture,
+      'UNKNOWN_CONTENT_TYPE',
+      'type must be one of: home, release, news, page',
+    )
+  })
+
+  it('does not obtain a missing release date from Object.prototype', () => {
+    const fixture = writeManifest('type: release\n')
+    const error = captureError(() =>
+      withPrototypeProperties(
+        [['date', { value: '2026-08-11', writable: true }]],
+        () => parseContentManifest(fixture.path, fixture.dir),
+      ),
+    )
+
+    expectDiagnosticError(
+      error,
+      fixture,
+      'INVALID_DATE',
+      'date must be a real Gregorian calendar date in YYYY-MM-DD form',
+    )
+  })
+
+  it('does not obtain a missing news date from Object.prototype', () => {
+    const fixture = writeManifest('type: news\ntags: []\n')
+    const error = captureError(() =>
+      withPrototypeProperties(
+        [['date', { value: '2026-08-11', writable: true }]],
+        () => parseContentManifest(fixture.path, fixture.dir),
+      ),
+    )
+
+    expectDiagnosticError(
+      error,
+      fixture,
+      'INVALID_DATE',
+      'date must be a real Gregorian calendar date in YYYY-MM-DD form',
+    )
+  })
+
+  it('does not obtain missing news tags from Object.prototype', () => {
+    const fixture = writeManifest('type: news\ndate: 2026-08-11\n')
+    const error = captureError(() =>
+      withPrototypeProperties(
+        [['tags', { value: ['polluted'], writable: true }]],
+        () => parseContentManifest(fixture.path, fixture.dir),
+      ),
+    )
+
+    expectDiagnosticError(
+      error,
+      fixture,
+      'INVALID_TAGS',
+      'tags must be an array of non-empty strings',
+    )
+  })
+
+  it('keeps page defaults isolated from Object.prototype pollution', () => {
+    const fixture = writeManifest('type: page\n', 'clean-page')
+    const manifest = withPrototypeProperties(
+      [
+        ['slug', { value: 'polluted-slug', writable: true }],
+        ['draft', { value: true, writable: true }],
+        ['path', { value: '/polluted/path/', writable: true }],
+        ['cover', { value: './polluted.webp', writable: true }],
+      ],
+      () => parseContentManifest(fixture.path, fixture.dir),
+    )
+
+    expect(manifest).toEqual({
+      type: 'page',
+      slug: 'clean-page',
+      draft: false,
+    })
+  })
+
+  it('keeps release defaults and optional fields isolated from prototype pollution', () => {
+    const fixture = writeManifest(
+      'type: release\ndate: 2026-08-11\n',
+      'clean-release',
+    )
+    const manifest = withPrototypeProperties(
+      [
+        ['slug', { value: 'polluted-slug', writable: true }],
+        ['draft', { value: true, writable: true }],
+        ['path', { value: '/polluted/path/', writable: true }],
+        ['cover', { value: './polluted-cover.webp', writable: true }],
+        ['artwork', { value: './polluted-artwork.webp', writable: true }],
+      ],
+      () => parseContentManifest(fixture.path, fixture.dir),
+    )
+
+    expect(manifest).toEqual({
+      type: 'release',
+      slug: 'clean-release',
+      date: '2026-08-11',
+      draft: false,
+    })
+  })
+
+  it.each(['__proto__', 'constructor'])(
+    'rejects an own top-level %s field without changing the record prototype',
+    (field) => {
+      const fixture = writeManifest(
+        `type: page\n"${field}": polluted\n`,
+      )
+
+      expectDiagnostic(
+        fixture,
+        'UNKNOWN_FIELD',
+        `Field "${field}" is not allowed for page content`,
+      )
+    },
+  )
+
+  it('copies own fields without invoking an inherited setter', () => {
+    const fixture = writeManifest('type: page\nextra: value\n')
+    const error = captureError(() =>
+      withPrototypeProperties(
+        [
+          [
+            'extra',
+            {
+              set() {
+                throw new Error('inherited setter executed')
+              },
+            },
+          ],
+        ],
+        () => parseContentManifest(fixture.path, fixture.dir),
+      ),
+    )
+
+    expectDiagnosticError(
+      error,
+      fixture,
+      'UNKNOWN_FIELD',
+      'Field "extra" is not allowed for page content',
+    )
+    expect((error as Error).message).not.toContain('inherited setter executed')
   })
 })
