@@ -5,3 +5,4 @@ export function synctrolTheme() {
 }
 
 export * from './shared/types.js'
+export * from './shared/messages.js'
