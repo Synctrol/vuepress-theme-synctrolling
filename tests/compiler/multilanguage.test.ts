@@ -316,4 +316,86 @@ describe('assertMultilanguage', () => {
       expect(typeof result[mainLocale]).toBe('string')
     }
   })
+
+  it('does not invoke Object.prototype setters while building the validated record', () => {
+    let setterInvoked = false
+    Object.defineProperty(Object.prototype, 'zh', {
+      configurable: true,
+      set() {
+        setterInvoked = true
+      },
+    })
+
+    try {
+      const result = assertMultilanguage(
+        { zh: '第一张专辑', en: 'First Album' },
+        mainLocale,
+        path,
+        field,
+      )
+
+      expect(setterInvoked).toBe(false)
+      expect(result).toEqual({ zh: '第一张专辑', en: 'First Album' })
+      expect(typeof result).toBe('object')
+      if (typeof result === 'object') {
+        expect(Object.hasOwn(result, mainLocale)).toBe(true)
+        expect(typeof result[mainLocale]).toBe('string')
+      }
+    } finally {
+      Reflect.deleteProperty(Object.prototype, 'zh')
+    }
+  })
+
+  it('still succeeds when Object.prototype setters throw', () => {
+    Object.defineProperty(Object.prototype, 'zh', {
+      configurable: true,
+      set() {
+        throw new Error('prototype setter')
+      },
+    })
+
+    try {
+      const result = assertMultilanguage(
+        { zh: '第一张专辑', en: 'First Album' },
+        mainLocale,
+        path,
+        field,
+      )
+
+      expect(result).toEqual({ zh: '第一张专辑', en: 'First Album' })
+      expect(typeof result).toBe('object')
+      if (typeof result === 'object') {
+        expect(Object.hasOwn(result, mainLocale)).toBe(true)
+      }
+    } finally {
+      Reflect.deleteProperty(Object.prototype, 'zh')
+    }
+  })
+
+  it('converts proxy traps that throw a revoked proxy to INVALID_MULTILANGUAGE', () => {
+    const { proxy: revoked, revoke } = Proxy.revocable({}, {})
+    revoke()
+    const input = new Proxy(
+      { zh: '中文' },
+      {
+        getOwnPropertyDescriptor() {
+          throw revoked
+        },
+      },
+    )
+
+    try {
+      assertMultilanguage(input, mainLocale, path, field)
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SynctrolDiagnosticError)
+      expect(isDiagnosticError(error)).toBe(true)
+      if (isDiagnosticError(error)) {
+        expect(error.diagnostics[0].code).toBe('INVALID_MULTILANGUAGE')
+        expect(error.diagnostics[0].path).toBe(path)
+        expect(error.diagnostics[0].message).toContain(field)
+      }
+      expect((error as Error).message).not.toMatch(/revoked|TypeError/i)
+    }
+  })
 })

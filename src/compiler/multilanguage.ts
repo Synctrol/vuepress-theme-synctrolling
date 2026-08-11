@@ -15,6 +15,20 @@ function invalidateMultilanguage(
   })
 }
 
+function isDiagnosticErrorSafe(error: unknown): boolean {
+  try {
+    return isDiagnosticError(error)
+  } catch {
+    return false
+  }
+}
+
+function rethrowIfDiagnosticError(error: unknown): void {
+  if (isDiagnosticErrorSafe(error)) {
+    throw error
+  }
+}
+
 function guardReflection<T>(
   operation: () => T,
   path: string,
@@ -23,9 +37,7 @@ function guardReflection<T>(
   try {
     return operation()
   } catch (error) {
-    if (isDiagnosticError(error)) {
-      throw error
-    }
+    rethrowIfDiagnosticError(error)
 
     invalidateMultilanguage(
       path,
@@ -54,6 +66,14 @@ function isAccessorProperty(descriptor: PropertyDescriptor): boolean {
   return descriptor.get !== undefined || descriptor.set !== undefined
 }
 
+function toPlainLocaleMap(
+  record: Record<LocaleKey, string>,
+): Record<LocaleKey, string> {
+  return Object.fromEntries(
+    Object.entries(record) as [LocaleKey, string][],
+  ) as Record<LocaleKey, string>
+}
+
 export function assertMultilanguage(
   value: unknown,
   mainLocale: LocaleKey,
@@ -73,7 +93,7 @@ export function assertMultilanguage(
     })
   }
 
-  const record: Record<LocaleKey, string> = {}
+  const record = Object.create(null) as Record<LocaleKey, string>
 
   const ownKeys = guardReflection(
     () => Object.getOwnPropertyNames(value),
@@ -86,9 +106,7 @@ export function assertMultilanguage(
     try {
       assertRouteSegment(key, keyField)
     } catch (error) {
-      if (isDiagnosticError(error)) {
-        throw error
-      }
+      rethrowIfDiagnosticError(error)
 
       invalidateMultilanguage(
         path,
@@ -132,5 +150,5 @@ export function assertMultilanguage(
     })
   }
 
-  return { ...record }
+  return toPlainLocaleMap(record)
 }
