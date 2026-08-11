@@ -1,0 +1,10 @@
+type: album
+title:
+  zh: SYNCTROL
+  en: SYNCTROL
+album:
+  covers:
+    - ./cover.webp
+  links:
+    - platform: bilibili
+      bvid: BV1xxxxxxxxx
