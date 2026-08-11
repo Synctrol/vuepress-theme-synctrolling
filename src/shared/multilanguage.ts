@@ -1,5 +1,4 @@
 import type { LocaleKey, Multilanguage } from './types.js'
-import { isMultilanguageMap } from './types.js'
 
 export interface ResolvedMultilanguage {
   text: string
@@ -7,25 +6,49 @@ export interface ResolvedMultilanguage {
   fellBack: boolean
 }
 
+function isMultilanguageRecord(
+  value: unknown,
+): value is Record<LocaleKey, string> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readMainLocaleText(
+  value: Record<LocaleKey, string>,
+  mainLocale: LocaleKey,
+): string {
+  if (!Object.hasOwn(value, mainLocale)) {
+    throw new Error('Multilanguage map missing mainLocale')
+  }
+
+  const mainText = value[mainLocale]
+  if (typeof mainText !== 'string') {
+    throw new Error('Multilanguage map mainLocale value must be a string')
+  }
+
+  return mainText
+}
+
 export function resolveMultilanguage(
   value: Multilanguage,
   locale: LocaleKey,
   mainLocale: LocaleKey,
 ): ResolvedMultilanguage {
-  if (!isMultilanguageMap(value)) {
+  if (typeof value === 'string') {
     return { text: value, locale, fellBack: false }
   }
 
-  if (!(mainLocale in value)) {
-    throw new Error('Multilanguage map missing mainLocale')
+  if (!isMultilanguageRecord(value)) {
+    throw new Error('Invalid multilanguage value')
   }
+
+  const mainText = readMainLocaleText(value, mainLocale)
 
   if (typeof value[locale] === 'string') {
     return { text: value[locale], locale, fellBack: false }
   }
 
   return {
-    text: value[mainLocale],
+    text: mainText,
     locale: mainLocale,
     fellBack: true,
   }

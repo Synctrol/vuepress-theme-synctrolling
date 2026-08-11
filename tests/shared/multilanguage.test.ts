@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { Multilanguage } from '../../src/shared/types'
 import { resolveMultilanguage } from '../../src/shared/multilanguage'
 
 describe('resolveMultilanguage', () => {
@@ -62,5 +63,54 @@ describe('resolveMultilanguage', () => {
       locale: 'zh',
       fellBack: true,
     })
+  })
+
+  it('accepts empty string as valid locale text', () => {
+    expect(
+      resolveMultilanguage({ zh: '', en: 'First Album' }, 'zh', 'zh'),
+    ).toEqual({
+      text: '',
+      locale: 'zh',
+      fellBack: false,
+    })
+  })
+
+  it('throws for null, number, boolean, and array top-level values', () => {
+    const invalidValues = [
+      null,
+      42,
+      true,
+      ['only'],
+    ] as unknown as Multilanguage[]
+
+    for (const value of invalidValues) {
+      expect(() => resolveMultilanguage(value, 'en', 'zh')).toThrow(
+        /multilanguage/i,
+      )
+    }
+  })
+
+  it('throws when mainLocale value is undefined', () => {
+    const map = { zh: undefined } as unknown as Record<string, string>
+
+    expect(() => resolveMultilanguage(map, 'en', 'zh')).toThrow(/mainLocale/)
+  })
+
+  it('throws when mainLocale value is not a string even if current locale is valid', () => {
+    const map = { zh: 42, en: 'First Album' } as unknown as Record<
+      string,
+      string
+    >
+
+    expect(() => resolveMultilanguage(map, 'en', 'zh')).toThrow(/mainLocale/)
+  })
+
+  it('throws when mainLocale value is an object even if current locale is valid', () => {
+    const map = {
+      zh: { nested: 'bad' },
+      en: 'First Album',
+    } as unknown as Record<string, string>
+
+    expect(() => resolveMultilanguage(map, 'en', 'zh')).toThrow(/mainLocale/)
   })
 })
