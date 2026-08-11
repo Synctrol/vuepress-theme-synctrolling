@@ -60,7 +60,7 @@
 
 **Out of scope for this plan:** locale negotiation, routePath/publicPath, draft/fallback publishing matrices, assets hashing, shell, backgrounds, platform renderers/CSP, Release/News UI.
 
-**Assumed from Plan 01:** `package.json` name `vuepress-theme-synctrolling`; `src/index.ts`; `src/shared/types.ts` exports at least `ContentType`, `Multilanguage`, `LocaleKey`, `LocalePath`, `ReleaseOptions`; `src/shared/options.ts` includes `definitionsPath?: string`; Vitest configured and runnable via `npm test`.
+**Assumed from Plan 01:** `package.json` name `vuepress-theme-synctrolling`; `src/index.ts`; `src/shared/types.ts` exports `ContentType`, `Multilanguage`, and `LocaleKey`; `src/shared/options.ts` exports `ReleaseOptions` and includes `definitionsPath?: string`; Task 5 of this plan adds `LocalePath`; Vitest is configured and runnable via `npm test`.
 
 ---
 
