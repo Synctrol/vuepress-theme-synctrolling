@@ -312,29 +312,32 @@ platforms:
   })
 
   it.each([
-    ['missing', ''],
-    ['null', 'category: null\n'],
-    ['wrong case', 'category: Digital\n'],
-    ['custom', 'category: virtual\n'],
+    ['missing', undefined],
+    ['null', 'null'],
+    ['wrong case', 'Digital'],
+    ['custom', 'virtual'],
   ])('rejects %s platform category', (_label, category) => {
+    const categoryField =
+      category === undefined ? '' : `    category: ${category}\n`
     expectDiagnostic(
-      `platforms:\n  custom:\n    ${category}type: link\n    name: Custom\n`,
+      `platforms:\n  custom:\n${categoryField}    type: link\n    name: Custom\n`,
       'INVALID_PLATFORM_CATEGORY',
       'digital or physical',
     )
   })
 
   it.each([
-    ['missing', ''],
-    ['null', 'type: null\n'],
-    ['empty', 'type: ""\n'],
-    ['blank', 'type: "   "\n'],
-    ['path', 'type: player/custom\n'],
-    ['encoded dot', 'type: "%252e%252e"\n'],
-    ['dangerous prototype name', 'type: constructor\n'],
+    ['missing', undefined],
+    ['null', 'null'],
+    ['empty', '""'],
+    ['blank', '"   "'],
+    ['path', 'player/custom'],
+    ['encoded dot', '"%252e%252e"'],
+    ['dangerous prototype name', 'constructor'],
   ])('rejects %s platform type', (_label, type) => {
+    const typeField = type === undefined ? '' : `    type: ${type}\n`
     expectDiagnostic(
-      `platforms:\n  custom:\n    category: digital\n    ${type}name: Custom\n`,
+      `platforms:\n  custom:\n    category: digital\n${typeField}    name: Custom\n`,
       'INVALID_PLATFORM_TYPE',
       'safe, non-empty string segment',
     )
