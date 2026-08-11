@@ -198,3 +198,10 @@ export interface GiftBook extends BookBase {
 }
 
 export type Book = AlbumBook | GiftBook
+
+export interface CompiledContentPackage {
+  dir: string
+  identity: string
+  manifest: ContentManifest
+  book?: Book
+}
