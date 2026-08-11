@@ -39,6 +39,54 @@ describe('resolveThemeOptions', () => {
   const resolveRuntimeOptions = (input: unknown) =>
     resolveThemeOptions(input as SynctrolThemeOptions)
 
+  const multilanguageLocations = [
+    ['options.copyright', ['copyright']],
+    ['options.navigation.items[0].label', ['navigation', 'items', 0, 'label']],
+    ['options.navigation.items[0].href', ['navigation', 'items', 0, 'href']],
+    ['options.socialLinks.items[0].label', ['socialLinks', 'items', 0, 'label']],
+    ['options.seo.name', ['seo', 'name']],
+    ['options.seo.description', ['seo', 'description']],
+    [
+      'options.seo.collections.release.title',
+      ['seo', 'collections', 'release', 'title'],
+    ],
+    [
+      'options.seo.collections.release.description',
+      ['seo', 'collections', 'release', 'description'],
+    ],
+    [
+      'options.seo.collections.news.title',
+      ['seo', 'collections', 'news', 'title'],
+    ],
+    [
+      'options.seo.collections.news.description',
+      ['seo', 'collections', 'news', 'description'],
+    ],
+  ] as const
+
+  const inputWithMultilanguageValue = (
+    path: readonly (string | number)[],
+    value: unknown,
+  ): unknown => {
+    const input = structuredClone({
+      ...base,
+      navigation: {
+        externalTarget: '_blank',
+        items: [{ label: 'About', href: '/about' }],
+      },
+      socialLinks: {
+        items: [{ label: 'GitHub', icon: 'github', url: 'https://github.com' }],
+      },
+    }) as Record<string | number, unknown>
+    let container = input
+
+    for (const segment of path.slice(0, -1)) {
+      container = container[segment] as Record<string | number, unknown>
+    }
+    container[path.at(-1)!] = value
+    return input
+  }
+
   it('fills collection, feed, color-mode, and platform defaults', () => {
     const options = resolveThemeOptions(base)
     expect(options.defaultColorMode).toBe('auto')
@@ -107,6 +155,74 @@ describe('resolveThemeOptions', () => {
       zh: expect.objectContaining({ lang: 'zh-CN', label: '中文' }),
       en: expect.objectContaining({ lang: 'en-US', label: 'English' }),
     })
+  })
+
+  it.each(multilanguageLocations)(
+    'requires an own mainLocale string at %s',
+    (field, path) => {
+      expect(() =>
+        resolveRuntimeOptions(
+          inputWithMultilanguageValue(path, { en: 'English only' }),
+        ),
+      ).toThrow(
+        `Invalid ${field}.zh: expected an own string for mainLocale "zh"`,
+      )
+    },
+  )
+
+  it('does not accept an inherited mainLocale multilanguage value', () => {
+    Object.defineProperty(Object.prototype, 'zh', {
+      configurable: true,
+      value: 'Inherited Chinese',
+    })
+
+    try {
+      expect(() =>
+        resolveRuntimeOptions({
+          ...base,
+          copyright: { en: 'English only' },
+        }),
+      ).toThrow(
+        /Invalid options\.copyright\.zh: expected an own string for mainLocale "zh"/,
+      )
+    } finally {
+      Reflect.deleteProperty(Object.prototype, 'zh')
+    }
+  })
+
+  it('rejects a non-string mainLocale multilanguage value with its full path', () => {
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        copyright: { zh: 42, en: 'English' },
+      }),
+    ).toThrow(
+      /Invalid options\.copyright\.zh: expected an own string for mainLocale "zh"/,
+    )
+  })
+
+  it('continues sharing scalar multilanguage values across locales', () => {
+    expect(
+      resolveThemeOptions({
+        ...base,
+        copyright: 'Shared copyright',
+        seo: {
+          ...base.seo,
+          name: 'Shared name',
+          description: 'Shared description',
+          collections: {
+            release: {
+              title: 'Shared release title',
+              description: 'Shared release description',
+            },
+            news: {
+              title: 'Shared news title',
+              description: 'Shared news description',
+            },
+          },
+        },
+      }).copyright,
+    ).toBe('Shared copyright')
   })
 
   it.each([

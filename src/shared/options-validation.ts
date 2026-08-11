@@ -173,10 +173,23 @@ function assertOptionalGridColumns(value: unknown, field: string): void {
   }
 }
 
-function validateMultilanguage(value: unknown, field: string): void {
+function validateMultilanguage(
+  value: unknown,
+  field: string,
+  mainLocale: string,
+): void {
   if (typeof value === 'string') return
 
   assertPlainObject(value, field)
+  if (
+    !Object.hasOwn(value, mainLocale) ||
+    typeof value[mainLocale] !== 'string'
+  ) {
+    throw new Error(
+      `Invalid ${field}.${mainLocale}: expected an own string for mainLocale "${mainLocale}"`,
+    )
+  }
+
   for (const [key, text] of Object.entries(value)) {
     assertDynamicKey(key, `${field}.${key}`)
     if (typeof text !== 'string') {
@@ -236,15 +249,16 @@ function validateFeeds(value: unknown): void {
 function validateNavigationItem(
   value: unknown,
   index: number,
+  mainLocale: string,
 ): asserts value is NavigationItem {
   const field = `options.navigation.items[${index}]`
   assertPlainObject(value, field)
   assertKnownFields(value, NAVIGATION_ITEM_FIELDS, field)
-  validateMultilanguage(value.label, `${field}.label`)
-  validateMultilanguage(value.href, `${field}.href`)
+  validateMultilanguage(value.label, `${field}.label`, mainLocale)
+  validateMultilanguage(value.href, `${field}.href`, mainLocale)
 }
 
-function validateNavigation(value: unknown): void {
+function validateNavigation(value: unknown, mainLocale: string): void {
   if (value === undefined) return
   assertPlainObject(value, 'options.navigation')
   assertKnownFields(value, NAVIGATION_FIELDS, 'options.navigation')
@@ -256,30 +270,35 @@ function validateNavigation(value: unknown): void {
 
   if (value.items !== undefined) {
     assertArray(value.items, 'options.navigation.items')
-    value.items.forEach(validateNavigationItem)
+    value.items.forEach((item, index) =>
+      validateNavigationItem(item, index, mainLocale),
+    )
   }
 }
 
 function validateSocialLink(
   value: unknown,
   index: number,
+  mainLocale: string,
 ): asserts value is SocialLink {
   const field = `options.socialLinks.items[${index}]`
   assertPlainObject(value, field)
   assertKnownFields(value, SOCIAL_LINK_FIELDS, field)
-  validateMultilanguage(value.label, `${field}.label`)
+  validateMultilanguage(value.label, `${field}.label`, mainLocale)
   assertNonEmptyString(value.icon, `${field}.icon`)
   assertNonEmptyString(value.url, `${field}.url`)
 }
 
-function validateSocialLinks(value: unknown): void {
+function validateSocialLinks(value: unknown, mainLocale: string): void {
   if (value === undefined) return
   assertPlainObject(value, 'options.socialLinks')
   assertKnownFields(value, SOCIAL_LINKS_FIELDS, 'options.socialLinks')
 
   if (value.items !== undefined) {
     assertArray(value.items, 'options.socialLinks.items')
-    value.items.forEach(validateSocialLink)
+    value.items.forEach((item, index) =>
+      validateSocialLink(item, index, mainLocale),
+    )
   }
 }
 
@@ -423,19 +442,24 @@ function validateBackgrounds(value: unknown): void {
 function validateSeoCollectionCopy(
   value: unknown,
   collection: string,
+  mainLocale: string,
 ): asserts value is SeoCollectionCopy {
   const field = `options.seo.collections.${collection}`
   assertPlainObject(value, field)
   assertKnownFields(value, SEO_COLLECTION_COPY_FIELDS, field)
-  validateMultilanguage(value.title, `${field}.title`)
-  validateMultilanguage(value.description, `${field}.description`)
+  validateMultilanguage(value.title, `${field}.title`, mainLocale)
+  validateMultilanguage(value.description, `${field}.description`, mainLocale)
 }
 
-function validateSeo(value: unknown): void {
+function validateSeo(value: unknown, mainLocale: string): void {
   assertPlainObject(value, 'options.seo')
   assertKnownFields(value, SEO_FIELDS, 'options.seo')
-  validateMultilanguage(value.name, 'options.seo.name')
-  validateMultilanguage(value.description, 'options.seo.description')
+  validateMultilanguage(value.name, 'options.seo.name', mainLocale)
+  validateMultilanguage(
+    value.description,
+    'options.seo.description',
+    mainLocale,
+  )
   assertNonEmptyString(value.defaultImage, 'options.seo.defaultImage')
 
   assertPlainObject(value.organization, 'options.seo.organization')
@@ -459,8 +483,8 @@ function validateSeo(value: unknown): void {
     SEO_COLLECTION_FIELDS,
     'options.seo.collections',
   )
-  validateSeoCollectionCopy(value.collections.release, 'release')
-  validateSeoCollectionCopy(value.collections.news, 'news')
+  validateSeoCollectionCopy(value.collections.release, 'release', mainLocale)
+  validateSeoCollectionCopy(value.collections.news, 'news', mainLocale)
 }
 
 export function assertUrlSegment(value: unknown, field: string): void {
@@ -491,13 +515,13 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
     ['auto', 'light', 'dark'],
     'options.defaultColorMode',
   )
-  validateMultilanguage(input.copyright, 'options.copyright')
+  validateMultilanguage(input.copyright, 'options.copyright', input.mainLocale)
   validateFeeds(input.feeds)
-  validateNavigation(input.navigation)
-  validateSocialLinks(input.socialLinks)
+  validateNavigation(input.navigation, input.mainLocale)
+  validateSocialLinks(input.socialLinks, input.mainLocale)
   validateRelease(input.release)
   validateNews(input.news)
   validatePlatforms(input.platforms)
   validateBackgrounds(input.backgrounds)
-  validateSeo(input.seo)
+  validateSeo(input.seo, input.mainLocale)
 }
