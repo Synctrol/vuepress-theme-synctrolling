@@ -62,6 +62,10 @@ describe('shared types', () => {
   it('detects multilanguage maps versus scalars', () => {
     expect(isMultilanguageMap('SYNCTROL')).toBe(false)
     expect(isMultilanguageMap({ zh: '第一张专辑', en: 'First Album' })).toBe(true)
+    expect(isMultilanguageMap(Object.create(null))).toBe(true)
+    expect(isMultilanguageMap(null)).toBe(false)
+    expect(isMultilanguageMap(['第一张专辑'])).toBe(false)
+    expect(isMultilanguageMap(new Date())).toBe(false)
   })
 
   it('accepts album and gift book discriminators', () => {

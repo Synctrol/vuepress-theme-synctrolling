@@ -7,9 +7,14 @@ export type Multilanguage =
   | Record<LocaleKey, string>
 
 export function isMultilanguageMap(
-  value: Multilanguage,
+  value: unknown,
 ): value is Record<LocaleKey, string> {
-  return typeof value === 'object' && value !== null
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 export interface LocaleMessages {
