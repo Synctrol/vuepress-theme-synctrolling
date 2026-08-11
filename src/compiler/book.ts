@@ -185,6 +185,22 @@ function parseOptionalStringArray(
     : parseStringArray(value, path, fieldPath)
 }
 
+function parseArtists(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+): string[] {
+  const artists = parseStringArray(value, path, fieldPath)
+  if (artists.length === 0) {
+    invalid(
+      'INVALID_BOOK',
+      `${fieldPath} must be a non-empty string array`,
+      path,
+    )
+  }
+  return artists
+}
+
 function parseCovers(
   value: unknown,
   path: string,
@@ -272,7 +288,7 @@ function parseTrack(
       path,
       `${fieldPath}.title`,
     ),
-    artists: parseStringArray(
+    artists: parseArtists(
       raw.artists,
       path,
       `${fieldPath}.artists`,
