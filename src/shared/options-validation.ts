@@ -425,6 +425,9 @@ function validatePlatformRegistration(
   const field = `options.platforms.types.${platformType}`
   assertPlainObject(value, field)
   assertKnownFields(value, PLATFORM_TYPE_FIELDS, field)
+  if (!Object.hasOwn(value, 'component')) {
+    throw new Error(`Invalid ${field}.component: expected an own field`)
+  }
   if (typeof value.validate !== 'function') {
     throw new Error(`Invalid ${field}.validate: expected a function`)
   }

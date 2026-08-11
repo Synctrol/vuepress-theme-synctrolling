@@ -353,6 +353,24 @@ describe('resolveThemeOptions', () => {
     )
   })
 
+  it('requires each platform registration to own its component field', () => {
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        platforms: {
+          types: {
+            youtube: {
+              validate: (entry: unknown) => entry,
+              cspOrigins: () => [],
+            },
+          },
+        },
+      }),
+    ).toThrow(
+      'Invalid options.platforms.types.youtube.component: expected an own field',
+    )
+  })
+
   it.each([
     ['options.siteUrl', { ...base, siteUrl: 42 }],
     ['options.siteUrl', { ...base, siteUrl: '   ' }],
