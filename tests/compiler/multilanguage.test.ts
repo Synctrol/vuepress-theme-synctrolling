@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { isDiagnosticError } from '../../src/compiler/diagnostics'
+import {
+  isDiagnosticError,
+  SynctrolDiagnosticError,
+} from '../../src/compiler/diagnostics'
 import { assertMultilanguage } from '../../src/compiler/multilanguage'
 
 const path = '/x.yml'
@@ -138,5 +141,85 @@ describe('assertMultilanguage', () => {
 
     expect(result).toEqual({ zh: '第一张专辑', en: 'First Album' })
     expect(result).not.toBe(input)
+  })
+
+  it('rejects a non-enumerable non-string mainLocale value', () => {
+    const input = { en: 'English' }
+    Object.defineProperty(input, 'zh', { value: 42, enumerable: false })
+
+    expectDiagnostic(
+      () => assertMultilanguage(input, mainLocale, path, field),
+      'INVALID_MULTILANGUAGE',
+    )
+  })
+
+  it('accepts a legal non-enumerable mainLocale and returns an enumerable copy', () => {
+    const input = { en: 'First Album' }
+    Object.defineProperty(input, 'zh', {
+      value: '第一张专辑',
+      enumerable: false,
+    })
+
+    const result = assertMultilanguage(input, mainLocale, path, field)
+
+    expect(result).toEqual({ zh: '第一张专辑', en: 'First Album' })
+    expect(Object.keys(result).sort()).toEqual(['en', 'zh'])
+  })
+
+  it('rejects a non-enumerable dangerous locale key', () => {
+    const input = { zh: '中文' }
+    Object.defineProperty(input, '__proto__', {
+      value: 'polluted',
+      enumerable: false,
+    })
+
+    expectDiagnostic(
+      () => assertMultilanguage(input, mainLocale, path, field),
+      'INVALID_MULTILANGUAGE',
+    )
+  })
+
+  it('rejects accessor locale properties without executing getters', () => {
+    let getterExecuted = false
+    const input = { zh: '中文' }
+    Object.defineProperty(input, 'en', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        getterExecuted = true
+        return 'English'
+      },
+    })
+
+    expectDiagnostic(
+      () => assertMultilanguage(input, mainLocale, path, field),
+      'INVALID_MULTILANGUAGE',
+    )
+    expect(getterExecuted).toBe(false)
+  })
+
+  it('converts throwing proxy reflection traps to INVALID_MULTILANGUAGE', () => {
+    const input = new Proxy(
+      { zh: '中文' },
+      {
+        getOwnPropertyDescriptor() {
+          throw new Error('proxy trap')
+        },
+      },
+    )
+
+    try {
+      assertMultilanguage(input, mainLocale, path, field)
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SynctrolDiagnosticError)
+      expect(isDiagnosticError(error)).toBe(true)
+      if (isDiagnosticError(error)) {
+        expect(error.diagnostics[0].code).toBe('INVALID_MULTILANGUAGE')
+        expect(error.diagnostics[0].path).toBe(path)
+        expect(error.diagnostics[0].message).toContain(field)
+      }
+      expect((error as Error).message).not.toContain('proxy trap')
+    }
   })
 })
