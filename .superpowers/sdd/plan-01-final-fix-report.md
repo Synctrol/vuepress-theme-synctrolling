@@ -159,3 +159,101 @@ Plan 05 还需定义正式 client entry 与 CSS bundling/copy 流程。当前 ts
 非阻塞顾虑：本次 npm 安装报告 dev dependency tree 仍有 5 个 audit finding
 （3 moderate、1 high、1 critical）；它们未造成 `EBADENGINE`，也不属于本次
 Plan 01 审查修复范围，建议单独做依赖安全评估。
+
+## 复审续修（2026-08-11）
+
+本节追加记录第二轮整体复审的 3 个 Important 与 3 个低成本 Minor。上节末尾的
+依赖审计顾虑已在本轮解决，以本节 audit 结果为准。
+
+### Important 1：Multilanguage 主语言不变量
+
+- RED：为 copyright、navigation label/href、social label、SEO name/description
+  及 release/news collection title/description 加入缺失主语言回归，并加入继承
+  `mainLocale` 与非字符串主语言值回归；focused options suite 有 12 个预期失败。
+- GREEN：`validateMultilanguage(value, field, mainLocale)` 对 map 强制
+  `Object.hasOwn(value, mainLocale)` 且对应值为 string；错误包含完整路径，例如
+  `options.navigation.items[0].label.zh`。scalar string 行为保持不变。
+- 提交：`67ab843 fix: require main locale translations`
+- 文件：`src/shared/options-validation.ts`、`tests/shared/options.test.ts`
+
+### Important 2：统一安全 route segment
+
+- RED：新增 collection 的 `%2e%2e`、`.%2e`、`%2E.`、`../en`、危险原型键和
+  多层编码分隔符，以及 locale key 的同类回归；focused suite 有 16 个预期失败。
+- GREEN：collection `urlSegment`、`mainLocale`、configured locale key 和
+  Multilanguage locale key 共用内部 `assertRouteSegment`。它拒绝 `/`、`\`、
+  控制字符、首尾空白、`?`、`#`、危险原型键、大小写不敏感的编码
+  `/`、`\`、`.`，并逐层解码以拒绝多层编码后的路径语义。`zh-Hant`、`pt_BR`、
+  `日本語` 均保留并通过。
+- 提交：`6b83610 fix: unify secure route segment validation`
+- 文件：`src/shared/options-validation.ts`、`src/shared/options.ts`、
+  `tests/shared/options.test.ts`
+
+### Minor：类型 predicate 与 platform component
+
+- RED：`isMultilanguageMap({ zh: 42 })` 实际为 true；缺少自有 `component`
+  的 platform registration 也被接受，两项 focused 回归各有 1 个预期失败。
+- GREEN：predicate 现在仅接受 Object/null-prototype plain object，且全部自有
+  string-key value 都是 string；platform registration 必须自有 `component`
+  字段，错误包含 `options.platforms.types.<type>.component`。component 的具体
+  值类型仍留给 Plan 07。
+- 提交：
+  - `8d9788a fix: validate multilanguage map values`
+  - `7a6168b fix: require platform registration components`
+- 文件：`src/shared/types.ts`、`src/shared/options-validation.ts`、
+  `tests/shared/types.test.ts`、`tests/shared/options.test.ts`
+
+### Minor：resolved options 容器隔离
+
+- RED：resolve 后修改自定义 locale messages，resolved 的 `draft` 同步变化，
+  证明仍共享输入容器。
+- GREEN：复制 custom messages、dateFormat、copyright map、navigation/social
+  arrays/items/Multilanguage maps、SEO 全部普通嵌套容器、platform types map 与
+  backgrounds map。既有 client-options 回归证明 platform registration 对象有
+  身份契约，因此 types 采用浅复制：registration、component、validate、
+  cspOrigins 及 background loader 身份均保留；替换输入 map 条目不影响 resolved。
+- 提交：`46b05ca fix: isolate resolved option containers`
+- 文件：`src/shared/options.ts`、`tests/shared/options.test.ts`
+
+### Important 3：测试依赖安全
+
+- Before：`npm audit --json` 为 5 项（3 moderate、1 high、1 critical）。
+  路径为直接依赖 `vitest@2.1.9` → `@vitest/mocker` / `vite-node` →
+  `vite@5.4.21`；Critical 是 Vitest `<3.2.6` 的任意文件读取/执行公告。
+- 版本核实：registry 当前最新 Vitest 是 `4.1.10`，engine 为
+  `^20.0.0 || ^22.0.0 || >=24.0.0`。其默认可选择 Vite 8，但 Vite 8 的
+  Node 20 最低版本是 20.19，不符合项目 Node 20.9 基线；因此通过 npm 安装
+  `vitest@latest` 并显式安装已修复且 engine 仍为
+  `^18.0.0 || ^20.0.0 || >=22.0.0` 的 `vite@6.4.3`。VuePress 未升级。
+- RED：package contract 仍读到 `vitest: ^2.1.0`，1 个断言预期失败。
+- GREEN：lockfile 由 npm 生成；`npm ls` 为 `vitest@4.1.10` 与 deduped
+  `vite@6.4.3`。安装无 `EBADENGINE`。
+- After：`npm audit --json` 为 0 low / 0 moderate / 0 high / 0 critical，
+  total 0；当前没有需归因 VuePress transitive 的剩余 finding。
+- 提交：`35064e5 build: upgrade secure Vitest toolchain`
+- 文件：`package.json`、`package-lock.json`、
+  `tests/package-contract.test.ts`
+
+### 本轮最终验证
+
+- Focused：4 个文件、128 个测试全部通过。
+- 标准 `npm test`：生产 NodeNext 与 Bundler 测试 typecheck 均通过；9 个文件、
+  146 个测试全部通过。
+- `npm run build`：退出码 0。
+- 直接导入 `dist/index.js` 与 `dist/client/index.js`：成功；根入口
+  `synctrolTheme` 为 function，client 临时入口为空 export。
+- `npm run test:build-smoke`：退出码 0。
+- `npm pack --dry-run`：退出码 0，共 30 个文件；包含 root/client JS 与声明。
+  CSS 状态未改变：`src/client/styles/tokens.css` 在包内，dist 仍无 CSS，未实现
+  后续 CSS bundling/copy。
+- 最终 `npm audit --json`：0 vulnerabilities。
+- `git diff --check`：退出码 0；测试、构建、pack 输出无 `EBADENGINE`。
+
+### 本轮自审与剩余事项
+
+- 逐项复核 3 个 Important 与 3 个 Minor；所有新增行为均有先失败后通过的回归。
+- 未修改公开 options 字段或既定默认值；未实现 codegen、virtual module 或 CSS。
+- `dist/`、`node_modules/` 未纳入提交；未修改后续计划文档。
+- Plan 05/06/07 仍需实现 Background/Platform 函数与组件的正式传输机制，以及
+  client entry/CSS 构建流程；本轮仅保持这些运行时值在 Node resolved options
+  中的身份，不声称已解决 client 函数传输。
