@@ -14,4 +14,5 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
 
 export * from './shared/types.js'
 export * from './shared/messages.js'
+export * from './shared/multilanguage.js'
 export * from './shared/options.js'
