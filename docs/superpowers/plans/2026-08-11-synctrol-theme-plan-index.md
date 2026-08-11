@@ -33,5 +33,6 @@ This index sequences independent, testable plans for `vuepress-theme-synctrollin
 
 - [x] Spec approved for implementation planning
 - [x] Plan 01 written
-- [ ] Plans 02–11 written
+- [x] Plans 02–03 written
+- [ ] Plans 04–11 written
 - [ ] Execution started
