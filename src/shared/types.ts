@@ -85,6 +85,47 @@ export interface DiscoveredPackage {
   bookYmlPath?: string
 }
 
+export type LocalePath = string | Partial<Record<LocaleKey, string>>
+
+export interface ContentManifestBase {
+  type: ContentType
+  draft: boolean
+  path?: LocalePath
+}
+
+export interface HomeManifest extends ContentManifestBase {
+  type: 'home'
+}
+
+export interface ReleaseManifest extends ContentManifestBase {
+  type: 'release'
+  slug: string
+  date: string
+  cover?: string
+  artwork?: string
+}
+
+export interface NewsManifest extends ContentManifestBase {
+  type: 'news'
+  slug: string
+  date: string
+  updated?: string
+  tags: string[]
+  cover?: string
+}
+
+export interface PageManifest extends ContentManifestBase {
+  type: 'page'
+  slug: string
+  cover?: string
+}
+
+export type ContentManifest =
+  | HomeManifest
+  | ReleaseManifest
+  | NewsManifest
+  | PageManifest
+
 export interface PlatformEntryBase {
   platform: string
   label?: Multilanguage
