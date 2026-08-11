@@ -86,6 +86,33 @@ export type ContentType = 'home' | 'release' | 'news' | 'page'
 
 Member pages use `page` in the first version. There is no `member` type and no per-page layout selector.
 
+### 4.1 Theme option overview
+
+```ts
+interface SynctrolThemeOptions {
+  siteUrl: string
+  definitionsPath?: string
+  mainLocale: LocaleKey
+  locales: Record<LocaleKey, LocaleOptions>
+  showDrafts?: boolean
+  defaultColorMode?: 'auto' | 'light' | 'dark'
+  copyright: Multilanguage
+  feeds?: {
+    rss: boolean
+    sitemap: boolean
+  }
+  navigation?: NavigationOptions
+  socialLinks?: SocialLinksOptions
+  release?: ReleaseOptions
+  news?: NewsOptions
+  platforms?: PlatformsOptions
+  backgrounds?: Partial<Record<ContentType, BackgroundLoader>>
+  seo: SeoOptions
+}
+```
+
+There is no `contentDir`, full route-template, visual-token, breakpoint, SocialLinks icon-size, or Release artwork-loading option.
+
 ## 5. Content Root and Package Discovery
 
 The default source root is `content/`. The default global definitions file is `content/definitions.yml`.
@@ -206,11 +233,17 @@ synctrolTheme({
     zh: {
       lang: 'zh-CN',
       label: '中文',
+      dateFormat: {
+        dateStyle: 'long',
+      },
       messages: zhMessages,
     },
     en: {
       lang: 'en-US',
       label: 'English',
+      dateFormat: {
+        dateStyle: 'long',
+      },
       messages: enMessages,
     },
   },
@@ -237,12 +270,20 @@ interface LocaleMessages {
   language: string
   themeModeAnnouncement: string // {current}, {next}
   returnToReleases: string
+  published: string
   previousPage: string
   nextPage: string
   updated: string
+  authors: string
+  album: string
+  tracklist: string
   disc: string // {number}
   track: string // {number}
+  covers: string
+  platformLinks: string
   gifts: string
+  giftItems: string
+  readMore: string
   activateEmbed: string // {platform}
   embedFailed: string // {platform}
   openExternal: string // {platform}
@@ -253,7 +294,27 @@ interface LocaleMessages {
 }
 ```
 
-The theme exports complete Chinese and English defaults; the English `translationUnavailable` value is exactly “This article is not yet available in English. Showing the original version.” Values may be overridden. Adding any other locale requires every field.
+`dateFormat` is optional `Intl.DateTimeFormatOptions` and defaults to `{ dateStyle: 'long' }`. The theme exports complete Chinese and English message defaults; locale `messages` are partial overrides merged with those defaults. The English `translationUnavailable` value is exactly “This article is not yet available in English. Showing the original version.” Adding any other locale requires every message field.
+
+Content-facing defaults include:
+
+| Key | Chinese | English |
+| --- | --- | --- |
+| `published` | 发布于 | Published |
+| `updated` | 更新于 | Updated |
+| `authors` | 作者 | Authors |
+| `album` | 专辑 | Album |
+| `tracklist` | 曲目列表 | Tracklist |
+| `disc` | 第 {number} 碟 | Disc {number} |
+| `track` | 第 {number} 曲 | Track {number} |
+| `covers` | 封面 | Covers |
+| `platformLinks` | 收听与获取 | Listen & Get |
+| `gifts` | 周边 | Gifts |
+| `giftItems` | 周边清单 | Gift Items |
+| `readMore` | 阅读更多 | Read More |
+| `returnToReleases` | 返回作品列表 | Back to Releases |
+| `emptyReleases` | 暂无作品 | No releases |
+| `emptyNews` | 暂无新闻 | No news |
 
 Browser-language matching normalizes case and `_`/`-`, then checks each browser preference in order:
 
@@ -334,26 +395,81 @@ No content page is emitted without a locale prefix.
 
 ## 8. Routes
 
-Built-in route templates:
+Collection routes derive from theme options:
+
+```ts
+release: {
+  urlSegment: 'releases',
+  index: {
+    enabled: true,
+    pagination: 12,
+    mobileGridColumns: 2,
+    desktopGridColumns: 3,
+  },
+  artworkPlaceholder: undefined,
+},
+
+news: {
+  urlSegment: 'news',
+  index: {
+    enabled: true,
+    pagination: 12,
+  },
+  tags: {
+    urlSegment: 'tags',
+    index: {
+      enabled: true,
+    },
+  },
+},
+```
+
+```ts
+interface ReleaseOptions {
+  urlSegment: string
+  index: {
+    enabled: boolean
+    pagination: number | false
+    mobileGridColumns: number
+    desktopGridColumns: number
+  }
+  artworkPlaceholder?: string
+}
+
+interface NewsOptions {
+  urlSegment: string
+  index: {
+    enabled: boolean
+    pagination: number | false
+  }
+  tags: {
+    urlSegment: string
+    index: {
+      enabled: boolean
+    }
+  }
+}
+```
+
+The default generated suffixes are:
 
 ```text
-release index      → /releases/
-release detail     → /releases/{slug}/
-release pagination → /releases/page/{page}/
-news index         → /news/
-news detail        → /news/{slug}/
-news pagination    → /news/page/{page}/
-news tag archive   → /news/tags/{tag}/
-tag pagination     → /news/tags/{tag}/page/{page}/
+release index      → /{release.urlSegment}/
+release detail     → /{release.urlSegment}/{slug}/
+release pagination → /{release.urlSegment}/page/{page}/
+news index         → /{news.urlSegment}/
+news detail        → /{news.urlSegment}/{slug}/
+news pagination    → /{news.urlSegment}/page/{page}/
+news tags index    → /{news.urlSegment}/{news.tags.urlSegment}/
+news tag archive   → /{news.urlSegment}/{news.tags.urlSegment}/{tag}/
+tag pagination     → /{news.urlSegment}/{news.tags.urlSegment}/{tag}/page/{page}/
 page detail        → /{slug}/
 home               → /
 ```
 
-The final URL is:
+`urlSegment` is one scalar string shared by every locale. It cannot be a Multilanguage value.
 
-```text
-VuePress base + /{locale} + resolved path suffix
-```
+The final URL is `VuePress base + /{locale} + resolved path suffix`.
 
 The implementation distinguishes:
 
@@ -388,47 +504,20 @@ produces:
 Resolution:
 
 1. Current locale's page-specific path.
-2. Type's configured default path.
+2. Type route derived from `release.urlSegment` or `news.urlSegment`.
 3. Built-in type path.
 
 It never reuses the main locale's page-specific path. Final route collisions are build errors.
-
-Route templates are theme-configurable independently:
-
-```ts
-routes: {
-  release: {
-    index: '/releases/',
-    detail: '/releases/{slug}/',
-    pagination: '/releases/page/{page}/',
-  },
-  news: {
-    index: '/news/',
-    detail: '/news/{slug}/',
-    pagination: '/news/page/{page}/',
-    tag: '/news/tags/{tag}/',
-    tagPagination: '/news/tags/{tag}/page/{page}/',
-  },
-  page: {
-    detail: '/{slug}/',
-  },
-}
-```
 
 Home always uses `/` and cannot be remapped.
 
 Path rules:
 
-- Page-specific paths and route templates must begin and end with `/`.
+- Page-specific paths must begin and end with `/`.
 - Query strings and hashes are invalid.
 - Empty segments (`//`) are invalid, but ordinary repeated names such as `/zh/zh/test/` are valid.
 - Slug and tag substitutions use RFC 3986 percent encoding as single path segments.
-- Index templates contain no placeholders.
-- Release, News, and Page detail templates contain exactly one `{slug}`.
-- Pagination templates contain exactly one `{page}`.
-- News tag templates contain exactly one `{tag}`.
-- News tag pagination contains one `{tag}` and one `{page}`.
-- Unknown or missing placeholders are build errors.
+- Every URL segment must be non-empty and cannot contain `/`, query, hash, `.` or `..`.
 - Page one always uses the collection/tag index route.
 - Numbered pagination routes start at page two.
 
@@ -443,7 +532,15 @@ news-tag:{tag}
 news-tag:{tag}:page:{page}
 ```
 
-LanguageSwitcher resolves these identities with the target locale's route templates. Tag keys use RFC 3986 percent encoding. Page-specific custom paths affect details only and never alter collection routes.
+LanguageSwitcher resolves generated identities using the target locale prefix and the same scalar URL segments. Tag keys use RFC 3986 percent encoding. Page-specific custom paths affect details only and never alter collection routes.
+
+Index switches:
+
+- `release.index.enabled: false` suppresses Release Index and its pagination, but not Release detail pages.
+- `news.index.enabled: false` suppresses News Index and its pagination, but not News detail or tag pages.
+- `news.tags.index.enabled: false` suppresses only the News Tags Index; individual tag archives still generate.
+- News tag archives use `news.index.pagination`.
+- A pagination value of `false` emits one unpaginated list.
 
 ## 9. Translation and Draft Publishing
 
@@ -651,6 +748,21 @@ Built-in value constraints:
 - `soundcloud_player.url`: HTTPS URL on `soundcloud.com`.
 - `netease_player.id`: non-empty decimal digit string.
 
+Runtime behavior and custom types use:
+
+```ts
+platforms: {
+  loadStrategy: 'interaction',
+  types: {},
+}
+```
+
+- `loadStrategy` accepts `'interaction' | 'viewport'` and defaults to `'interaction'`.
+- `interaction` loads an embed after explicit activation.
+- `viewport` loads it when the entry enters the viewport.
+- Immediate loading is intentionally unsupported.
+- URL validation, CSP audit output, and failure fallback cannot be disabled.
+
 Processing is:
 
 ```text
@@ -663,7 +775,7 @@ entry.platform
 
 Unknown types, unknown fields, missing required fields, and invalid values are build errors. Multiple entries may use the same platform.
 
-The theme configuration can register additional platform types:
+`platforms.types` can register additional platform types:
 
 ```ts
 import type { Component } from 'vue'
@@ -723,7 +835,7 @@ theme/assets/grid.svg
 → /assets/theme/grid.[hash].svg
 ```
 
-Theme-configured social icons resolve relative to the VuePress configuration file and enter the global asset pipeline.
+Theme-configured social icons and `release.artworkPlaceholder` resolve relative to the VuePress configuration file and enter the global asset pipeline.
 
 Background TypeScript modules import their own resources with normal TypeScript imports; the VuePress bundler hashes those files as theme assets.
 
@@ -893,7 +1005,8 @@ AUTO → LIGHT → DARK → AUTO
 
 Rules:
 
-- Default is `AUTO`.
+- `defaultColorMode` accepts `'auto' | 'light' | 'dark'` and defaults to `'auto'`.
+- The configured default applies only when the user has no saved selection.
 - The visible label is localized.
 - `AUTO` follows `prefers-color-scheme`.
 - Choice is stored in `localStorage`.
@@ -906,25 +1019,29 @@ Rules:
 Navigation is manually configured and shared across pages:
 
 ```ts
-navigation: [
-  {
-    label: { zh: '作品', en: 'Releases' },
-    href: '/releases/',
-  },
-  {
-    label: 'GitHub',
-    href: 'https://github.com/synctrol',
-  },
-]
+navigation: {
+  externalTarget: '_blank',
+  items: [
+    {
+      label: { zh: '作品', en: 'Releases' },
+      href: '/releases/',
+    },
+    {
+      label: 'GitHub',
+      href: 'https://github.com/synctrol',
+    },
+  ],
+}
 ```
 
 - Internal destinations use leading-slash locale-root-relative paths such as `/releases/`. The theme prepends VuePress `base` and the active locale.
 - External destinations use complete URLs.
 - `label` and `href` may be `Multilanguage`.
-- Order is configuration order.
+- `externalTarget` accepts `'_blank' | '_self'` and defaults to `'_blank'`.
+- Order is `items` configuration order.
 - Desktop renders the Navigation region.
 - Mobile renders the same entries in the hamburger drawer.
-- External destinations open in a new tab with safe `rel` attributes.
+- External destinations use `externalTarget`; safe `rel` attributes cannot be disabled.
 - `./` and `../` navigation paths are invalid because their browser meaning depends on the current page.
 
 ## 17. Social Links
@@ -932,13 +1049,15 @@ navigation: [
 Social links are not Navigation or Footer content.
 
 ```ts
-socialLinks: [
-  {
-    label: 'GitHub',
-    icon: './assets/github.svg',
-    url: 'https://github.com/synctrol',
-  },
-]
+socialLinks: {
+  items: [
+    {
+      label: 'GitHub',
+      icon: './assets/github.svg',
+      url: 'https://github.com/synctrol',
+    },
+  ],
+}
 ```
 
 - They appear on every page.
@@ -949,6 +1068,7 @@ socialLinks: [
 - Icons are decorative to assistive technology.
 - External links use `target="_blank"` and safe `rel`.
 - The group wraps upward when needed and cannot overlap LanguageSwitcher.
+- Icon dimensions are fixed visual tokens and are not configurable.
 
 ## 18. Language Switcher
 
@@ -1039,21 +1159,22 @@ Other content types use `cover` as follows:
 
 The desktop index takes only the square-artwork grid principle from the Diverse System homepage.
 
-- Three columns inside the desktop Main region.
+- `release.index.desktopGridColumns` controls desktop columns, defaults to `3`, and accepts integers from `1` through `6`.
+- `release.index.mobileGridColumns` controls mobile columns, defaults to `2`, and accepts integers from `1` through `3`.
 - Square `artwork`.
-- Title and date beneath each image.
+- No visible date or description appears beneath an artwork tile.
+- Title remains available as image alternative text, accessible link text, and focus feedback.
 - Date descending.
-- Twelve Releases per statically generated page.
+- `release.index.pagination` defaults to `12`, accepts a positive integer or `false`, and controls Releases per page.
 - Page one uses the Release index route; page two and later use the configured pagination route.
-- Pagination is emitted only when more than twelve entries are visible in the current build. Drafts count when `showDrafts` makes them visible.
+- Pagination is emitted only when visible entries exceed the configured page size. Drafts count when `showDrafts` makes them visible.
 - Synctrol three-pixel borders and black/white hover inversion.
 - Clicking a card opens Release detail.
-- Missing artwork produces a branded empty frame and never falls back to `cover`.
+- Missing artwork uses `release.artworkPlaceholder` when configured, otherwise a branded empty frame; it never falls back to `cover`.
 
 Synctrol owns the mobile design:
 
-- Two columns on normal phones.
-- One column on narrow screens.
+- Grid columns use `release.index.mobileGridColumns`.
 - No behavior is copied from Diverse System mobile.
 
 Draft cards follow `showDrafts`.
@@ -1253,12 +1374,13 @@ Rules:
 
 Index:
 
-- Twelve entries per statically generated News index or tag archive page.
+- `news.index.pagination` defaults to `12`, accepts a positive integer or `false`, and controls both News Index and individual tag archives.
 - Page one uses the index or tag route; page two and later use the corresponding pagination route.
-- Pagination is emitted only when that current-build visible dataset exceeds twelve entries. Drafts count when `showDrafts` makes them visible.
+- Pagination is emitted only when that current-build visible dataset exceeds the configured page size. Drafts count when `showDrafts` makes them visible.
 - Cover, title, description, date, and tags.
 - Text-only layout when cover is absent.
 - Tag links open generated locale-specific archives.
+- News Tags Index lists all declared tags with visible article counts and is not paginated.
 
 Detail:
 
@@ -1379,6 +1501,17 @@ Generated outputs:
 - RSS includes News and Release.
 - Draft and fallback pages are excluded from Sitemap and RSS.
 
+Generation is configurable:
+
+```ts
+feeds: {
+  rss: true,
+  sitemap: true,
+}
+```
+
+Both values default to `true`. A `false` value suppresses the corresponding output without changing canonical, Open Graph, JSON-LD, or `hreflang`.
+
 ## 29. Accessibility
 
 - Every icon link has an accessible label.
@@ -1394,7 +1527,7 @@ Generated outputs:
 
 ## 30. Performance and Security
 
-- Platform iframes load after user interaction.
+- Platform iframes load according to `platforms.loadStrategy`; immediate loading is unavailable.
 - Background modules clean up animation frames, observers, and events.
 - Non-critical images lazy-load.
 - First visible artwork may load eagerly.
@@ -1419,6 +1552,8 @@ Build errors:
 - Invalid platform entry fields.
 - Missing main-locale value in a Multilanguage map.
 - Invalid Book branch for its `type`.
+- Invalid URL segment, pagination value, or Release grid-column count.
+- Invalid locale date format, default color mode, feed option, or external-link target.
 
 Build warnings:
 
@@ -1434,6 +1569,8 @@ Intentional drafts do not warn when excluded by `content.yml`.
 
 - Content package discovery and nesting rejection.
 - Slug and route resolution.
+- URL-segment route derivation and index enable/disable behavior.
+- Release/News pagination and Release grid option validation.
 - Multilanguage scalar/map behavior.
 - Draft and fallback matrix.
 - Asset path and emitted URL resolution.
@@ -1441,6 +1578,7 @@ Intentional drafts do not warn when excluded by `content.yml`.
 - Album/Gift discriminated union.
 - One-based Disc and Track numbering.
 - Background type selection.
+- Feed enable/disable behavior.
 
 ### 32.2 Integration tests
 
@@ -1476,7 +1614,7 @@ The design spans several independently testable subsystems. Implementation plann
 
 1. **Package foundation:** VuePress theme package, fixed tokens, shared types, and test harness.
 2. **Content compiler:** package discovery, YAML schemas, definitions, Book validation, and diagnostics.
-3. **Locale and route compiler:** locale negotiation, route templates, virtual collections, drafts, and fallback pages.
+3. **Locale and route compiler:** locale negotiation, URL segments, virtual collections, drafts, and fallback pages.
 4. **Asset pipeline:** package assets, Markdown assets, global/theme assets, hashing, and base-path support.
 5. **Global shell:** Header, Navigation, Footer slot, SocialLinks, LanguageSwitcher, ThemeMode, responsive behavior, and their accessibility tests.
 6. **Background runtime:** type-based TypeScript modules, update/dispose lifecycle, reduced motion, and performance tests.
