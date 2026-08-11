@@ -528,6 +528,7 @@ release-index
 release-page:{page}
 news-index
 news-page:{page}
+news-tags-index
 news-tag:{tag}
 news-tag:{tag}:page:{page}
 ```
