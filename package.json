@@ -16,7 +16,7 @@
   "files": ["dist", "src"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test:typecheck": "tsc -p tsconfig.test.json",
+    "test:typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "npm run test:typecheck && vitest run",
     "test:watch": "vitest"
   },
