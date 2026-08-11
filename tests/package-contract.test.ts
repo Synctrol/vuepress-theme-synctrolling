@@ -26,6 +26,11 @@ describe('package contract', () => {
     expect(packageJson.peerDependencies.vuepress).toBe('^2.0.0-rc.24')
   })
 
+  it('pins a patched test toolchain that still supports the Node 20 baseline', () => {
+    expect(packageJson.devDependencies.vitest).toBe('^4.1.10')
+    expect(packageJson.devDependencies.vite).toBe('^6.4.3')
+  })
+
   it('provides a build smoke for both package export targets', () => {
     const clientEntry = new URL('../src/client/index.ts', import.meta.url)
     const buildSmoke = new URL(
