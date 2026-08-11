@@ -3087,8 +3087,6 @@ Expected: FAIL with module not found for `../../src/compiler/compile-content`
 
 ```ts
 // src/compiler/compile-content.ts
-```ts
-// src/compiler/compile-content.ts
 import type {
   Book,
   CompiledContentPackage,
