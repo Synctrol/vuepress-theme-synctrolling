@@ -1,4 +1,8 @@
 import { enMessages, zhMessages } from './messages.js'
+import {
+  assertUrlSegment,
+  validateThemeOptions,
+} from './options-validation.js'
 import type {
   ContentType,
   LocaleKey,
@@ -141,20 +145,6 @@ const DEFAULT_MESSAGES: Record<'zh' | 'en', LocaleMessages> = {
   en: enMessages,
 }
 
-function assertUrlSegment(value: unknown, field: string): void {
-  if (
-    typeof value !== 'string' ||
-    !value ||
-    value.trim() !== value ||
-    /[\\/?#\u0000-\u001f\u007f-\u009f]/.test(value) ||
-    /%(?:2f|5c)/i.test(value) ||
-    value === '.' ||
-    value === '..'
-  ) {
-    throw new Error(`Invalid ${field}: ${String(value)}`)
-  }
-}
-
 function assertPagination(value: number | false, field: string): void {
   if (value === false) return
   if (!Number.isInteger(value) || value < 1) {
@@ -176,7 +166,9 @@ function resolveMessages(
   localeKey: LocaleKey,
   partial?: Partial<LocaleMessages>,
 ): LocaleMessages {
-  const defaults = DEFAULT_MESSAGES[localeKey as 'zh' | 'en']
+  const defaults = Object.hasOwn(DEFAULT_MESSAGES, localeKey)
+    ? DEFAULT_MESSAGES[localeKey as 'zh' | 'en']
+    : undefined
   if (defaults) {
     const resolved = { ...defaults }
     if (!partial) return resolved
@@ -207,9 +199,7 @@ function resolveMessages(
 export function resolveThemeOptions(
   input: SynctrolThemeOptions,
 ): ResolvedSynctrolThemeOptions {
-  if (!input.locales[input.mainLocale]) {
-    throw new Error(`mainLocale ${input.mainLocale} is not configured`)
-  }
+  validateThemeOptions(input)
 
   const release: ReleaseOptions = {
     urlSegment:
@@ -225,16 +215,19 @@ export function resolveThemeOptions(
     artworkPlaceholder: input.release?.artworkPlaceholder,
   }
 
-  assertUrlSegment(release.urlSegment, 'release.urlSegment')
-  assertPagination(release.index.pagination, 'release.index.pagination')
+  assertUrlSegment(release.urlSegment, 'options.release.urlSegment')
+  assertPagination(
+    release.index.pagination,
+    'options.release.index.pagination',
+  )
   assertGridColumns(
     release.index.mobileGridColumns,
-    'mobileGridColumns',
+    'options.release.index.mobileGridColumns',
     3,
   )
   assertGridColumns(
     release.index.desktopGridColumns,
-    'desktopGridColumns',
+    'options.release.index.desktopGridColumns',
     6,
   )
 
@@ -256,11 +249,14 @@ export function resolveThemeOptions(
     },
   }
 
-  assertUrlSegment(news.urlSegment, 'news.urlSegment')
-  assertUrlSegment(news.tags.urlSegment, 'news.tags.urlSegment')
-  assertPagination(news.index.pagination, 'news.index.pagination')
+  assertUrlSegment(news.urlSegment, 'options.news.urlSegment')
+  assertUrlSegment(news.tags.urlSegment, 'options.news.tags.urlSegment')
+  assertPagination(news.index.pagination, 'options.news.index.pagination')
 
-  const locales: Record<LocaleKey, ResolvedLocaleOptions> = {}
+  const locales = Object.create(null) as Record<
+    LocaleKey,
+    ResolvedLocaleOptions
+  >
   for (const [key, locale] of Object.entries(input.locales)) {
     locales[key] = {
       lang: locale.lang,

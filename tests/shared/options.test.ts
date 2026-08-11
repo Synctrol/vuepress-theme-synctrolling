@@ -36,6 +36,9 @@ describe('resolveThemeOptions', () => {
     },
   }
 
+  const resolveRuntimeOptions = (input: unknown) =>
+    resolveThemeOptions(input as SynctrolThemeOptions)
+
   it('fills collection, feed, color-mode, and platform defaults', () => {
     const options = resolveThemeOptions(base)
     expect(options.defaultColorMode).toBe('auto')
@@ -69,6 +72,194 @@ describe('resolveThemeOptions', () => {
       items: [],
     })
     expect(options.socialLinks).toEqual({ items: [] })
+  })
+
+  it('requires own, safe locale keys and creates a safe locale dictionary', () => {
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        mainLocale: 'toString',
+      }),
+    ).toThrow(/mainLocale.*not configured/)
+
+    const pollutedLocales = JSON.parse(`{
+      "zh": { "lang": "zh-CN", "label": "中文" },
+      "__proto__": { "lang": "en-US", "label": "Unsafe" }
+    }`) as unknown
+
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        locales: pollutedLocales,
+      }),
+    ).toThrow(/locales\.__proto__/)
+
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        mainLocale: 'constructor',
+      }),
+    ).toThrow(/mainLocale.*constructor/)
+
+    const options = resolveThemeOptions(base)
+    expect(Object.getPrototypeOf(options.locales)).toBeNull()
+    expect({ ...options.locales }).toEqual({
+      zh: expect.objectContaining({ lang: 'zh-CN', label: '中文' }),
+      en: expect.objectContaining({ lang: 'en-US', label: 'English' }),
+    })
+  })
+
+  it.each([
+    ['options', null],
+    ['options', []],
+    ['options.locales', { ...base, locales: [] }],
+    [
+      'options.locales.zh',
+      { ...base, locales: { ...base.locales, zh: null } },
+    ],
+    ['options.feeds', { ...base, feeds: [] }],
+    ['options.navigation', { ...base, navigation: null }],
+    ['options.socialLinks', { ...base, socialLinks: [] }],
+    ['options.release', { ...base, release: [] }],
+    ['options.release.index', { ...base, release: { index: [] } }],
+    ['options.news', { ...base, news: [] }],
+    ['options.news.tags', { ...base, news: { tags: [] } }],
+    ['options.platforms', { ...base, platforms: [] }],
+    [
+      'options.platforms.types',
+      { ...base, platforms: { types: [] } },
+    ],
+    ['options.backgrounds', { ...base, backgrounds: [] }],
+    ['options.seo', { ...base, seo: [] }],
+    [
+      'options.seo.organization',
+      { ...base, seo: { ...base.seo, organization: [] } },
+    ],
+    [
+      'options.seo.collections',
+      { ...base, seo: { ...base.seo, collections: null } },
+    ],
+  ] as const)('rejects non-plain %s', (field, input) => {
+    expect(() => resolveRuntimeOptions(input)).toThrow(
+      new RegExp(field.replaceAll('.', '\\.')),
+    )
+  })
+
+  it.each([
+    ['options.contentDir', { ...base, contentDir: 'content' }],
+    ['options.routes', { ...base, routes: {} }],
+    ['options.routeTemplate', { ...base, routeTemplate: '/:locale/:slug' }],
+    ['options.visualTokens', { ...base, visualTokens: {} }],
+    ['options.breakpoints', { ...base, breakpoints: {} }],
+    [
+      'options.socialLinks.iconSize',
+      { ...base, socialLinks: { items: [], iconSize: 24 } },
+    ],
+    [
+      'options.release.artworkLoading',
+      { ...base, release: { artworkLoading: 'lazy' } },
+    ],
+    [
+      'options.release.routeTemplate',
+      { ...base, release: { routeTemplate: '/release/:slug' } },
+    ],
+    [
+      'options.locales.zh.fallback',
+      {
+        ...base,
+        locales: {
+          ...base.locales,
+          zh: { ...base.locales.zh, fallback: true },
+        },
+      },
+    ],
+    [
+      'options.release.index.pageSize',
+      { ...base, release: { index: { pageSize: 12 } } },
+    ],
+    [
+      'options.news.tags.routes',
+      { ...base, news: { tags: { routes: {} } } },
+    ],
+    [
+      'options.platforms.preload',
+      { ...base, platforms: { preload: true } },
+    ],
+    [
+      'options.seo.organization.url',
+      {
+        ...base,
+        seo: {
+          ...base.seo,
+          organization: { ...base.seo.organization, url: base.siteUrl },
+        },
+      },
+    ],
+  ] as const)('rejects unsupported field %s', (field, input) => {
+    expect(() => resolveRuntimeOptions(input)).toThrow(
+      new RegExp(field.replaceAll('.', '\\.')),
+    )
+  })
+
+  it.each([
+    [
+      'options.defaultColorMode',
+      { ...base, defaultColorMode: 'sepia' },
+    ],
+    ['options.showDrafts', { ...base, showDrafts: 'false' }],
+    ['options.feeds.rss', { ...base, feeds: { rss: 1 } }],
+    ['options.feeds.sitemap', { ...base, feeds: { sitemap: 'yes' } }],
+    [
+      'options.navigation.externalTarget',
+      { ...base, navigation: { externalTarget: '_parent' } },
+    ],
+    ['options.navigation.items', { ...base, navigation: { items: {} } }],
+    ['options.socialLinks.items', { ...base, socialLinks: { items: {} } }],
+    [
+      'options.release.index.enabled',
+      { ...base, release: { index: { enabled: 1 } } },
+    ],
+    [
+      'options.news.index.enabled',
+      { ...base, news: { index: { enabled: 'yes' } } },
+    ],
+    [
+      'options.news.tags.index.enabled',
+      { ...base, news: { tags: { index: { enabled: null } } } },
+    ],
+    [
+      'options.platforms.loadStrategy',
+      { ...base, platforms: { loadStrategy: 'immediate' } },
+    ],
+  ] as const)('rejects invalid enum, boolean, or array at %s', (field, input) => {
+    expect(() => resolveRuntimeOptions(input)).toThrow(
+      new RegExp(field.replaceAll('.', '\\.')),
+    )
+  })
+
+  it.each([
+    ['options.siteUrl', { ...base, siteUrl: 42 }],
+    ['options.siteUrl', { ...base, siteUrl: '   ' }],
+    ['options.mainLocale', { ...base, mainLocale: 42 }],
+    ['options.mainLocale', { ...base, mainLocale: '' }],
+    [
+      'options.locales.zh.lang',
+      {
+        ...base,
+        locales: { ...base.locales, zh: { lang: 42, label: '中文' } },
+      },
+    ],
+    [
+      'options.locales.zh.label',
+      {
+        ...base,
+        locales: { ...base.locales, zh: { lang: 'zh-CN', label: null } },
+      },
+    ],
+  ] as const)('rejects invalid required string at %s', (field, input) => {
+    expect(() => resolveRuntimeOptions(input)).toThrow(
+      new RegExp(field.replaceAll('.', '\\.')),
+    )
   })
 
   it('merges locale message overrides onto zh/en defaults', () => {
