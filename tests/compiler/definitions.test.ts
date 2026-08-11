@@ -106,7 +106,7 @@ afterEach(() => {
 describe('resolveDefinitionsPath', () => {
   it('defaults to an absolute normalized path under sourceDir', () => {
     expect(resolveDefinitionsPath('/site/./src/..', '/site/.vuepress')).toBe(
-      '/site/content/definitions.yml',
+      resolve('/site/./src/..', 'content/definitions.yml'),
     )
   })
 
@@ -123,7 +123,7 @@ describe('resolveDefinitionsPath', () => {
         '/site/.vuepress',
         '../content/./definitions.yml',
       ),
-    ).toBe('/site/content/definitions.yml')
+    ).toBe(resolve('/site/.vuepress', '../content/./definitions.yml'))
   })
 
   it('absolutizes a relative configDir before resolving definitionsPath', () => {
@@ -143,7 +143,7 @@ describe('resolveDefinitionsPath', () => {
         '/site/.vuepress',
         '/absolute/content/../definitions.yml',
       ),
-    ).toBe('/absolute/definitions.yml')
+    ).toBe(resolve('/absolute/content/../definitions.yml'))
   })
 })
 
@@ -160,7 +160,7 @@ tags:
 platforms:
   自定义-platform_一:
     category: digital
-    type: custom_player
+    type: vendor/player
     name: 自定义平台
 `)
     const custom = loadContentDefinitions(customPath, 'zh')
@@ -186,7 +186,7 @@ platforms:
       platforms: {
         '自定义-platform_一': {
           category: 'digital',
-          type: 'custom_player',
+          type: 'vendor/player',
           name: '自定义平台',
         },
       },
@@ -207,6 +207,25 @@ platforms:
     }
 
     expect(definitions.platforms.custom.type).toBe('custom_player')
+  })
+
+  it.each([
+    'vendor/player',
+    'vendor.player:v2',
+    'vendor%player',
+  ])('accepts custom registry platform type %j', (type) => {
+    const definitions = loadContentDefinitions(
+      writeDefinitions(`
+platforms:
+  custom:
+    category: digital
+    type: ${JSON.stringify(type)}
+    name: Custom
+`),
+      'zh',
+    )
+
+    expect(definitions.platforms.custom.type).toBe(type)
   })
 
   it('defaults missing tags and platforms to isolated safe maps', () => {
@@ -331,9 +350,11 @@ platforms:
     ['null', 'null'],
     ['empty', '""'],
     ['blank', '"   "'],
-    ['path', 'player/custom'],
-    ['encoded dot', '"%252e%252e"'],
-    ['dangerous prototype name', 'constructor'],
+    ['leading whitespace', '" custom"'],
+    ['trailing whitespace', '"custom "'],
+    ['dangerous __proto__ key', '"__proto__"'],
+    ['dangerous prototype key', 'prototype'],
+    ['dangerous constructor key', 'constructor'],
   ])('rejects %s platform type', (_label, type) => {
     const typeField = type === undefined ? '' : `    type: ${type}\n`
     expectDiagnostic(
@@ -455,8 +476,17 @@ platforms:
     const first = loadContentDefinitions(path, 'zh')
     const second = loadContentDefinitions(path, 'zh')
 
-    first.tags.release.title = 'Mutated'
-    first.platforms.bilibili.name = 'Mutated'
+    expect(typeof first.tags.release.title).toBe('object')
+    expect(typeof first.platforms.taobao.name).toBe('object')
+    if (
+      typeof first.tags.release.title !== 'object' ||
+      typeof first.platforms.taobao.name !== 'object'
+    ) {
+      expect.unreachable('fixture fields should be locale maps')
+    }
+
+    first.tags.release.title.zh = 'Mutated'
+    first.platforms.taobao.name.zh = 'Mutated'
     first.platforms.bilibili.type = 'mutated_type'
     first.tags.added = { title: 'Added' }
 
@@ -468,6 +498,10 @@ platforms:
       category: 'digital',
       type: 'bilibili_player',
       name: 'Bilibili',
+    })
+    expect(second.platforms.taobao.name).toEqual({
+      zh: '淘宝',
+      en: 'Taobao',
     })
     expect(Object.hasOwn(second.tags, 'added')).toBe(false)
     expect(second.tags).not.toBe(first.tags)
