@@ -6,13 +6,13 @@
 
 ## 1. Purpose
 
-Build a Synctrol-specific VuePress theme for:
+Build a Synctrol-specific VuePress theme package for:
 
 1. Music and merchandise releases.
 2. Team and member introductions.
 3. Team news.
 
-The theme preserves the current Synctrol site's black-and-white industrial identity while adding structured content, multilingual publishing, responsive layouts, media embeds, archives, and GitHub Pages deployment support.
+The theme preserves the current Synctrol site's black-and-white industrial identity while adding structured content, multilingual publishing, responsive layouts, media embeds, and archives. The repository ships `vuepress-theme-synctrolling` as an npm package; consumer sites (including Synctrol.com on GitHub Pages) depend on that package.
 
 This is not a general-purpose documentation theme. Configuration exists to operate the Synctrol website without allowing arbitrary visual changes that dilute the brand.
 
@@ -1623,7 +1623,7 @@ The design spans several independently testable subsystems. Implementation plann
 8. **Release:** index, detail, Album/Gift Book, artwork/covers, and Release-specific structured data.
 9. **News and Page:** News archives, tags, pagination, articles, general pages, and localized list fallback behavior.
 10. **SEO and feeds:** canonical, Open Graph, JSON-LD, `hreflang`, RSS, and Sitemap.
-11. **GitHub Pages delivery:** root locale router, production build, custom-domain/base validation, visual regression, and end-to-end accessibility checks.
+11. **npm package publish:** package exports, build artifacts, consumer smoke install, README/CHANGELOG, CI publish, and release verification.
 
 Each plan must use test-driven tasks, produce an independently testable deliverable, and end with its own verification and commit.
 
@@ -1641,4 +1641,4 @@ The design is complete when:
 8. Platforms render through flat type-validated entries.
 9. Backgrounds are chosen exclusively by content type in theme configuration.
 10. No search or table of contents is exposed.
-11. Draft, fallback, SEO, RSS, Sitemap, accessibility, and GitHub Pages behaviors pass automated tests.
+11. Draft, fallback, SEO, RSS, Sitemap, and accessibility behaviors pass automated tests, and the theme package is publishable to npm.

@@ -19,15 +19,16 @@ This index sequences independent, testable plans for `vuepress-theme-synctrollin
 | 08 | `2026-08-11-08-release.md` | Release index/detail, Album/Gift Book rendering, structured data |
 | 09 | `2026-08-11-09-news-and-page.md` | News indexes/tags/pagination, Page layout, list fallback behavior |
 | 10 | `2026-08-11-10-seo-and-feeds.md` | Canonical, Open Graph, JSON-LD, hreflang, RSS, Sitemap |
-| 11 | `2026-08-11-11-github-pages-delivery.md` | Root locale router, production build, visual/a11y verification |
+| 11 | `2026-08-11-11-npm-package-publish.md` | Publish `vuepress-theme-synctrolling` as an npm package |
 
 ## Execution Rules
 
 1. Use the linked plan's checkbox steps exactly.
 2. Prefer `superpowers:subagent-driven-development` for execution.
 3. Do not start plan *N+1* until plan *N* tests pass and the plan commit is pushed.
-4. Accessibility and performance checks belonging to a subsystem live inside that plan, not only in plan 11.
+4. Accessibility and performance checks belonging to a subsystem live inside that plan, not only in the final publish plan.
 5. Brand tokens, shell geometry, and draft/fallback rules are fixed by the spec and must not be softened by convenience configuration.
+6. This repository publishes the theme package. Synctrol.com (or any other site) is a separate consumer and is not the Plan 11 deliverable.
 
 ## Current Status
 
