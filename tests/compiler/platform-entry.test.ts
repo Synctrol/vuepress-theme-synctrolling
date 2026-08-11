@@ -343,6 +343,39 @@ describe('validatePlatformEntry mapping and registry safety', () => {
     expect(getterCalled).toBe(false)
   })
 
+  it('does not let Object.prototype.value disguise an accessor as a data field', () => {
+    const original = Object.getOwnPropertyDescriptor(Object.prototype, 'value')
+    const entry = {
+      platform: 'youtube',
+      videoId: 'dQw4w9WgXcQ',
+    }
+    Object.defineProperty(entry, 'start', {
+      enumerable: true,
+      get() {
+        return 30
+      },
+    })
+    Object.defineProperty(Object.prototype, 'value', {
+      configurable: true,
+      value: 0,
+      writable: true,
+    })
+
+    try {
+      expectDiagnostic(
+        () => validate(entry),
+        'INVALID_PLATFORM_ENTRY',
+        'own data properties',
+      )
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(Object.prototype, 'value')
+      } else {
+        Object.defineProperty(Object.prototype, 'value', original)
+      }
+    }
+  })
+
   it('does not accept inherited entry fields', () => {
     const original = Object.getOwnPropertyDescriptor(
       Object.prototype,
