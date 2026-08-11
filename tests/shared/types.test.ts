@@ -8,6 +8,52 @@ import type {
 } from '../../src/shared/types'
 import { CONTENT_TYPES, isMultilanguageMap } from '../../src/shared/types'
 
+const LOCALE_MESSAGE_KEYS = [
+  'draft',
+  'translationUnavailable',
+  'light',
+  'dark',
+  'auto',
+  'menu',
+  'close',
+  'language',
+  'themeModeAnnouncement',
+  'returnToReleases',
+  'published',
+  'previousPage',
+  'nextPage',
+  'updated',
+  'authors',
+  'album',
+  'tracklist',
+  'disc',
+  'track',
+  'covers',
+  'platformLinks',
+  'gifts',
+  'giftItems',
+  'readMore',
+  'activateEmbed',
+  'embedFailed',
+  'openExternal',
+  'emptyReleases',
+  'emptyNews',
+  'paginatedTitle',
+  'tagArchiveTitle',
+] as const satisfies readonly (keyof LocaleMessages)[]
+
+type ListedLocaleMessageKey = (typeof LOCALE_MESSAGE_KEYS)[number]
+type MissingLocaleMessageKey = Exclude<keyof LocaleMessages, ListedLocaleMessageKey>
+type ExtraLocaleMessageKey = Exclude<ListedLocaleMessageKey, keyof LocaleMessages>
+type AssertLocaleMessagesContract =
+  MissingLocaleMessageKey extends never
+    ? ExtraLocaleMessageKey extends never
+      ? true
+      : ['unexpected locale message keys', ExtraLocaleMessageKey]
+    : ['missing locale message keys', MissingLocaleMessageKey]
+
+const _localeMessagesContract: AssertLocaleMessagesContract = true
+
 describe('shared types', () => {
   it('exposes the four content types', () => {
     expect(CONTENT_TYPES).toEqual(['home', 'release', 'news', 'page'])
@@ -22,51 +68,41 @@ describe('shared types', () => {
     const album: AlbumBook = {
       type: 'album',
       title: 'Demo',
-      album: { covers: [], links: [], discs: [] },
+      album: {
+        covers: ['/covers/front.jpg'],
+        links: [{ platform: 'spotify', label: 'Spotify' }],
+        discs: [
+          {
+            title: 'Disc 1',
+            tracks: [{ title: 'Track 1', artists: ['Artist'], duration: 180 }],
+          },
+        ],
+      },
     }
     const gift: GiftBook = {
       type: 'gift',
       title: { zh: '周边', en: 'Gifts' },
-      gift: { items: [] },
+      gift: {
+        items: [{ id: 'poster-1', title: { zh: '海报', en: 'Poster' } }],
+      },
     }
+
     expect(album.type).toBe('album')
+    expect(album.album.covers).toEqual(['/covers/front.jpg'])
+    expect(album.album.links?.[0]?.platform).toBe('spotify')
+    expect(album.album.discs?.[0]?.tracks[0]?.duration).toBe(180)
+
     expect(gift.type).toBe('gift')
+    expect(gift.gift.items).toHaveLength(1)
+    expect(gift.gift.items[0]?.id).toBe('poster-1')
+    expect(gift.gift.items[0]?.title).toEqual({ zh: '海报', en: 'Poster' })
   })
 
   it('requires locale message keys used by the shell', () => {
-    const required: Array<keyof LocaleMessages> = [
-      'draft',
-      'translationUnavailable',
-      'light',
-      'dark',
-      'auto',
-      'menu',
-      'close',
-      'language',
-      'themeModeAnnouncement',
-      'returnToReleases',
-      'published',
-      'previousPage',
-      'nextPage',
-      'updated',
-      'authors',
-      'album',
-      'tracklist',
-      'disc',
-      'track',
-      'covers',
-      'platformLinks',
-      'gifts',
-      'giftItems',
-      'readMore',
-      'activateEmbed',
-      'embedFailed',
-      'openExternal',
-      'emptyReleases',
-      'emptyNews',
-      'paginatedTitle',
-      'tagArchiveTitle',
-    ]
-    expect(required.length).toBe(31)
+    const messages = Object.fromEntries(
+      LOCALE_MESSAGE_KEYS.map((key) => [key, key]),
+    ) as LocaleMessages
+
+    expect(Object.keys(messages).sort()).toEqual([...LOCALE_MESSAGE_KEYS].sort())
   })
 })
