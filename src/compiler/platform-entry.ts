@@ -124,6 +124,14 @@ interface ValidatedHttpsUrl {
   value: string
 }
 
+function hasUserinfoSyntax(value: string): boolean {
+  const remainder = value.slice('https://'.length)
+  const authorityEnd = remainder.search(/[/?#]/)
+  const authority =
+    authorityEnd === -1 ? remainder : remainder.slice(0, authorityEnd)
+  return authority.includes('@')
+}
+
 function parseHttpsUrl(
   value: unknown,
   path: string,
@@ -162,7 +170,11 @@ function parseHttpsUrl(
     )
   }
 
-  if (parsed.username.length > 0 || parsed.password.length > 0) {
+  if (
+    hasUserinfoSyntax(value) ||
+    parsed.username.length > 0 ||
+    parsed.password.length > 0
+  ) {
     invalid(
       'INVALID_PLATFORM_ENTRY',
       `${field} must not contain credentials`,
@@ -262,17 +274,10 @@ function assertAudioSource(value: unknown, path: string): string {
 }
 
 function assertAudioMime(value: unknown, path: string): string {
-  if (
-    typeof value !== 'string' ||
-    !value.startsWith('audio/') ||
-    value.length === 'audio/'.length ||
-    value.trim() !== value ||
-    /\s/.test(value) ||
-    CONTROL_CHARACTERS.test(value)
-  ) {
+  if (typeof value !== 'string' || !value.startsWith('audio/')) {
     invalid(
       'INVALID_PLATFORM_ENTRY',
-      'audio_player.mime must be a non-empty audio/... string',
+      'audio_player.mime must be a string starting with audio/',
       path,
     )
   }
