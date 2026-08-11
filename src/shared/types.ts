@@ -76,6 +76,15 @@ export type BuiltInPlatformType =
 
 export type AssetPath = string
 
+export interface DiscoveredPackage {
+  /** Absolute path to the package directory (directory that contains content.yml). */
+  dir: string
+  /** Absolute path to content.yml. */
+  contentYmlPath: string
+  /** Absolute path to book.yml when present. */
+  bookYmlPath?: string
+}
+
 export interface PlatformEntryBase {
   platform: string
   label?: Multilanguage
