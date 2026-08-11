@@ -222,4 +222,98 @@ describe('assertMultilanguage', () => {
       expect((error as Error).message).not.toContain('proxy trap')
     }
   })
+
+  it('converts revoked proxy builtin checks to INVALID_MULTILANGUAGE', () => {
+    const { proxy, revoke } = Proxy.revocable({ zh: '中文' }, {})
+    revoke()
+
+    try {
+      assertMultilanguage(proxy, mainLocale, path, field)
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SynctrolDiagnosticError)
+      expect(isDiagnosticError(error)).toBe(true)
+      if (isDiagnosticError(error)) {
+        expect(error.diagnostics[0].code).toBe('INVALID_MULTILANGUAGE')
+        expect(error.diagnostics[0].path).toBe(path)
+        expect(error.diagnostics[0].message).toContain(field)
+      }
+      expect((error as Error).message).not.toMatch(/revoked|TypeError/i)
+    }
+  })
+
+  it('requires mainLocale in the validated record when ownKeys omits it', () => {
+    const input = new Proxy(
+      { en: 'English' },
+      {
+        ownKeys() {
+          return ['en']
+        },
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'zh') {
+            return {
+              value: '伪装',
+              enumerable: true,
+              configurable: true,
+              writable: true,
+            }
+          }
+          return Reflect.getOwnPropertyDescriptor(target, prop)
+        },
+      } as ProxyHandler<{ en: string }>,
+    )
+
+    expectDiagnostic(
+      () => assertMultilanguage(input, mainLocale, path, field),
+      'MISSING_MAIN_LOCALE',
+    )
+  })
+
+  it('requires mainLocale in the validated record when descriptor omits it during iteration', () => {
+    const descriptorCalls = new Map<string, number>()
+    const input = new Proxy(
+      { en: 'English' },
+      {
+        ownKeys() {
+          return ['en', 'zh']
+        },
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'zh') {
+            const count = (descriptorCalls.get('zh') ?? 0) + 1
+            descriptorCalls.set('zh', count)
+            if (count === 1) {
+              return undefined
+            }
+            return {
+              value: '伪装',
+              enumerable: true,
+              configurable: true,
+              writable: true,
+            }
+          }
+          return Reflect.getOwnPropertyDescriptor(target, prop)
+        },
+      } as ProxyHandler<{ en: string }>,
+    )
+
+    expectDiagnostic(
+      () => assertMultilanguage(input, mainLocale, path, field),
+      'MISSING_MAIN_LOCALE',
+    )
+  })
+
+  it('returns a result that owns mainLocale as a string', () => {
+    const result = assertMultilanguage(
+      { zh: '第一张专辑', en: 'First Album' },
+      mainLocale,
+      path,
+      field,
+    )
+
+    expect(typeof result).toBe('object')
+    if (typeof result === 'object') {
+      expect(Object.hasOwn(result, mainLocale)).toBe(true)
+      expect(typeof result[mainLocale]).toBe('string')
+    }
+  })
 })

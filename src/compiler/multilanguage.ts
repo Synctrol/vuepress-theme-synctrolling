@@ -40,21 +40,17 @@ function isPlainObject(
   path: string,
   field: string,
 ): value is Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false
-  }
+  return guardReflection(() => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return false
+    }
 
-  const prototype = guardReflection(
-    () => Object.getPrototypeOf(value),
-    path,
-    field,
-  )
-  return prototype === Object.prototype || prototype === null
+    const prototype = Object.getPrototypeOf(value)
+    return prototype === Object.prototype || prototype === null
+  }, path, field)
 }
 
-function isAccessorProperty(
-  descriptor: PropertyDescriptor,
-): boolean {
+function isAccessorProperty(descriptor: PropertyDescriptor): boolean {
   return descriptor.get !== undefined || descriptor.set !== undefined
 }
 
@@ -127,17 +123,7 @@ export function assertMultilanguage(
     record[key] = entry
   }
 
-  const mainDescriptor = guardReflection(
-    () => Object.getOwnPropertyDescriptor(value, mainLocale),
-    path,
-    field,
-  )
-
-  if (
-    !mainDescriptor ||
-    isAccessorProperty(mainDescriptor) ||
-    typeof mainDescriptor.value !== 'string'
-  ) {
+  if (!Object.hasOwn(record, mainLocale) || typeof record[mainLocale] !== 'string') {
     fail({
       severity: 'error',
       code: 'MISSING_MAIN_LOCALE',
