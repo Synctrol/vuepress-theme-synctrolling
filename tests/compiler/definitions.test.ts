@@ -360,7 +360,7 @@ platforms:
     expectDiagnostic(
       `platforms:\n  custom:\n    category: digital\n${typeField}    name: Custom\n`,
       'INVALID_PLATFORM_TYPE',
-      'safe, non-empty string segment',
+      'non-empty registry key without surrounding whitespace',
     )
   })
 

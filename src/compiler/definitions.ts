@@ -17,6 +17,11 @@ const ROOT_FIELDS = ['tags', 'platforms'] as const
 const TAG_FIELDS = ['title'] as const
 const PLATFORM_FIELDS = ['category', 'type', 'name'] as const
 const PLATFORM_CATEGORIES = ['digital', 'physical'] as const
+const DANGEROUS_REGISTRY_KEYS = new Set([
+  '__proto__',
+  'prototype',
+  'constructor',
+])
 
 function invalid(code: string, message: string, path: string): never {
   fail({
@@ -126,20 +131,15 @@ function parsePlatformType(
   platformKey: string,
   path: string,
 ): string {
-  if (typeof value !== 'string') {
+  if (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.trim() !== value ||
+    DANGEROUS_REGISTRY_KEYS.has(value)
+  ) {
     invalid(
       'INVALID_PLATFORM_TYPE',
-      `platform "${platformKey}" type must be a safe, non-empty string segment`,
-      path,
-    )
-  }
-
-  try {
-    assertRouteSegment(value, `platforms.${platformKey}.type`)
-  } catch {
-    invalid(
-      'INVALID_PLATFORM_TYPE',
-      `platform "${platformKey}" type must be a safe, non-empty string segment`,
+      `platform "${platformKey}" type must be a non-empty registry key without surrounding whitespace or dangerous prototype names`,
       path,
     )
   }
