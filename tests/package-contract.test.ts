@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 interface PackageJson {
@@ -24,5 +24,30 @@ describe('package contract', () => {
     expect(packageJson.devDependencies['@types/node']).toMatch(/^\^20\./)
     expect(packageJson.devDependencies.vuepress).toBe('^2.0.0-rc.24')
     expect(packageJson.peerDependencies.vuepress).toBe('^2.0.0-rc.24')
+  })
+
+  it('provides a build smoke for both package export targets', () => {
+    const clientEntry = new URL('../src/client/index.ts', import.meta.url)
+    const buildSmoke = new URL(
+      '../scripts/smoke-built-exports.mjs',
+      import.meta.url,
+    )
+
+    expect(existsSync(clientEntry)).toBe(true)
+    expect(readFileSync(clientEntry, 'utf8')).not.toMatch(/\.css/)
+    expect(existsSync(buildSmoke)).toBe(true)
+    expect(packageJson.scripts['test:build-smoke']).toBe(
+      'npm run build && node scripts/smoke-built-exports.mjs',
+    )
+  })
+
+  it('ignores generated package artifacts', () => {
+    const gitignore = readFileSync(
+      new URL('../.gitignore', import.meta.url),
+      'utf8',
+    )
+
+    expect(gitignore).toContain('node_modules/')
+    expect(gitignore).toContain('dist/')
   })
 })
