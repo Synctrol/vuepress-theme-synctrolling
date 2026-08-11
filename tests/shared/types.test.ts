@@ -101,8 +101,13 @@ describe('shared types', () => {
   it('requires locale message keys used by the shell', () => {
     const messages = Object.fromEntries(
       LOCALE_MESSAGE_KEYS.map((key) => [key, key]),
-    ) as LocaleMessages
+    ) as Record<(typeof LOCALE_MESSAGE_KEYS)[number], string>
 
-    expect(Object.keys(messages).sort()).toEqual([...LOCALE_MESSAGE_KEYS].sort())
+    const _messagesCoverContract: LocaleMessages = messages
+
+    for (const key of LOCALE_MESSAGE_KEYS) {
+      expect(typeof messages[key]).toBe('string')
+    }
+    expect(_messagesCoverContract).toBeDefined()
   })
 })
