@@ -81,4 +81,29 @@ describe('client theme options', () => {
     expect(clientOptions.platforms).toEqual({ loadStrategy: 'interaction' })
     expect(JSON.parse(JSON.stringify(clientOptions))).toEqual(clientOptions)
   })
+
+  it('rejects retained nested functions instead of dropping them during serialization', () => {
+    const resolved = resolveThemeOptions(base)
+    ;(
+      resolved.locales.zh.dateFormat as Record<string, unknown>
+    ).unsafeFormatter = () => 'not serializable'
+
+    expect(() => toClientThemeOptions(resolved)).toThrow(
+      /clientOptions.*not JSON-safe/,
+    )
+  })
+
+  it('rejects sparse arrays that JSON serialization would rewrite', () => {
+    const resolved = resolveThemeOptions({
+      ...base,
+      navigation: {
+        externalTarget: '_blank',
+        items: new Array(1),
+      },
+    })
+
+    expect(() => toClientThemeOptions(resolved)).toThrow(
+      /clientOptions\.navigation\.items\[0\].*JSON-safe/,
+    )
+  })
 })

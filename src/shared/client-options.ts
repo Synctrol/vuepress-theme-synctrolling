@@ -135,9 +135,15 @@ function assertJsonSafe(
 
   ancestors.add(value)
   if (Array.isArray(value)) {
-    value.forEach((item, index) =>
-      assertJsonSafe(item, `${path}[${index}]`, ancestors),
-    )
+    for (let index = 0; index < value.length; index += 1) {
+      const itemPath = `${path}[${index}]`
+      if (!Object.hasOwn(value, index)) {
+        throw new Error(
+          `Invalid ${itemPath}: sparse array entry is not JSON-safe`,
+        )
+      }
+      assertJsonSafe(value[index], itemPath, ancestors)
+    }
   } else {
     for (const [key, item] of Object.entries(value)) {
       assertJsonSafe(item, `${path}.${key}`, ancestors)
