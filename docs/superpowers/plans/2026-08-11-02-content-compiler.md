@@ -1247,6 +1247,8 @@ platforms:
 
 ```ts
 // tests/compiler/definitions.test.ts
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -1316,17 +1318,6 @@ describe('loadContentDefinitions', () => {
   })
 
   it('errors when a platform name map omits mainLocale', () => {
-    // inline temp file would also work; use loadYaml round-trip via a small fixture write in-test if preferred
-  })
-})
-```
-
-Replace the incomplete third test with a concrete temp-file test:
-
-```ts
-  it('errors when a platform name map omits mainLocale', () => {
-    const { writeFileSync, mkdtempSync } = require('node:fs') as typeof import('node:fs')
-    const { tmpdir } = require('node:os') as typeof import('node:os')
     const dir = mkdtempSync(join(tmpdir(), 'synctrol-defs-'))
     const path = join(dir, 'definitions.yml')
     writeFileSync(
@@ -1351,9 +1342,9 @@ platforms:
       }
     }
   })
+})
 ```
 
-Prefer ESM imports at the top of the test file instead of `require` (use the same `writeFileSync` / `mkdtempSync` / `tmpdir` imports as Task 5).
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -2006,7 +1997,7 @@ git commit -m "feat(compiler): validate built-in platform entries for Book links
 
 **Interfaces:**
 - Consumes: `assertMultilanguage`, `validatePlatformEntry`, `loadYamlFile`, `ContentDefinitions`
-- Produces: `parseBook(bookYmlPath: string, defs: ContentDefinitions, mainLocale: LocaleKey): Book` (Album branch in this task)
+- Produces: `parseAlbumBook(raw: Record<string, unknown>, defs: ContentDefinitions, mainLocale: LocaleKey, path: string): AlbumBook` and `parseBook(...)` that dispatches `type: 'album'` (Gift dispatch lands in Task 9)
 
 - [ ] **Step 1: Add Book types and failing Album tests**
 
@@ -2188,6 +2179,24 @@ album:
 `)
     expect(() => parseBook(duration, defs, 'zh')).toThrow()
   })
+
+  it('rejects non-album Book type values until Gift lands in Task 9', () => {
+    const path = writeBook(`
+type: gift
+title: X
+gift:
+  items: []
+`)
+    try {
+      parseBook(path, defs, 'zh')
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(isDiagnosticError(error)).toBe(true)
+      if (isDiagnosticError(error)) {
+        expect(error.diagnostics[0].code).toBe('INVALID_BOOK_BRANCH')
+      }
+    }
+  })
 })
 ```
 
@@ -2197,7 +2206,9 @@ Run: `npm test -- tests/compiler/book-album.test.ts`
 
 Expected: FAIL with module not found for `../../src/compiler/book`
 
-- [ ] **Step 3: Write Album implementation (Gift stub throws until Task 9)**
+- [ ] **Step 3: Write Album implementation**
+
+In Task 8, `parseBook` accepts only `type: 'album'`. Any other `type` value (including `gift`) fails with `INVALID_BOOK_BRANCH`. Task 9 adds the Gift dispatcher without changing Album behavior.
 
 ```ts
 // src/compiler/book.ts
@@ -2246,11 +2257,9 @@ function parseCovers(value: unknown, path: string): string[] | undefined {
 
 function parseTrack(
   value: unknown,
-  defs: ContentDefinitions,
   mainLocale: LocaleKey,
   path: string,
 ): Track {
-  void defs
   if (!isPlainObject(value)) {
     fail({
       severity: 'error',
@@ -2316,7 +2325,6 @@ function parseTrack(
 
 function parseDisc(
   value: unknown,
-  defs: ContentDefinitions,
   mainLocale: LocaleKey,
   path: string,
 ): Disc {
@@ -2351,13 +2359,11 @@ function parseDisc(
     ...(value.desc !== undefined
       ? { desc: assertMultilanguage(value.desc, mainLocale, path, 'desc') }
       : {}),
-    tracks: value.tracks.map((track) =>
-      parseTrack(track, defs, mainLocale, path),
-    ),
+    tracks: value.tracks.map((track) => parseTrack(track, mainLocale, path)),
   }
 }
 
-function parseAlbumBook(
+export function parseAlbumBook(
   raw: Record<string, unknown>,
   defs: ContentDefinitions,
   mainLocale: LocaleKey,
@@ -2443,7 +2449,7 @@ function parseAlbumBook(
             })
           }
           return raw.album.discs.map((disc) =>
-            parseDisc(disc, defs, mainLocale, path),
+            parseDisc(disc, mainLocale, path),
           )
         })()
 
@@ -2484,15 +2490,6 @@ export function parseBook(
     return parseAlbumBook(rawValue, defs, mainLocale, bookYmlPath)
   }
 
-  if (rawValue.type === 'gift') {
-    fail({
-      severity: 'error',
-      code: 'INVALID_BOOK',
-      message: 'GiftBook parsing is not implemented yet',
-      path: bookYmlPath,
-    })
-  }
-
   fail({
     severity: 'error',
     code: 'INVALID_BOOK_BRANCH',
@@ -2502,7 +2499,6 @@ export function parseBook(
 }
 ```
 
-Do **not** leave the Gift stub in the final branch tip: Task 9 replaces it immediately. The temporary message above is only the Task 8 intermediate state required for green Album tests.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -2660,11 +2656,11 @@ gift:
 
 Run: `npm test -- tests/compiler/book-gift.test.ts`
 
-Expected: FAIL with `GiftBook parsing is not implemented yet` or equivalent diagnostic
+Expected: FAIL with `INVALID_BOOK_BRANCH` for `type: gift` (Task 8 only dispatched `album`)
 
 - [ ] **Step 3: Implement Gift branch in `parseBook`**
 
-Replace the Gift stub inside `src/compiler/book.ts` with:
+Add the following helpers to `src/compiler/book.ts` and extend the `parseBook` dispatcher:
 
 ```ts
 import type {
@@ -2859,6 +2855,8 @@ And change the `parseBook` type switch to:
     path: bookYmlPath,
   })
 ```
+
+Also delete the temporary Album-suite case named `rejects non-album Book type values until Gift lands in Task 9` from `tests/compiler/book-album.test.ts` so Gift packages are no longer expected to fail there.
 
 - [ ] **Step 4: Run Album and Gift tests**
 
@@ -3089,6 +3087,8 @@ Expected: FAIL with module not found for `../../src/compiler/compile-content`
 
 ```ts
 // src/compiler/compile-content.ts
+```ts
+// src/compiler/compile-content.ts
 import type {
   Book,
   CompiledContentPackage,
@@ -3097,7 +3097,7 @@ import type {
   LocaleKey,
 } from '../shared/types'
 import { parseBook } from './book'
-import { createDiagnostic, fail, type SynctrolDiagnostic } from './diagnostics'
+import { fail, type SynctrolDiagnostic } from './diagnostics'
 import {
   loadContentDefinitions,
   resolveDefinitionsPath,
@@ -3215,12 +3215,8 @@ export function compileContent(
 
   return { definitions, packages, warnings }
 }
-
-// silence unused import if createDiagnostic unused in this task
-void createDiagnostic
 ```
 
-Remove the `void createDiagnostic` line; do not import `createDiagnostic` if unused.
 
 ```ts
 // src/compiler/index.ts
