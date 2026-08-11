@@ -13,7 +13,10 @@
       "default": "./dist/client/index.js"
     }
   },
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test:typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
@@ -22,13 +25,16 @@
   },
   "peerDependencies": {
     "vue": "^3.5.0",
-    "vuepress": "^2.0.0"
+    "vuepress": "^2.0.0-rc.24"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^20.19.43",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0",
     "vue": "^3.5.0",
-    "vuepress": "2.0.0-rc.31"
+    "vuepress": "^2.0.0-rc.24"
+  },
+  "engines": {
+    "node": "^20.9.0 || >=22.0.0"
   }
 }
