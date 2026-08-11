@@ -341,7 +341,9 @@ function validateAlbumLink(
       const diagnostic = error.diagnostics[0]
       fail({
         ...diagnostic,
-        message: `${fieldPath}: ${diagnostic.message}`,
+        message: diagnostic.message.startsWith('label ')
+          ? `${fieldPath}.${diagnostic.message}`
+          : `${fieldPath}: ${diagnostic.message}`,
         path,
       })
     }
