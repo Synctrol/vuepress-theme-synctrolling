@@ -274,10 +274,9 @@ gift:
   })
 
   it.each([
-    ['gift', 'type: gift\ntitle: Gift\ngift:\n  items: []\n'],
     ['unknown', 'type: compilation\ntitle: X\n'],
     ['missing', 'title: X\nalbum: {}\n'],
-  ])('temporarily rejects the %s dispatcher branch', (_name, body) => {
+  ])('rejects the %s dispatcher branch', (_name, body) => {
     const path = writeBook(body)
     expectDiagnostic(
       () => parseBook(path, defs, 'zh'),
