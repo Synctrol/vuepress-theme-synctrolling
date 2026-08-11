@@ -14,7 +14,13 @@ export function isMultilanguageMap(
   }
 
   const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
+  if (prototype !== Object.prototype && prototype !== null) {
+    return false
+  }
+
+  return Object.getOwnPropertyNames(value).every(
+    (key) => typeof (value as Record<string, unknown>)[key] === 'string',
+  )
 }
 
 export interface LocaleMessages {

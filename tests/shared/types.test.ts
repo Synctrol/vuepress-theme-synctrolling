@@ -63,6 +63,8 @@ describe('shared types', () => {
     expect(isMultilanguageMap('SYNCTROL')).toBe(false)
     expect(isMultilanguageMap({ zh: '第一张专辑', en: 'First Album' })).toBe(true)
     expect(isMultilanguageMap(Object.create(null))).toBe(true)
+    expect(isMultilanguageMap({ zh: 42 })).toBe(false)
+    expect(isMultilanguageMap({ zh: '中文', en: undefined })).toBe(false)
     expect(isMultilanguageMap(null)).toBe(false)
     expect(isMultilanguageMap(['第一张专辑'])).toBe(false)
     expect(isMultilanguageMap(new Date())).toBe(false)
