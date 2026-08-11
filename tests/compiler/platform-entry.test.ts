@@ -361,12 +361,11 @@ describe('validatePlatformEntry mapping and registry safety', () => {
       writable: true,
     })
 
+    let caught: unknown
     try {
-      expectDiagnostic(
-        () => validate(entry),
-        'INVALID_PLATFORM_ENTRY',
-        'own data properties',
-      )
+      validate(entry)
+    } catch (error) {
+      caught = error
     } finally {
       if (original === undefined) {
         Reflect.deleteProperty(Object.prototype, 'value')
@@ -374,6 +373,14 @@ describe('validatePlatformEntry mapping and registry safety', () => {
         Object.defineProperty(Object.prototype, 'value', original)
       }
     }
+
+    expectDiagnostic(
+      () => {
+        throw caught
+      },
+      'INVALID_PLATFORM_ENTRY',
+      'own data properties',
+    )
   })
 
   it('does not accept inherited entry fields', () => {
