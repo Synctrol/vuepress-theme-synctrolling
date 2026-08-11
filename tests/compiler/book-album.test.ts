@@ -192,6 +192,31 @@ album: {}
     expectNoUndefined(book)
   })
 
+  it('preserves explicitly empty optional arrays and required track arrays', () => {
+    const path = writeBook(`
+type: album
+title: Empty Album
+authors: []
+album:
+  covers: []
+  links: []
+  discs:
+    - title: Empty Disc
+      tracks: []
+`)
+
+    expect(parseBook(path, defs, 'zh')).toEqual({
+      type: 'album',
+      title: 'Empty Album',
+      authors: [],
+      album: {
+        covers: [],
+        links: [],
+        discs: [{ title: 'Empty Disc', tracks: [] }],
+      },
+    })
+  })
+
   it('validates mainLocale in book, disc, track, description, and link label maps', () => {
     const invalidCases = [
       ['title', 'title:\n  en: Album\nalbum: {}', 'title'],
@@ -350,6 +375,29 @@ gift:
     expectDiagnostic(
       () => parseBook(path, defs, 'zh'),
       'INVALID_BOOK',
+      message,
+      path,
+    )
+  })
+
+  it.each([
+    ['missing book title', 'album: {}', 'title'],
+    ['invalid book title', 'title: 1\nalbum: {}', 'title'],
+    [
+      'missing disc title',
+      'title: Album\nalbum:\n  discs:\n    - tracks: []',
+      'album.discs[0].title',
+    ],
+    [
+      'missing track title',
+      'title: Album\nalbum:\n  discs:\n    - title: Disc\n      tracks:\n        - artists: []\n          duration: 0',
+      'album.discs[0].tracks[0].title',
+    ],
+  ])('rejects a %s', (_name, body, message) => {
+    const path = writeBook(`type: album\n${body}\n`)
+    expectDiagnostic(
+      () => parseBook(path, defs, 'zh'),
+      'INVALID_MULTILANGUAGE',
       message,
       path,
     )
