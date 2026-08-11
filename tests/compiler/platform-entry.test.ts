@@ -535,21 +535,25 @@ describe('validatePlatformEntry mapping and registry safety', () => {
 
 describe('validatePlatformEntry URL and asset constraints', () => {
   it.each([
-    ['HTTP', 'http://example.com/item'],
-    ['relative', './item'],
-    ['protocol-relative', '//example.com/item'],
-    ['opaque HTTPS spelling', 'https:example.com/item'],
-    ['missing hostname', 'https:///'],
-    ['credentials', 'https://user:password@example.com/item'],
-    ['leading whitespace', ' https://example.com/item'],
-    ['trailing whitespace', 'https://example.com/item '],
-    ['embedded control', 'https://example.com/\u0000item'],
-    ['malformed port', 'https://example.com:bad/item'],
-  ])('rejects %s link URLs with a structured diagnostic', (_label, url) => {
+    ['HTTP', 'http://example.com/item', 'absolute HTTPS URL'],
+    ['relative', './item', 'absolute HTTPS URL'],
+    ['protocol-relative', '//example.com/item', 'absolute HTTPS URL'],
+    ['opaque HTTPS spelling', 'https:example.com/item', 'absolute HTTPS URL'],
+    ['missing hostname', 'https:///', 'absolute HTTPS URL'],
+    [
+      'credentials',
+      'https://user:password@example.com/item',
+      'credentials',
+    ],
+    ['leading whitespace', ' https://example.com/item', 'absolute HTTPS URL'],
+    ['trailing whitespace', 'https://example.com/item ', 'absolute HTTPS URL'],
+    ['embedded control', 'https://example.com/\u0000item', 'absolute HTTPS URL'],
+    ['malformed port', 'https://example.com:bad/item', 'absolute HTTPS URL'],
+  ])('rejects %s link URLs with a structured diagnostic', (_label, url, message) => {
     expectDiagnostic(
       () => validate({ platform: 'store', url }, 'physical'),
       'INVALID_PLATFORM_ENTRY',
-      'absolute HTTPS URL',
+      message,
     )
   })
 
