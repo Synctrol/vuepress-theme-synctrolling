@@ -88,7 +88,7 @@ Member pages use `page` in the first version. There is no `member` type and no p
 
 ## 5. Content Root and Package Discovery
 
-The source root is `content/`.
+The default source root is `content/`. The default global definitions file is `content/definitions.yml`.
 
 ```text
 content/
@@ -116,6 +116,21 @@ Discovery rules:
 5. Source directory hierarchy does not determine type or URL.
 6. `config.yml` and other YAML files have no implicit behavior.
 7. `book.yml` is allowed only in a `release` package.
+
+The definitions file path is independently configurable:
+
+```ts
+import { resolve } from 'node:path'
+
+synctrolTheme({
+  definitionsPath: resolve(__dirname, '../content/definitions.yml'),
+})
+```
+
+- `definitionsPath` accepts an absolute path or a path relative to the VuePress configuration file.
+- It defaults to `<sourceDir>/content/definitions.yml`.
+- The file does not need to be inside the content root.
+- A missing, unreadable, or invalid configured definitions file is a build error.
 
 ## 6. Shared Content Manifest
 
@@ -489,7 +504,7 @@ With a usable main Home, missing non-main Markdown generates the normal fallback
 
 ## 10. Global Definitions
 
-`content/definitions.yml` contains tags and platforms:
+The configured definitions file contains tags and platforms. Its default location is `content/definitions.yml`:
 
 ```yaml
 tags:
@@ -640,7 +655,7 @@ Processing is:
 
 ```text
 entry.platform
-→ definitions.platforms[platform]
+→ configured definitions file → platforms[platform]
 → definition.type
 → type schema validation
 → type renderer
@@ -795,23 +810,37 @@ The page occupies at least `100dvh`.
 ├──────────────────────────────┬──────────────┤
 │ Main                         │ Navigation   │
 │                              │              │
+│                              ├──────────────┤
+│                              │ Footer       │
 ├──────────────────────────────┴──────────────┤
-│ Footer                                      │
+│ S                                         L │
 └─────────────────────────────────────────────┘
 
-SocialLinks: fixed bottom-left
-LanguageSwitcher: fixed bottom-right
+S = SocialLinks: fixed bottom-left
+L = LanguageSwitcher: fixed bottom-right
 ```
 
-The main/navigation columns use:
+The desktop shell uses:
 
 ```css
+grid-template-areas:
+  'header header'
+  'main navigation'
+  'main footer'
+  'dock dock';
+
 grid-template-columns:
   minmax(0, 1.618fr)
   minmax(280px, 1fr);
+
+grid-template-rows:
+  auto
+  minmax(0, 1.618fr)
+  minmax(0, 1fr)
+  var(--syn-dock-content-clearance);
 ```
 
-Main article content has a `760px` maximum readable width. Release primary artwork has a `660px` maximum width.
+Main spans the Navigation and Footer rows. Navigation occupies the upper-right cell, Footer occupies the lower-right cell, and the full-width Dock row reserves visible space for the two fixed corner controls. Main article content has a `760px` maximum readable width. Release primary artwork has a `660px` maximum width.
 
 ### 14.2 Mobile shell
 
@@ -831,7 +860,7 @@ SocialLinks: fixed bottom-left
 LanguageSwitcher: fixed bottom-right
 ```
 
-Only Navigation enters the hamburger drawer. Main and Footer are sibling regions in normal document flow.
+Only Navigation enters the hamburger drawer. Main and Footer are sibling regions in normal document flow. The desktop Dock grid row collapses into equivalent bottom padding on mobile while SocialLinks and LanguageSwitcher remain fixed.
 
 Fixed-control tokens:
 
@@ -844,7 +873,7 @@ Fixed-control tokens:
 --syn-dock-content-clearance: 72px;
 ```
 
-Main and Footer reserve `--syn-dock-content-clearance` at the bottom. SocialLinks may occupy at most the viewport width minus the measured LanguageSwitcher width, both side insets, and two dock gaps. Below `360px`, icons use `36px`, SocialLinks wrap upward, and the language label truncates with ellipsis at `40vw`. Opening the hamburger drawer hides both fixed docks until it closes.
+The desktop Dock row and mobile bottom padding reserve `--syn-dock-content-clearance`. SocialLinks may occupy at most the viewport width minus the measured LanguageSwitcher width, both side insets, and two dock gaps. Below `360px`, icons use `36px`, SocialLinks wrap upward, and the language label truncates with ellipsis at `40vw`. Opening the hamburger drawer hides both fixed docks until it closes.
 
 There is no table of contents.
 
@@ -941,6 +970,8 @@ The shell always reserves a Footer region.
 
 - Home may populate it through the `home-footer` Markdown formatter.
 - Non-Home Footer is empty in the first version.
+- Desktop places Footer in the lower-right cell below Navigation.
+- Mobile places Footer after Main in normal document flow.
 - It contains no construction notice, copyright, or social links.
 - Adding future Footer content does not require changing the shell contract.
 
@@ -977,7 +1008,7 @@ AND DESCRIBE SOUND
 
 `home-logo` is required. An optional `home-footer` formatter uses the same container syntax; when absent, Footer renders empty.
 
-Desktop places the logo in Main, shows Navigation in the right column, and keeps the whole shell immersive. Mobile places Logo and Footer in normal flow while Navigation moves into the drawer.
+Desktop places the logo in Main, Navigation in the upper-right cell, and Footer in the lower-right cell while keeping the shell immersive. Mobile places Logo and Footer in normal flow while Navigation moves into the drawer.
 
 The previous grid, scanline, noise, and shape backgrounds are not enabled by default.
 
@@ -1031,7 +1062,7 @@ Draft cards follow `showDrafts`.
 
 The desktop information hierarchy follows the referenced Diverse detail page without copying its navigation, share button, purchase text, loading animation, or typography.
 
-Order:
+Main content order:
 
 1. Return-to-Releases link.
 2. Page title and date.
@@ -1039,7 +1070,6 @@ Order:
 4. Book identity and description.
 5. Type-specific Book body.
 6. Locale Markdown article body.
-7. Footer.
 
 Album Book body order:
 
@@ -1218,7 +1248,7 @@ Rules:
 - `updated` and `cover` are optional.
 - `updated` cannot precede `date`.
 - `tags` is required and may be empty.
-- Every tag must be declared in `definitions.yml`.
+- Every tag must be declared in the configured definitions file.
 - News sorts by date descending and then slug for stability.
 
 Index:
