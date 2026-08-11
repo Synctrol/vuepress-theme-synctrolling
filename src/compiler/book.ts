@@ -137,11 +137,12 @@ function readArray(value: unknown, path: string, fieldPath: string): unknown[] {
     invalid('INVALID_BOOK', `${fieldPath} must be an array`, path)
   }
 
+  const array = value as unknown[]
   const result: unknown[] = []
-  for (let index = 0; index < value.length; index += 1) {
+  for (let index = 0; index < array.length; index += 1) {
     const itemPath = `${fieldPath}[${index}]`
     const descriptor = inspectSafely(
-      () => Object.getOwnPropertyDescriptor(value, String(index)),
+      () => Object.getOwnPropertyDescriptor(array, String(index)),
       path,
       itemPath,
     )
