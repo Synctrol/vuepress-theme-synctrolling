@@ -3,3 +3,5 @@ export function synctrolTheme() {
     name: 'vuepress-theme-synctrolling',
   }
 }
+
+export * from './shared/types.js'
