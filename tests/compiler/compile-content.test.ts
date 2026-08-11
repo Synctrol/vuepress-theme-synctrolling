@@ -403,7 +403,7 @@ describe('compileContent diagnostics and invariants', () => {
     const newsDir = writePackage(
       site,
       'news/prototype',
-      'type: news\ndate: 2026-08-11\ntags: [toString]\n',
+      'type: news\nslug: prototype-tag\ndate: 2026-08-11\ntags: [toString]\n',
     )
 
     expectDiagnostic(() => compileSite(site), {
