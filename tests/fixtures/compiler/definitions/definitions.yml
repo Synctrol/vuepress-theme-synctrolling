@@ -1,0 +1,30 @@
+tags:
+  release:
+    title:
+      zh: 作品发布
+      en: Releases
+
+platforms:
+  bilibili:
+    category: digital
+    type: bilibili_player
+    name: Bilibili
+
+  youtube:
+    category: digital
+    type: youtube_player
+    name: YouTube
+
+  taobao:
+    category: physical
+    type: link
+    name:
+      zh: 淘宝
+      en: Taobao
+
+  taobao-digital:
+    category: digital
+    type: link
+    name:
+      zh: 淘宝数字商品
+      en: Taobao Digital

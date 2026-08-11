@@ -74,6 +74,23 @@ export type BuiltInPlatformType =
   | 'soundcloud_player'
   | 'netease_player'
 
+export type PlatformCategory = 'digital' | 'physical'
+
+export interface TagDefinition {
+  title: Multilanguage
+}
+
+export interface PlatformDefinition {
+  category: PlatformCategory
+  type: string
+  name: Multilanguage
+}
+
+export interface ContentDefinitions {
+  tags: Record<string, TagDefinition>
+  platforms: Record<string, PlatformDefinition>
+}
+
 export type AssetPath = string
 
 export interface DiscoveredPackage {
