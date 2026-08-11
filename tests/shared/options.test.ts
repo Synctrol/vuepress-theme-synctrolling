@@ -193,12 +193,27 @@ describe('resolveThemeOptions', () => {
     },
   )
 
-  it('rejects whitespace-only url segments without rewriting valid ones', () => {
+  it('rejects leading or trailing whitespace without rewriting valid segments', () => {
     expect(() =>
       resolveThemeOptions({
         ...base,
         release: {
-          urlSegment: '   ',
+          urlSegment: ' releases',
+          index: {
+            enabled: true,
+            pagination: 12,
+            mobileGridColumns: 2,
+            desktopGridColumns: 3,
+          },
+        },
+      }),
+    ).toThrow(/release\.urlSegment/)
+
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        release: {
+          urlSegment: 'releases ',
           index: {
             enabled: true,
             pagination: 12,
@@ -212,7 +227,7 @@ describe('resolveThemeOptions', () => {
     const options = resolveThemeOptions({
       ...base,
       release: {
-        urlSegment: ' releases ',
+        urlSegment: 'Releases-2026',
         index: {
           enabled: true,
           pagination: 12,
@@ -221,7 +236,37 @@ describe('resolveThemeOptions', () => {
         },
       },
     })
-    expect(options.release.urlSegment).toBe(' releases ')
+    expect(options.release.urlSegment).toBe('Releases-2026')
+  })
+
+  it.each([
+    ['release', 'releases\\archive'],
+    ['release', 'releases%2Farchive'],
+    ['release', 'releases%5carchive'],
+    ['release', 'releases\narchive'],
+    ['news', 'news\\archive'],
+    ['news', 'news%2farchive'],
+    ['news', 'news\u0000archive'],
+    ['tags', 'tags\\archive'],
+    ['tags', 'tags%5Carchive'],
+    ['tags', 'tags\u001farchive'],
+  ] as const)('rejects unsafe %s url segment %j', (field, urlSegment) => {
+    const collectionOptions =
+      field === 'release'
+        ? { release: { urlSegment } }
+        : {
+            news:
+              field === 'news'
+                ? { urlSegment }
+                : { tags: { urlSegment } },
+          }
+
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        ...collectionOptions,
+      } as unknown as SynctrolThemeOptions),
+    ).toThrow(new RegExp(`${field === 'tags' ? 'tags' : field}.*urlSegment`))
   })
 
   it('removes all trailing slashes from siteUrl', () => {

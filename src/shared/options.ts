@@ -144,8 +144,10 @@ const DEFAULT_MESSAGES: Record<'zh' | 'en', LocaleMessages> = {
 function assertUrlSegment(value: unknown, field: string): void {
   if (
     typeof value !== 'string' ||
-    !value.trim() ||
-    /[/?#]/.test(value) ||
+    !value ||
+    value.trim() !== value ||
+    /[\\/?#\u0000-\u001f\u007f-\u009f]/.test(value) ||
+    /%(?:2f|5c)/i.test(value) ||
     value === '.' ||
     value === '..'
   ) {
