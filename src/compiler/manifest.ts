@@ -50,6 +50,30 @@ function isPlainObject(value: unknown): value is PlainObject {
   return prototype === Object.prototype || prototype === null
 }
 
+function copyOwnDataFields(value: PlainObject, path: string): PlainObject {
+  const copy = Object.create(null) as PlainObject
+
+  for (const field of Object.keys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, field)
+    if (descriptor === undefined || !('value' in descriptor)) {
+      invalid(
+        'INVALID_MANIFEST',
+        'content.yml mapping fields must be enumerable data properties',
+        path,
+      )
+    }
+
+    Object.defineProperty(copy, field, {
+      configurable: true,
+      enumerable: true,
+      value: descriptor.value,
+      writable: true,
+    })
+  }
+
+  return copy
+}
+
 function isContentType(value: unknown): value is ContentType {
   return (
     typeof value === 'string' &&
@@ -249,7 +273,7 @@ export function parseContentManifest(
       contentYmlPath,
     )
   }
-  const raw = rawValue
+  const raw = copyOwnDataFields(rawValue, contentYmlPath)
 
   if (!isContentType(raw.type)) {
     invalid(
