@@ -1448,7 +1448,7 @@ export function loadContentDefinitions(
     }
   }
 
-  const tags_platforms_categories: PlatformCategory[] = ['digital', 'physical']
+  const PLATFORM_CATEGORIES: PlatformCategory[] = ['digital', 'physical']
   const platforms: Record<string, PlatformDefinition> = {}
   for (const [key, value] of Object.entries(platformsRaw)) {
     if (!isPlainObject(value)) {
@@ -1471,7 +1471,7 @@ export function loadContentDefinitions(
     }
     if (
       typeof value.category !== 'string' ||
-      !tags_platforms_categories.includes(value.category as PlatformCategory)
+      !PLATFORM_CATEGORIES.includes(value.category as PlatformCategory)
     ) {
       fail({
         severity: 'error',
@@ -2938,7 +2938,7 @@ Also prepare negative fixtures or temp dirs in-test for: duplicate release slugs
 
 ```ts
 // tests/compiler/compile-content.test.ts
-import { mkdirSync, mkdtempSync, writeFileSync, cpSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
