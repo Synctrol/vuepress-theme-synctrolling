@@ -148,6 +148,9 @@ export interface PlatformEntryBase {
   label?: Multilanguage
 }
 
+export type NormalizedPlatformEntry = PlatformEntryBase &
+  Record<string, unknown>
+
 export interface BookBase {
   title: Multilanguage
   desc?: Multilanguage
