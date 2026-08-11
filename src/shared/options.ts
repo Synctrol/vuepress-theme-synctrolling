@@ -193,7 +193,37 @@ function resolveMessages(
       throw new Error(`Locale ${localeKey} messages missing ${key}`)
     }
   }
-  return partial as LocaleMessages
+  return { ...partial } as LocaleMessages
+}
+
+function copyMultilanguage(value: Multilanguage): Multilanguage {
+  return typeof value === 'string' ? value : { ...value }
+}
+
+function copySeoCollection(value: SeoCollectionCopy): SeoCollectionCopy {
+  return {
+    title: copyMultilanguage(value.title),
+    description: copyMultilanguage(value.description),
+  }
+}
+
+function copySeo(value: SeoOptions): SeoOptions {
+  return {
+    name: copyMultilanguage(value.name),
+    description: copyMultilanguage(value.description),
+    defaultImage: value.defaultImage,
+    organization: { ...value.organization },
+    collections: {
+      release: copySeoCollection(value.collections.release),
+      news: copySeoCollection(value.collections.news),
+    },
+  }
+}
+
+function copyPlatformTypes(
+  types: Record<string, PlatformTypeRegistration> | undefined,
+): Record<string, PlatformTypeRegistration> {
+  return { ...(types ?? {}) }
 }
 
 export function resolveThemeOptions(
@@ -261,7 +291,7 @@ export function resolveThemeOptions(
     locales[key] = {
       lang: locale.lang,
       label: locale.label,
-      dateFormat: locale.dateFormat ?? { dateStyle: 'long' },
+      dateFormat: { ...(locale.dateFormat ?? { dateStyle: 'long' }) },
       messages: resolveMessages(key, locale.messages),
     }
   }
@@ -273,25 +303,32 @@ export function resolveThemeOptions(
     locales,
     showDrafts: input.showDrafts ?? false,
     defaultColorMode: input.defaultColorMode ?? 'auto',
-    copyright: input.copyright,
+    copyright: copyMultilanguage(input.copyright),
     feeds: {
       rss: input.feeds?.rss ?? true,
       sitemap: input.feeds?.sitemap ?? true,
     },
     navigation: {
       externalTarget: input.navigation?.externalTarget ?? '_blank',
-      items: input.navigation?.items ?? [],
+      items: (input.navigation?.items ?? []).map((item) => ({
+        label: copyMultilanguage(item.label),
+        href: copyMultilanguage(item.href),
+      })),
     },
     socialLinks: {
-      items: input.socialLinks?.items ?? [],
+      items: (input.socialLinks?.items ?? []).map((item) => ({
+        label: copyMultilanguage(item.label),
+        icon: item.icon,
+        url: item.url,
+      })),
     },
     release,
     news,
     platforms: {
       loadStrategy: input.platforms?.loadStrategy ?? 'interaction',
-      types: input.platforms?.types ?? {},
+      types: copyPlatformTypes(input.platforms?.types),
     },
-    backgrounds: input.backgrounds ?? {},
-    seo: input.seo,
+    backgrounds: { ...(input.backgrounds ?? {}) },
+    seo: copySeo(input.seo),
   }
 }

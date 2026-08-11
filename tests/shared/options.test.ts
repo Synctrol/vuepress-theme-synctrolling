@@ -791,6 +791,126 @@ describe('resolveThemeOptions', () => {
     ).toThrow(/messages/)
   })
 
+  it('isolates resolved containers while preserving registration value identities', () => {
+    const customMessages = { ...enMessages, draft: 'Draft before mutation' }
+    const dateFormat: Intl.DateTimeFormatOptions = { dateStyle: 'short' }
+    const copyright = { zh: '版权', en: 'Copyright' }
+    const navigationLabel = { zh: '关于', en: 'About' }
+    const navigationHref = { zh: '/guanyu', en: '/about' }
+    const navigationItems = [
+      { label: navigationLabel, href: navigationHref },
+    ]
+    const socialLabel = { zh: '视频', en: 'Video' }
+    const socialItems = [
+      {
+        label: socialLabel,
+        icon: 'youtube',
+        url: 'https://youtube.com/@synctrol',
+      },
+    ]
+    const seoName = { zh: '同步控制', en: 'Synctrol' }
+    const releaseTitle = { zh: '作品', en: 'Releases' }
+    const component = { name: 'YoutubeEmbed' }
+    const validate = () => ({ platform: 'youtube' })
+    const cspOrigins = () => ['https://youtube.com']
+    const registration = {
+      validate,
+      component,
+      cspOrigins,
+    }
+    const platformTypes = { youtube: registration }
+    const backgroundLoader = async () => ({ default: 'background.webp' })
+    const backgrounds = { home: backgroundLoader }
+    const input: SynctrolThemeOptions = {
+      ...base,
+      copyright,
+      locales: {
+        ...base.locales,
+        ja: {
+          lang: 'ja-JP',
+          label: '日本語',
+          dateFormat,
+          messages: customMessages,
+        },
+      },
+      navigation: {
+        externalTarget: '_self',
+        items: navigationItems,
+      },
+      socialLinks: { items: socialItems },
+      platforms: {
+        loadStrategy: 'viewport',
+        types: platformTypes,
+      },
+      backgrounds,
+      seo: {
+        ...base.seo,
+        name: seoName,
+        organization: { ...base.seo.organization },
+        collections: {
+          release: {
+            ...base.seo.collections.release,
+            title: releaseTitle,
+          },
+          news: { ...base.seo.collections.news },
+        },
+      },
+    }
+
+    const resolved = resolveThemeOptions(input)
+
+    customMessages.draft = 'Draft after mutation'
+    dateFormat.dateStyle = 'full'
+    copyright.zh = '已改变'
+    navigationLabel.zh = '已改变'
+    navigationHref.en = '/changed'
+    navigationItems.push({
+      label: { zh: '新增', en: 'Added' },
+      href: { zh: '/xinzeng', en: '/added' },
+    })
+    socialLabel.zh = '已改变'
+    socialItems[0].url = 'https://example.com/changed'
+    seoName.zh = '已改变'
+    input.seo.organization.name = 'Changed organization'
+    releaseTitle.zh = '已改变'
+    platformTypes.youtube = {
+      validate: () => ({ platform: 'replacement' }),
+      component: { name: 'Replacement' },
+      cspOrigins: () => [],
+    }
+    backgrounds.home = async () => ({ default: 'changed.webp' })
+
+    expect(resolved.locales.ja.messages.draft).toBe('Draft before mutation')
+    expect(resolved.locales.ja.dateFormat.dateStyle).toBe('short')
+    expect(resolved.copyright).toEqual({ zh: '版权', en: 'Copyright' })
+    expect(resolved.navigation.items).toEqual([
+      {
+        label: { zh: '关于', en: 'About' },
+        href: { zh: '/guanyu', en: '/about' },
+      },
+    ])
+    expect(resolved.socialLinks.items).toEqual([
+      {
+        label: { zh: '视频', en: 'Video' },
+        icon: 'youtube',
+        url: 'https://youtube.com/@synctrol',
+      },
+    ])
+    expect(resolved.seo.name).toEqual({ zh: '同步控制', en: 'Synctrol' })
+    expect(resolved.seo.organization.name).toBe('Synctrol')
+    expect(resolved.seo.collections.release.title).toEqual({
+      zh: '作品',
+      en: 'Releases',
+    })
+    expect(resolved.platforms.types).not.toBe(platformTypes)
+    expect(resolved.platforms.types.youtube).toBe(registration)
+    expect(resolved.platforms.types.youtube.component).toBe(component)
+    expect(resolved.platforms.types.youtube.validate).toBe(validate)
+    expect(resolved.platforms.types.youtube.cspOrigins).toBe(cspOrigins)
+    expect(resolved.backgrounds).not.toBe(backgrounds)
+    expect(resolved.backgrounds.home).toBe(backgroundLoader)
+  })
+
   it('does not mutate the input object', () => {
     const input = {
       ...base,
