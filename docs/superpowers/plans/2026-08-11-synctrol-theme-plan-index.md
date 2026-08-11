@@ -32,6 +32,6 @@ This index sequences independent, testable plans for `vuepress-theme-synctrollin
 ## Current Status
 
 - [x] Spec approved for implementation planning
-- [ ] Plan 01 written
+- [x] Plan 01 written
 - [ ] Plans 02–11 written
 - [ ] Execution started
