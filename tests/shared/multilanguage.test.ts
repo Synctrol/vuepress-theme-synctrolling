@@ -113,4 +113,34 @@ describe('resolveMultilanguage', () => {
 
     expect(() => resolveMultilanguage(map, 'en', 'zh')).toThrow(/mainLocale/)
   })
+
+  it('reads the current locale value once and returns the validated string', () => {
+    let reads = 0
+    const map = {
+      zh: '第一张专辑',
+      get en() {
+        reads += 1
+        return reads === 1 ? 'First Album' : 42
+      },
+    } as unknown as Record<string, string>
+
+    expect(resolveMultilanguage(map, 'en', 'zh')).toEqual({
+      text: 'First Album',
+      locale: 'en',
+      fellBack: false,
+    })
+    expect(reads).toBe(1)
+  })
+
+  it('falls back to mainLocale when current locale is only inherited', () => {
+    const proto = { en: 'Inherited English' }
+    const map = Object.create(proto) as Record<string, string>
+    map.zh = '第一张专辑'
+
+    expect(resolveMultilanguage(map, 'en', 'zh')).toEqual({
+      text: '第一张专辑',
+      locale: 'zh',
+      fellBack: true,
+    })
+  })
 })

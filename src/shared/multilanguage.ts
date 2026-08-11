@@ -43,8 +43,10 @@ export function resolveMultilanguage(
 
   const mainText = readMainLocaleText(value, mainLocale)
 
-  if (typeof value[locale] === 'string') {
-    return { text: value[locale], locale, fellBack: false }
+  const currentText = Object.hasOwn(value, locale) ? value[locale] : undefined
+
+  if (typeof currentText === 'string') {
+    return { text: currentText, locale, fellBack: false }
   }
 
   return {
