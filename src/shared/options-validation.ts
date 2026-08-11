@@ -98,6 +98,41 @@ function assertDynamicKey(key: string, field: string): void {
   }
 }
 
+function hasUnsafeRouteSemantics(value: string): boolean {
+  return (
+    !value ||
+    value.trim() !== value ||
+    DANGEROUS_KEYS.has(value) ||
+    /[\\/?#\u0000-\u001f\u007f-\u009f]/.test(value) ||
+    /%(?:2e|2f|5c)/i.test(value) ||
+    value === '.' ||
+    value === '..'
+  )
+}
+
+export function assertRouteSegment(value: unknown, field: string): void {
+  if (typeof value !== 'string') {
+    throw new Error(`Invalid ${field}: ${String(value)}`)
+  }
+
+  let decoded = value
+  while (true) {
+    if (hasUnsafeRouteSemantics(decoded)) {
+      throw new Error(`Invalid ${field}: ${value}`)
+    }
+
+    if (!decoded.includes('%')) return
+
+    try {
+      const next = decodeURIComponent(decoded)
+      if (next === decoded) return
+      decoded = next
+    } catch {
+      throw new Error(`Invalid ${field}: ${value}`)
+    }
+  }
+}
+
 function assertKnownFields(
   value: PlainObject,
   allowed: readonly string[],
@@ -191,7 +226,7 @@ function validateMultilanguage(
   }
 
   for (const [key, text] of Object.entries(value)) {
-    assertDynamicKey(key, `${field}.${key}`)
+    assertRouteSegment(key, `${field}.${key}`)
     if (typeof text !== 'string') {
       throw new Error(`Invalid ${field}.${key}: expected a string`)
     }
@@ -229,7 +264,7 @@ function validateLocale(
 function validateLocales(input: SynctrolThemeOptions): void {
   assertPlainObject(input.locales, 'options.locales')
   for (const [localeKey, locale] of Object.entries(input.locales)) {
-    assertDynamicKey(localeKey, `options.locales.${localeKey}`)
+    assertRouteSegment(localeKey, `options.locales.${localeKey}`)
     validateLocale(locale, localeKey)
   }
 
@@ -307,7 +342,7 @@ function validateRelease(value: unknown): void {
   assertPlainObject(value, 'options.release')
   assertKnownFields(value, RELEASE_FIELDS, 'options.release')
   if (value.urlSegment !== undefined) {
-    assertUrlSegment(value.urlSegment, 'options.release.urlSegment')
+    assertRouteSegment(value.urlSegment, 'options.release.urlSegment')
   }
   assertOptionalString(
     value.artworkPlaceholder,
@@ -345,7 +380,7 @@ function validateNews(value: unknown): void {
   assertPlainObject(value, 'options.news')
   assertKnownFields(value, NEWS_FIELDS, 'options.news')
   if (value.urlSegment !== undefined) {
-    assertUrlSegment(value.urlSegment, 'options.news.urlSegment')
+    assertRouteSegment(value.urlSegment, 'options.news.urlSegment')
   }
 
   if (value.index !== undefined) {
@@ -362,7 +397,7 @@ function validateNews(value: unknown): void {
     assertPlainObject(value.tags, 'options.news.tags')
     assertKnownFields(value.tags, NEWS_TAG_FIELDS, 'options.news.tags')
     if (value.tags.urlSegment !== undefined) {
-      assertUrlSegment(
+      assertRouteSegment(
         value.tags.urlSegment,
         'options.news.tags.urlSegment',
       )
@@ -487,27 +522,13 @@ function validateSeo(value: unknown, mainLocale: string): void {
   validateSeoCollectionCopy(value.collections.news, 'news', mainLocale)
 }
 
-export function assertUrlSegment(value: unknown, field: string): void {
-  if (
-    typeof value !== 'string' ||
-    !value ||
-    value.trim() !== value ||
-    /[\\/?#\u0000-\u001f\u007f-\u009f]/.test(value) ||
-    /%(?:2f|5c)/i.test(value) ||
-    value === '.' ||
-    value === '..'
-  ) {
-    throw new Error(`Invalid ${field}: ${String(value)}`)
-  }
-}
-
 export function validateThemeOptions(input: SynctrolThemeOptions): void {
   assertPlainObject(input, 'options')
   assertKnownFields(input, TOP_LEVEL_FIELDS, 'options')
   assertNonEmptyString(input.siteUrl, 'options.siteUrl')
   assertOptionalString(input.definitionsPath, 'options.definitionsPath')
   assertNonEmptyString(input.mainLocale, 'options.mainLocale')
-  assertDynamicKey(input.mainLocale, 'options.mainLocale')
+  assertRouteSegment(input.mainLocale, 'options.mainLocale')
   validateLocales(input)
   assertOptionalBoolean(input.showDrafts, 'options.showDrafts')
   assertOptionalEnum(

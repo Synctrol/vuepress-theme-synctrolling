@@ -576,6 +576,107 @@ describe('resolveThemeOptions', () => {
     ).toThrow(new RegExp(`${field === 'tags' ? 'tags' : field}.*urlSegment`))
   })
 
+  it.each([
+    ['release', '%2e%2e'],
+    ['release', 'constructor'],
+    ['news', '.%2e'],
+    ['news', '../en'],
+    ['tags', '%2E.'],
+    ['tags', '%252farchive'],
+  ] as const)(
+    'rejects path-semantic or dangerous %s segment %j',
+    (field, urlSegment) => {
+      const collectionOptions =
+        field === 'release'
+          ? { release: { urlSegment } }
+          : {
+              news:
+                field === 'news'
+                  ? { urlSegment }
+                  : { tags: { urlSegment } },
+            }
+
+      expect(() =>
+        resolveRuntimeOptions({
+          ...base,
+          ...collectionOptions,
+        }),
+      ).toThrow(
+        `Invalid options.${field === 'tags' ? 'news.tags' : field}.urlSegment`,
+      )
+    },
+  )
+
+  it.each([
+    '__proto__',
+    'prototype',
+    'constructor',
+    'en/us',
+    'en\\us',
+    'en?preview',
+    'en#section',
+    ' en',
+    'en ',
+    'en\u0000us',
+    'en%2Fus',
+    'en%5cus',
+    '%2e%2e',
+    '.%2e',
+    '%2E.',
+    '%252fetc',
+  ])('rejects unsafe locale route segment %j', (localeKey) => {
+    const locales = Object.create(null) as Record<string, unknown>
+    locales.zh = base.locales.zh
+    locales[localeKey] = {
+      lang: 'en-US',
+      label: 'English',
+      messages: { ...enMessages },
+    }
+
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        locales,
+      }),
+    ).toThrow('Invalid options.locales')
+  })
+
+  it.each(['zh-Hant', 'pt_BR', '日本語'])(
+    'preserves valid locale route segment %s',
+    (localeKey) => {
+      const locales = Object.create(null) as Record<string, unknown>
+      locales[localeKey] = {
+        lang: localeKey,
+        label: localeKey,
+        messages: { ...enMessages },
+      }
+
+      const options = resolveRuntimeOptions({
+        ...base,
+        mainLocale: localeKey,
+        locales,
+        copyright: { [localeKey]: 'Copyright' },
+        seo: {
+          ...base.seo,
+          name: { [localeKey]: 'Synctrol' },
+          description: { [localeKey]: 'Description' },
+          collections: {
+            release: {
+              title: { [localeKey]: 'Releases' },
+              description: { [localeKey]: 'Release description' },
+            },
+            news: {
+              title: { [localeKey]: 'News' },
+              description: { [localeKey]: 'News description' },
+            },
+          },
+        },
+      }) as ReturnType<typeof resolveThemeOptions>
+
+      expect(Object.hasOwn(options.locales, localeKey)).toBe(true)
+    },
+  )
+
   it('removes all trailing slashes from siteUrl', () => {
     const options = resolveThemeOptions({
       ...base,

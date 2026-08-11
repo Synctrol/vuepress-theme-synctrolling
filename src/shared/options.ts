@@ -1,6 +1,6 @@
 import { enMessages, zhMessages } from './messages.js'
 import {
-  assertUrlSegment,
+  assertRouteSegment,
   validateThemeOptions,
 } from './options-validation.js'
 import type {
@@ -215,7 +215,7 @@ export function resolveThemeOptions(
     artworkPlaceholder: input.release?.artworkPlaceholder,
   }
 
-  assertUrlSegment(release.urlSegment, 'options.release.urlSegment')
+  assertRouteSegment(release.urlSegment, 'options.release.urlSegment')
   assertPagination(
     release.index.pagination,
     'options.release.index.pagination',
@@ -249,8 +249,8 @@ export function resolveThemeOptions(
     },
   }
 
-  assertUrlSegment(news.urlSegment, 'options.news.urlSegment')
-  assertUrlSegment(news.tags.urlSegment, 'options.news.tags.urlSegment')
+  assertRouteSegment(news.urlSegment, 'options.news.urlSegment')
+  assertRouteSegment(news.tags.urlSegment, 'options.news.tags.urlSegment')
   assertPagination(news.index.pagination, 'options.news.index.pagination')
 
   const locales = Object.create(null) as Record<
