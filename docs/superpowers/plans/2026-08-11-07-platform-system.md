@@ -588,6 +588,7 @@ git commit -m "feat(platforms): normalize and merge CSP origin directives"
 ### Task 4: Built-in type registrations (validate / cspOrigins / fallbackUrl)
 
 **Files:**
+- Create: `src/platforms/builtins/validate-helpers.ts`
 - Create: `src/platforms/builtins/link.ts`
 - Create: `src/platforms/builtins/audio-player.ts`
 - Create: `src/platforms/builtins/youtube-player.ts`
