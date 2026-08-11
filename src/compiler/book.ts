@@ -3,9 +3,12 @@ import type {
   Book,
   ContentDefinitions,
   Disc,
+  GiftBook,
+  GiftItem,
   LocaleKey,
   Multilanguage,
   NormalizedPlatformEntry,
+  PlatformCategory,
   Track,
 } from '../shared/types.js'
 import { fail, isDiagnosticError } from './diagnostics.js'
@@ -15,7 +18,7 @@ import { loadYamlFile } from './yaml.js'
 
 type PlainRecord = Record<string, unknown>
 
-const BOOK_FIELDS = [
+const ALBUM_BOOK_FIELDS = [
   'type',
   'title',
   'desc',
@@ -23,7 +26,24 @@ const BOOK_FIELDS = [
   'copyright',
   'album',
 ] as const
+const GIFT_BOOK_FIELDS = [
+  'type',
+  'title',
+  'desc',
+  'authors',
+  'copyright',
+  'gift',
+] as const
 const ALBUM_FIELDS = ['covers', 'links', 'discs'] as const
+const GIFT_FIELDS = ['items'] as const
+const GIFT_ITEM_FIELDS = [
+  'id',
+  'title',
+  'desc',
+  'covers',
+  'links',
+  'copyright',
+] as const
 const DISC_FIELDS = ['title', 'desc', 'tracks'] as const
 const TRACK_FIELDS = [
   'title',
@@ -343,15 +363,22 @@ function parseDisc(
   }
 }
 
-function validateAlbumLink(
+function validateBookLink(
   entry: unknown,
   defs: ContentDefinitions,
   mainLocale: LocaleKey,
   path: string,
   fieldPath: string,
+  requiredCategory: PlatformCategory,
 ): NormalizedPlatformEntry {
   try {
-    return validatePlatformEntry(entry, defs, mainLocale, path, 'digital')
+    return validatePlatformEntry(
+      entry,
+      defs,
+      mainLocale,
+      path,
+      requiredCategory,
+    )
   } catch (error) {
     if (isDiagnosticError(error) && error.diagnostics[0] !== undefined) {
       const diagnostic = error.diagnostics[0]
@@ -377,15 +404,17 @@ function parseLinks(
   mainLocale: LocaleKey,
   path: string,
   fieldPath: string,
+  requiredCategory: PlatformCategory,
 ): NormalizedPlatformEntry[] | undefined {
   if (value === undefined) return undefined
   return readArray(value, path, fieldPath).map((entry, index) =>
-    validateAlbumLink(
+    validateBookLink(
       entry,
       defs,
       mainLocale,
       path,
       `${fieldPath}[${index}]`,
+      requiredCategory,
     ),
   )
 }
@@ -437,7 +466,7 @@ export function parseAlbumBook(
     'album',
     'INVALID_BOOK_BRANCH',
   )
-  rejectUnknownFields(raw, BOOK_FIELDS, path, '')
+  rejectUnknownFields(raw, ALBUM_BOOK_FIELDS, path, '')
   rejectUnknownFields(album, ALBUM_FIELDS, path, 'album')
 
   const desc = parseOptionalMultilanguage(
@@ -459,6 +488,7 @@ export function parseAlbumBook(
     mainLocale,
     path,
     'album.links',
+    'digital',
   )
   const discs = parseDiscs(
     album.discs,
@@ -481,6 +511,144 @@ export function parseAlbumBook(
   }
 }
 
+function parseGiftItem(
+  value: unknown,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+): GiftItem {
+  const raw = copyOwnDataFields(value, path, fieldPath)
+  rejectUnknownFields(raw, GIFT_ITEM_FIELDS, path, fieldPath)
+
+  if (typeof raw.id !== 'string' || raw.id.trim().length === 0) {
+    invalid(
+      'INVALID_BOOK',
+      `${fieldPath}.id must be a non-empty string`,
+      path,
+    )
+  }
+
+  const desc = parseOptionalMultilanguage(
+    raw.desc,
+    mainLocale,
+    path,
+    `${fieldPath}.desc`,
+  )
+  const covers = parseCovers(raw.covers, path, `${fieldPath}.covers`)
+  const links = parseLinks(
+    raw.links,
+    defs,
+    mainLocale,
+    path,
+    `${fieldPath}.links`,
+    'physical',
+  )
+  const copyright = parseOptionalCopyright(
+    raw.copyright,
+    path,
+    `${fieldPath}.copyright`,
+  )
+
+  return {
+    id: raw.id,
+    title: assertMultilanguage(
+      raw.title,
+      mainLocale,
+      path,
+      `${fieldPath}.title`,
+    ),
+    ...(desc === undefined ? {} : { desc }),
+    ...(covers === undefined ? {} : { covers }),
+    ...(links === undefined ? {} : { links }),
+    ...(copyright === undefined ? {} : { copyright }),
+  }
+}
+
+export function parseGiftBook(
+  rawValue: Record<string, unknown>,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+  path: string,
+): GiftBook {
+  const raw = copyOwnDataFields(rawValue, path, 'book.yml')
+  if (raw.type !== 'gift') {
+    invalid(
+      'INVALID_BOOK_BRANCH',
+      'type must be "gift" for a gift book',
+      path,
+    )
+  }
+  if (Object.hasOwn(raw, 'album')) {
+    invalid(
+      'INVALID_BOOK_BRANCH',
+      'gift book forbids album branch',
+      path,
+    )
+  }
+  if (!Object.hasOwn(raw, 'gift')) {
+    invalid(
+      'INVALID_BOOK_BRANCH',
+      'gift book requires gift branch',
+      path,
+    )
+  }
+
+  const gift = copyOwnDataFields(
+    raw.gift,
+    path,
+    'gift',
+    'INVALID_BOOK_BRANCH',
+  )
+  rejectUnknownFields(raw, GIFT_BOOK_FIELDS, path, '')
+  rejectUnknownFields(gift, GIFT_FIELDS, path, 'gift')
+
+  const seenItemIds = new Set<string>()
+  const items = readArray(gift.items, path, 'gift.items').map(
+    (item, index) => {
+      const fieldPath = `gift.items[${index}]`
+      const parsed = parseGiftItem(
+        item,
+        defs,
+        mainLocale,
+        path,
+        fieldPath,
+      )
+      if (seenItemIds.has(parsed.id)) {
+        invalid(
+          'DUPLICATE_GIFT_ITEM_ID',
+          `Duplicate gift item id "${parsed.id}" at ${fieldPath}.id`,
+          path,
+        )
+      }
+      seenItemIds.add(parsed.id)
+      return parsed
+    },
+  )
+
+  const desc = parseOptionalMultilanguage(
+    raw.desc,
+    mainLocale,
+    path,
+    'desc',
+  )
+  const authors = parseOptionalStringArray(raw.authors, path, 'authors')
+  const copyright = parseOptionalCopyright(
+    raw.copyright,
+    path,
+    'copyright',
+  )
+
+  return {
+    type: 'gift',
+    title: assertMultilanguage(raw.title, mainLocale, path, 'title'),
+    ...(desc === undefined ? {} : { desc }),
+    ...(authors === undefined ? {} : { authors }),
+    ...(copyright === undefined ? {} : { copyright }),
+    gift: { items },
+  }
+}
+
 export function parseBook(
   bookYmlPath: string,
   defs: ContentDefinitions,
@@ -491,10 +659,13 @@ export function parseBook(
   if (raw.type === 'album') {
     return parseAlbumBook(raw, defs, mainLocale, bookYmlPath)
   }
+  if (raw.type === 'gift') {
+    return parseGiftBook(raw, defs, mainLocale, bookYmlPath)
+  }
 
   invalid(
     'INVALID_BOOK_BRANCH',
-    `type must be "album" during Task 8; received ${String(raw.type)}`,
+    `Invalid Book type "${String(raw.type)}"`,
     bookYmlPath,
   )
 }
