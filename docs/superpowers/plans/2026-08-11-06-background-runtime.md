@@ -53,7 +53,7 @@
 - Page data exposed to the client includes at least: `locale: string`, `contentType: ContentType | 'release-collection' | 'news-collection'`, and `routePath: string` under a theme-owned key (this plan reads `page.value.synctrol` shaped as `SynctrolClientPageData` defined below).
 - Root language router remains static HTML from Plan 03 (`generateRootRouterHtml`); it is not rendered through `Layout.vue`.
 
-**Out of scope for this plan:** building default decorative backgrounds (grid/scanline/noise/shape stay disabled), platform embeds, Release/News UI, SEO, GitHub Pages delivery, and changing Plan 02 manifest validation.
+**Out of scope for this plan:** building default decorative backgrounds (grid/scanline/noise/shape stay disabled), platform embeds, Release/News UI, SEO, npm package publish, and changing Plan 02 manifest validation.
 
 ---
 

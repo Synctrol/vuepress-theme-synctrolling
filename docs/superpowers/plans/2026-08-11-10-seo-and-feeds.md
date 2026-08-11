@@ -3172,7 +3172,7 @@ git commit -m "feat(seo): emit page SEO head tags with optional RSS and sitemap"
 | Fallback `noindex` + main-locale canonical + no false hreflang | Task 4, 7, 10 |
 | Drafts outside Sitemap/RSS and `noindex` | Tasks 4, 8, 9, 10 |
 
-**Explicitly out of scope (no tasks):** shell UI, LanguageSwitcher, platform embeds, asset hashing implementation, root language router HTML, Release/News visual layouts, GitHub Pages deployment.
+**Explicitly out of scope (no tasks):** shell UI, LanguageSwitcher, platform embeds, asset hashing implementation, root language router HTML, Release/News visual layouts, npm package publish.
 
 **2. Placeholder scan:** No TBD/TODO/`implement later`/`similar to Task N` wording; every code step includes full implementations and exact commands.
 
