@@ -176,7 +176,7 @@ export interface AlbumBook extends BookBase {
   type: 'album'
   album: {
     covers?: AssetPath[]
-    links?: PlatformEntryBase[]
+    links?: NormalizedPlatformEntry[]
     discs?: Disc[]
   }
 }
@@ -186,7 +186,7 @@ export interface GiftItem {
   title: Multilanguage
   desc?: Multilanguage
   covers?: AssetPath[]
-  links?: PlatformEntryBase[]
+  links?: NormalizedPlatformEntry[]
   copyright?: string
 }
 

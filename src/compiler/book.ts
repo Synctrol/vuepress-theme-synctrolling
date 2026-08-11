@@ -1,0 +1,481 @@
+import type {
+  AlbumBook,
+  Book,
+  ContentDefinitions,
+  Disc,
+  LocaleKey,
+  Multilanguage,
+  NormalizedPlatformEntry,
+  Track,
+} from '../shared/types.js'
+import { fail, isDiagnosticError } from './diagnostics.js'
+import { assertMultilanguage } from './multilanguage.js'
+import { validatePlatformEntry } from './platform-entry.js'
+import { loadYamlFile } from './yaml.js'
+
+type PlainRecord = Record<string, unknown>
+
+const BOOK_FIELDS = [
+  'type',
+  'title',
+  'desc',
+  'authors',
+  'copyright',
+  'album',
+] as const
+const ALBUM_FIELDS = ['covers', 'links', 'discs'] as const
+const DISC_FIELDS = ['title', 'desc', 'tracks'] as const
+const TRACK_FIELDS = [
+  'title',
+  'artists',
+  'duration',
+  'desc',
+  'copyright',
+] as const
+
+function invalid(code: string, message: string, path: string): never {
+  fail({
+    severity: 'error',
+    code,
+    message,
+    path,
+  })
+}
+
+function inspectSafely<T>(
+  operation: () => T,
+  path: string,
+  fieldPath: string,
+): T {
+  try {
+    return operation()
+  } catch {
+    invalid(
+      'INVALID_BOOK',
+      `${fieldPath} could not be inspected safely`,
+      path,
+    )
+  }
+}
+
+function isPlainMapping(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+): value is PlainRecord {
+  return inspectSafely(() => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return false
+    }
+    const prototype = Object.getPrototypeOf(value)
+    return prototype === Object.prototype || prototype === null
+  }, path, fieldPath)
+}
+
+function copyOwnDataFields(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+  invalidMappingCode = 'INVALID_BOOK',
+): PlainRecord {
+  if (!isPlainMapping(value, path, fieldPath)) {
+    invalid(
+      invalidMappingCode,
+      `${fieldPath} must be a plain mapping`,
+      path,
+    )
+  }
+
+  const copy = Object.create(null) as PlainRecord
+  const keys = inspectSafely(() => Reflect.ownKeys(value), path, fieldPath)
+  for (const key of keys) {
+    const descriptor = inspectSafely(
+      () => Object.getOwnPropertyDescriptor(value, key),
+      path,
+      typeof key === 'string' ? `${fieldPath}.${key}` : fieldPath,
+    )
+    if (descriptor === undefined || !Object.hasOwn(descriptor, 'value')) {
+      invalid(
+        'INVALID_BOOK',
+        `${fieldPath}.${String(key)} must be an own data property`,
+        path,
+      )
+    }
+    Object.defineProperty(copy, key, {
+      configurable: true,
+      enumerable: true,
+      value: descriptor.value,
+      writable: true,
+    })
+  }
+  return copy
+}
+
+function rejectUnknownFields(
+  value: PlainRecord,
+  allowed: readonly string[],
+  path: string,
+  fieldPath: string,
+): void {
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key === 'string' && allowed.includes(key)) continue
+    const unknownPath =
+      typeof key === 'string'
+        ? fieldPath.length === 0
+          ? key
+          : `${fieldPath}.${key}`
+        : fieldPath.length === 0
+          ? String(key)
+          : `${fieldPath}.${String(key)}`
+    invalid('UNKNOWN_FIELD', `Unknown field "${unknownPath}"`, path)
+  }
+}
+
+function readArray(value: unknown, path: string, fieldPath: string): unknown[] {
+  const isArray = inspectSafely(() => Array.isArray(value), path, fieldPath)
+  if (!isArray) {
+    invalid('INVALID_BOOK', `${fieldPath} must be an array`, path)
+  }
+
+  const result: unknown[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const itemPath = `${fieldPath}[${index}]`
+    const descriptor = inspectSafely(
+      () => Object.getOwnPropertyDescriptor(value, String(index)),
+      path,
+      itemPath,
+    )
+    if (descriptor === undefined || !Object.hasOwn(descriptor, 'value')) {
+      invalid(
+        'INVALID_BOOK',
+        `${itemPath} must be an own data property`,
+        path,
+      )
+    }
+    result.push(descriptor.value)
+  }
+  return result
+}
+
+function parseStringArray(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+): string[] {
+  return readArray(value, path, fieldPath).map((entry, index) => {
+    if (typeof entry !== 'string') {
+      invalid(
+        'INVALID_BOOK',
+        `${fieldPath}[${index}] must be a string`,
+        path,
+      )
+    }
+    return entry
+  })
+}
+
+function parseOptionalStringArray(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+): string[] | undefined {
+  return value === undefined
+    ? undefined
+    : parseStringArray(value, path, fieldPath)
+}
+
+function parseCovers(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+): string[] | undefined {
+  if (value === undefined) return undefined
+  return readArray(value, path, fieldPath).map((entry, index) => {
+    if (typeof entry !== 'string' || entry.trim().length === 0) {
+      invalid(
+        'INVALID_BOOK',
+        `${fieldPath}[${index}] must be a non-empty asset path string`,
+        path,
+      )
+    }
+    return entry
+  })
+}
+
+function parseOptionalMultilanguage(
+  value: unknown,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+): Multilanguage | undefined {
+  return value === undefined
+    ? undefined
+    : assertMultilanguage(value, mainLocale, path, fieldPath)
+}
+
+function parseOptionalCopyright(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+): string | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string') {
+    invalid('INVALID_BOOK', `${fieldPath} must be a string`, path)
+  }
+  return value
+}
+
+function parseDuration(
+  value: unknown,
+  path: string,
+  fieldPath: string,
+): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < 0
+  ) {
+    invalid(
+      'INVALID_BOOK',
+      `${fieldPath} must be a non-negative integer number of seconds`,
+      path,
+    )
+  }
+  return value
+}
+
+function parseTrack(
+  value: unknown,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+): Track {
+  const raw = copyOwnDataFields(value, path, fieldPath)
+  rejectUnknownFields(raw, TRACK_FIELDS, path, fieldPath)
+
+  const desc = parseOptionalMultilanguage(
+    raw.desc,
+    mainLocale,
+    path,
+    `${fieldPath}.desc`,
+  )
+  const copyright = parseOptionalCopyright(
+    raw.copyright,
+    path,
+    `${fieldPath}.copyright`,
+  )
+  return {
+    title: assertMultilanguage(
+      raw.title,
+      mainLocale,
+      path,
+      `${fieldPath}.title`,
+    ),
+    artists: parseStringArray(
+      raw.artists,
+      path,
+      `${fieldPath}.artists`,
+    ),
+    duration: parseDuration(
+      raw.duration,
+      path,
+      `${fieldPath}.duration`,
+    ),
+    ...(desc === undefined ? {} : { desc }),
+    ...(copyright === undefined ? {} : { copyright }),
+  }
+}
+
+function parseDisc(
+  value: unknown,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+): Disc {
+  const raw = copyOwnDataFields(value, path, fieldPath)
+  rejectUnknownFields(raw, DISC_FIELDS, path, fieldPath)
+
+  const desc = parseOptionalMultilanguage(
+    raw.desc,
+    mainLocale,
+    path,
+    `${fieldPath}.desc`,
+  )
+  const tracks = readArray(
+    raw.tracks,
+    path,
+    `${fieldPath}.tracks`,
+  ).map((track, index) =>
+    parseTrack(
+      track,
+      mainLocale,
+      path,
+      `${fieldPath}.tracks[${index}]`,
+    ),
+  )
+
+  return {
+    title: assertMultilanguage(
+      raw.title,
+      mainLocale,
+      path,
+      `${fieldPath}.title`,
+    ),
+    ...(desc === undefined ? {} : { desc }),
+    tracks,
+  }
+}
+
+function validateAlbumLink(
+  entry: unknown,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+): NormalizedPlatformEntry {
+  try {
+    return validatePlatformEntry(entry, defs, mainLocale, path, 'digital')
+  } catch (error) {
+    if (isDiagnosticError(error) && error.diagnostics[0] !== undefined) {
+      const diagnostic = error.diagnostics[0]
+      fail({
+        ...diagnostic,
+        message: `${fieldPath}: ${diagnostic.message}`,
+        path,
+      })
+    }
+    invalid(
+      'INVALID_BOOK',
+      `${fieldPath} could not be validated safely`,
+      path,
+    )
+  }
+}
+
+function parseLinks(
+  value: unknown,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+): NormalizedPlatformEntry[] | undefined {
+  if (value === undefined) return undefined
+  return readArray(value, path, fieldPath).map((entry, index) =>
+    validateAlbumLink(
+      entry,
+      defs,
+      mainLocale,
+      path,
+      `${fieldPath}[${index}]`,
+    ),
+  )
+}
+
+function parseDiscs(
+  value: unknown,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+): Disc[] | undefined {
+  if (value === undefined) return undefined
+  return readArray(value, path, fieldPath).map((disc, index) =>
+    parseDisc(disc, mainLocale, path, `${fieldPath}[${index}]`),
+  )
+}
+
+export function parseAlbumBook(
+  rawValue: Record<string, unknown>,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+  path: string,
+): AlbumBook {
+  const raw = copyOwnDataFields(rawValue, path, 'book.yml')
+  if (raw.type !== 'album') {
+    invalid(
+      'INVALID_BOOK_BRANCH',
+      'type must be "album" for an album book',
+      path,
+    )
+  }
+  if (Object.hasOwn(raw, 'gift')) {
+    invalid(
+      'INVALID_BOOK_BRANCH',
+      'album book forbids gift branch',
+      path,
+    )
+  }
+  if (!Object.hasOwn(raw, 'album')) {
+    invalid(
+      'INVALID_BOOK_BRANCH',
+      'album book requires album branch',
+      path,
+    )
+  }
+
+  const album = copyOwnDataFields(
+    raw.album,
+    path,
+    'album',
+    'INVALID_BOOK_BRANCH',
+  )
+  rejectUnknownFields(raw, BOOK_FIELDS, path, '')
+  rejectUnknownFields(album, ALBUM_FIELDS, path, 'album')
+
+  const desc = parseOptionalMultilanguage(
+    raw.desc,
+    mainLocale,
+    path,
+    'desc',
+  )
+  const authors = parseOptionalStringArray(raw.authors, path, 'authors')
+  const copyright = parseOptionalCopyright(
+    raw.copyright,
+    path,
+    'copyright',
+  )
+  const covers = parseCovers(album.covers, path, 'album.covers')
+  const links = parseLinks(
+    album.links,
+    defs,
+    mainLocale,
+    path,
+    'album.links',
+  )
+  const discs = parseDiscs(
+    album.discs,
+    mainLocale,
+    path,
+    'album.discs',
+  )
+
+  return {
+    type: 'album',
+    title: assertMultilanguage(raw.title, mainLocale, path, 'title'),
+    ...(desc === undefined ? {} : { desc }),
+    ...(authors === undefined ? {} : { authors }),
+    ...(copyright === undefined ? {} : { copyright }),
+    album: {
+      ...(covers === undefined ? {} : { covers }),
+      ...(links === undefined ? {} : { links }),
+      ...(discs === undefined ? {} : { discs }),
+    },
+  }
+}
+
+export function parseBook(
+  bookYmlPath: string,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+): Book {
+  const rawValue = loadYamlFile(bookYmlPath)
+  const raw = copyOwnDataFields(rawValue, bookYmlPath, 'book.yml')
+  if (raw.type === 'album') {
+    return parseAlbumBook(raw, defs, mainLocale, bookYmlPath)
+  }
+
+  invalid(
+    'INVALID_BOOK_BRANCH',
+    `type must be "album" during Task 8; received ${String(raw.type)}`,
+    bookYmlPath,
+  )
+}
