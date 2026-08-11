@@ -585,6 +585,12 @@ describe('validatePlatformEntry URL and asset constraints', () => {
       'https://user:password@example.com/item',
       'credentials',
     ],
+    ['empty username userinfo', 'https://@example.com/item', 'credentials'],
+    [
+      'empty username and password userinfo',
+      'https://:@example.com/item',
+      'credentials',
+    ],
     ['leading whitespace', ' https://example.com/item', 'absolute HTTPS URL'],
     ['trailing whitespace', 'https://example.com/item ', 'absolute HTTPS URL'],
     ['embedded control', 'https://example.com/\u0000item', 'absolute HTTPS URL'],
@@ -595,6 +601,17 @@ describe('validatePlatformEntry URL and asset constraints', () => {
       'INVALID_PLATFORM_ENTRY',
       message,
     )
+  })
+
+  it.each([
+    'https://example.com/path/@handle',
+    'https://example.com/search?q=name@example.com',
+    'https://example.com/#name@example.com',
+  ])('allows @ outside the URL authority in %s', (url) => {
+    expect(validate({ platform: 'store', url }, 'physical')).toEqual({
+      platform: 'store',
+      url,
+    })
   })
 
   it.each([
@@ -666,10 +683,8 @@ describe('validatePlatformEntry URL and asset constraints', () => {
 
   it.each([
     ['empty', ''],
-    ['prefix only', 'audio/'],
     ['wrong top-level type', 'video/mp4'],
     ['surrounding whitespace', ' audio/mpeg'],
-    ['embedded whitespace', 'audio/m peg'],
   ])('rejects %s audio MIME values', (_label, mime) => {
     expectDiagnostic(
       () =>
@@ -681,6 +696,26 @@ describe('validatePlatformEntry URL and asset constraints', () => {
       'INVALID_PLATFORM_ENTRY',
       'audio_player.mime',
     )
+  })
+
+  it.each([
+    'audio/',
+    'audio/ogg; codecs=opus',
+    'audio/m peg',
+    'audio/   ',
+  ])('accepts MIME values based only on the audio/ prefix: %j', (mime) => {
+    expect(
+      validate({
+        platform: 'audio',
+        src: './assets/song.mp3',
+        mime,
+      }),
+    ).toEqual({
+      platform: 'audio',
+      src: './assets/song.mp3',
+      mime,
+      autoplay: false,
+    })
   })
 })
 
