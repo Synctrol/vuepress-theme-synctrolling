@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { resolveThemeOptions } from '../../src/shared/options'
 import { enMessages, zhMessages } from '../../src/shared/messages'
+import type { SynctrolThemeOptions } from '../../src/shared/options'
 
 describe('resolveThemeOptions', () => {
   const base = {
@@ -89,6 +90,147 @@ describe('resolveThemeOptions', () => {
     expect(options.locales.zh.messages.emptyNews).toBe(zhMessages.emptyNews)
     expect(options.locales.en.messages).toEqual(enMessages)
     expect(options.locales.zh.dateFormat).toEqual({ dateStyle: 'long' })
+  })
+
+  it('ignores undefined built-in message overrides', () => {
+    const options = resolveThemeOptions({
+      ...base,
+      locales: {
+        ...base.locales,
+        zh: {
+          lang: 'zh-CN',
+          label: '中文',
+          messages: { draft: undefined },
+        },
+      },
+    })
+
+    expect(options.locales.zh.messages.draft).toBe(zhMessages.draft)
+    expect(Object.keys(options.locales.zh.messages)).toHaveLength(31)
+    expect(
+      Object.values(options.locales.zh.messages).every(
+        (message) => typeof message === 'string',
+      ),
+    ).toBe(true)
+  })
+
+  it('rejects non-string built-in message overrides', () => {
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        locales: {
+          ...base.locales,
+          zh: {
+            lang: 'zh-CN',
+            label: '中文',
+            messages: {
+              draft: 42 as unknown as string,
+            },
+          },
+        },
+      }),
+    ).toThrow(/messages.*draft/)
+  })
+
+  it('defaults missing release and news nesting in runtime config', () => {
+    const options = resolveThemeOptions({
+      ...base,
+      release: { urlSegment: 'catalog' },
+      news: { urlSegment: 'updates' },
+    } as unknown as SynctrolThemeOptions)
+
+    expect(options.release).toMatchObject({
+      urlSegment: 'catalog',
+      index: {
+        enabled: true,
+        pagination: 12,
+        mobileGridColumns: 2,
+        desktopGridColumns: 3,
+      },
+    })
+    expect(options.news).toEqual({
+      urlSegment: 'updates',
+      index: { enabled: true, pagination: 12 },
+      tags: {
+        urlSegment: 'tags',
+        index: { enabled: true },
+      },
+    })
+  })
+
+  it('defaults missing news tag index in runtime config', () => {
+    const options = resolveThemeOptions({
+      ...base,
+      news: {
+        urlSegment: 'updates',
+        tags: { urlSegment: 'topics' },
+      },
+    } as unknown as SynctrolThemeOptions)
+
+    expect(options.news.tags).toEqual({
+      urlSegment: 'topics',
+      index: { enabled: true },
+    })
+  })
+
+  it.each([42, null])(
+    'rejects non-string url segment %s with a theme error',
+    (urlSegment) => {
+      expect(() =>
+        resolveThemeOptions({
+          ...base,
+          release: {
+            urlSegment: urlSegment as unknown as string,
+            index: {
+              enabled: true,
+              pagination: 12,
+              mobileGridColumns: 2,
+              desktopGridColumns: 3,
+            },
+          },
+        }),
+      ).toThrow(/release\.urlSegment/)
+    },
+  )
+
+  it('rejects whitespace-only url segments without rewriting valid ones', () => {
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        release: {
+          urlSegment: '   ',
+          index: {
+            enabled: true,
+            pagination: 12,
+            mobileGridColumns: 2,
+            desktopGridColumns: 3,
+          },
+        },
+      }),
+    ).toThrow(/release\.urlSegment/)
+
+    const options = resolveThemeOptions({
+      ...base,
+      release: {
+        urlSegment: ' releases ',
+        index: {
+          enabled: true,
+          pagination: 12,
+          mobileGridColumns: 2,
+          desktopGridColumns: 3,
+        },
+      },
+    })
+    expect(options.release.urlSegment).toBe(' releases ')
+  })
+
+  it('removes all trailing slashes from siteUrl', () => {
+    const options = resolveThemeOptions({
+      ...base,
+      siteUrl: 'https://synctrol.com///',
+    })
+
+    expect(options.siteUrl).toBe('https://synctrol.com')
   })
 
   it('rejects invalid release grid columns and url segments', () => {

@@ -141,9 +141,15 @@ const DEFAULT_MESSAGES: Record<'zh' | 'en', LocaleMessages> = {
   en: enMessages,
 }
 
-function assertUrlSegment(value: string, field: string): void {
-  if (!value || /[/?#]/.test(value) || value === '.' || value === '..') {
-    throw new Error(`Invalid ${field}: ${value}`)
+function assertUrlSegment(value: unknown, field: string): void {
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    /[/?#]/.test(value) ||
+    value === '.' ||
+    value === '..'
+  ) {
+    throw new Error(`Invalid ${field}: ${String(value)}`)
   }
 }
 
@@ -170,7 +176,19 @@ function resolveMessages(
 ): LocaleMessages {
   const defaults = DEFAULT_MESSAGES[localeKey as 'zh' | 'en']
   if (defaults) {
-    return { ...defaults, ...partial }
+    const resolved = { ...defaults }
+    if (!partial) return resolved
+
+    const keys = Object.keys(defaults) as Array<keyof LocaleMessages>
+    for (const key of keys) {
+      const override = partial[key]
+      if (override === undefined) continue
+      if (typeof override !== 'string') {
+        throw new Error(`Locale ${localeKey} messages invalid ${key}`)
+      }
+      resolved[key] = override
+    }
+    return resolved
   }
   if (!partial) {
     throw new Error(`Locale ${localeKey} requires complete messages`)
@@ -192,12 +210,15 @@ export function resolveThemeOptions(
   }
 
   const release: ReleaseOptions = {
-    urlSegment: input.release?.urlSegment ?? 'releases',
+    urlSegment:
+      input.release?.urlSegment === undefined
+        ? 'releases'
+        : input.release.urlSegment,
     index: {
-      enabled: input.release?.index.enabled ?? true,
-      pagination: input.release?.index.pagination ?? 12,
-      mobileGridColumns: input.release?.index.mobileGridColumns ?? 2,
-      desktopGridColumns: input.release?.index.desktopGridColumns ?? 3,
+      enabled: input.release?.index?.enabled ?? true,
+      pagination: input.release?.index?.pagination ?? 12,
+      mobileGridColumns: input.release?.index?.mobileGridColumns ?? 2,
+      desktopGridColumns: input.release?.index?.desktopGridColumns ?? 3,
     },
     artworkPlaceholder: input.release?.artworkPlaceholder,
   }
@@ -216,15 +237,19 @@ export function resolveThemeOptions(
   )
 
   const news: NewsOptions = {
-    urlSegment: input.news?.urlSegment ?? 'news',
+    urlSegment:
+      input.news?.urlSegment === undefined ? 'news' : input.news.urlSegment,
     index: {
-      enabled: input.news?.index.enabled ?? true,
-      pagination: input.news?.index.pagination ?? 12,
+      enabled: input.news?.index?.enabled ?? true,
+      pagination: input.news?.index?.pagination ?? 12,
     },
     tags: {
-      urlSegment: input.news?.tags.urlSegment ?? 'tags',
+      urlSegment:
+        input.news?.tags?.urlSegment === undefined
+          ? 'tags'
+          : input.news.tags.urlSegment,
       index: {
-        enabled: input.news?.tags.index.enabled ?? true,
+        enabled: input.news?.tags?.index?.enabled ?? true,
       },
     },
   }
@@ -244,7 +269,7 @@ export function resolveThemeOptions(
   }
 
   return {
-    siteUrl: input.siteUrl.replace(/\/$/, ''),
+    siteUrl: input.siteUrl.replace(/\/+$/, ''),
     definitionsPath: input.definitionsPath,
     mainLocale: input.mainLocale,
     locales,
