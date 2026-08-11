@@ -85,7 +85,7 @@ function copyOwnDataFields(value: unknown, path: string): PlainRecord {
       () => Object.getOwnPropertyDescriptor(value, key),
       path,
     )
-    if (descriptor === undefined || !('value' in descriptor)) {
+    if (descriptor === undefined || !Object.hasOwn(descriptor, 'value')) {
       invalid(
         'INVALID_PLATFORM_ENTRY',
         'platform entry fields must be own data properties',
@@ -93,12 +93,7 @@ function copyOwnDataFields(value: unknown, path: string): PlainRecord {
       )
     }
 
-    Object.defineProperty(copy, key, {
-      configurable: true,
-      enumerable: true,
-      value: descriptor.value,
-      writable: true,
-    })
+    copy[key] = descriptor.value
   }
 
   return copy
