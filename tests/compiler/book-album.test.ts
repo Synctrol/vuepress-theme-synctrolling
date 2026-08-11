@@ -132,7 +132,7 @@ album:
           duration: 272
           copyright: © 2026 Synctrol
         - title: Track Two
-          artists: []
+          artists: [Solo Artist]
           duration: 0
     - title: Disc Two
       tracks: []
@@ -167,7 +167,7 @@ album:
                 duration: 272,
                 copyright: '© 2026 Synctrol',
               },
-              { title: 'Track Two', artists: [], duration: 0 },
+              { title: 'Track Two', artists: ['Solo Artist'], duration: 0 },
             ],
           },
           { title: 'Disc Two', tracks: [] },
@@ -228,7 +228,7 @@ album:
       ],
       [
         'track title',
-        'title: Album\nalbum:\n  discs:\n    - title: Disc\n      tracks:\n        - title:\n            en: Track\n          artists: []\n          duration: 0',
+        'title: Album\nalbum:\n  discs:\n    - title: Disc\n      tracks:\n        - title:\n            en: Track\n          artists: [Artist]\n          duration: 0',
         'album.discs[0].tracks[0].title',
       ],
       [
@@ -319,7 +319,7 @@ gift:
     ],
     [
       'track',
-      'type: album\ntitle: Album\nalbum:\n  discs:\n    - title: Disc\n      tracks:\n        - title: Track\n          artists: []\n          duration: 0\n          extra: true\n',
+      'type: album\ntitle: Album\nalbum:\n  discs:\n    - title: Disc\n      tracks:\n        - title: Track\n          artists: [Artist]\n          duration: 0\n          extra: true\n',
       'album.discs[0].tracks[0].extra',
     ],
   ])('rejects an unknown %s field', (_name, body, message) => {
@@ -364,7 +364,7 @@ gift:
     ],
     [
       'track copyright number',
-      'album:\n  discs:\n    - title: Disc\n      tracks:\n        - title: Track\n          artists: []\n          duration: 0\n          copyright: 2026',
+      'album:\n  discs:\n    - title: Disc\n      tracks:\n        - title: Track\n          artists: [Artist]\n          duration: 0\n          copyright: 2026',
       'album.discs[0].tracks[0].copyright',
     ],
   ])('rejects invalid optional or nested structure: %s', (_name, body, message) => {
@@ -390,7 +390,7 @@ gift:
     ],
     [
       'missing track title',
-      'title: Album\nalbum:\n  discs:\n    - title: Disc\n      tracks:\n        - artists: []\n          duration: 0',
+      'title: Album\nalbum:\n  discs:\n    - title: Disc\n      tracks:\n        - artists: [Artist]\n          duration: 0',
       'album.discs[0].tracks[0].title',
     ],
   ])('rejects a %s', (_name, body, message) => {
@@ -418,12 +418,38 @@ album:
     - title: Disc
       tracks:
         - title: Track
-          artists: []
+          artists: [Artist]
 ${durationField}`)
     expectDiagnostic(
       () => parseBook(path, defs, 'zh'),
       'INVALID_BOOK',
       'album.discs[0].tracks[0].duration',
+      path,
+    )
+  })
+
+  it('rejects an empty artists array with the exact indexed track path', () => {
+    const path = writeBook(`
+type: album
+title: Album
+album:
+  discs:
+    - title: Disc One
+      tracks: []
+    - title: Disc Two
+      tracks:
+        - title: Valid Track
+          artists: [Artist]
+          duration: 1
+        - title: Invalid Track
+          artists: []
+          duration: 2
+`)
+
+    expectDiagnostic(
+      () => parseBook(path, defs, 'zh'),
+      'INVALID_BOOK',
+      'album.discs[1].tracks[1].artists',
       path,
     )
   })
@@ -519,7 +545,7 @@ describe('parseAlbumBook mapping safety and isolation', () => {
           ? {}
           : level === 'disc'
             ? { title: 'Disc' }
-            : { title: 'Track', artists: [] }
+            : { title: 'Track', artists: ['Artist'] }
     Object.defineProperty(accessed, field, {
       enumerable: true,
       get() {
@@ -667,7 +693,11 @@ describe('parseAlbumBook mapping safety and isolation', () => {
     artists.push('Mutated')
     trackTitle.zh = '已修改'
     track.duration = 999
-    tracks.push({ title: { zh: '新增', en: 'Added' }, artists: [], duration: 0 })
+    tracks.push({
+      title: { zh: '新增', en: 'Added' },
+      artists: ['Added Artist'],
+      duration: 0,
+    })
     discs.push({ title: 'Added Disc', tracks: [] })
     links.push({
       platform: 'bilibili',
