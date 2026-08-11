@@ -1,0 +1,31 @@
+/* src/client/styles/tokens.css */
+:root {
+  color-scheme: light dark;
+
+  --syn-black: #000;
+  --syn-white: #fff;
+  --syn-fg: var(--syn-black);
+  --syn-bg: var(--syn-white);
+  --syn-border-strong: 3px solid currentColor;
+  --syn-border-subtle: 1px solid currentColor;
+  --syn-radius: 0;
+  --syn-content-width: 760px;
+  --syn-artwork-width: 660px;
+
+  --syn-dock-bottom: max(16px, env(safe-area-inset-bottom));
+  --syn-dock-left: max(16px, env(safe-area-inset-left));
+  --syn-dock-right: max(16px, env(safe-area-inset-right));
+  --syn-dock-gap: 12px;
+  --syn-dock-control-size: 40px;
+  --syn-dock-content-clearance: 72px;
+
+  --syn-font-display: 'Archivo Black', 'Arial Black', Arial, 'PingFang SC',
+    'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+  --syn-font-body: 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei',
+    'Noto Sans CJK SC', sans-serif;
+}
+
+:root[data-theme='dark'] {
+  --syn-fg: var(--syn-white);
+  --syn-bg: var(--syn-black);
+}
