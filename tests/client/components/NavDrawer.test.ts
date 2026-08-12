@@ -1,5 +1,5 @@
 import { nextTick } from 'vue'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import NavDrawer from '../../../src/client/components/NavDrawer.vue'
 import { SYNCTROL_DRAWER_OPEN_KEY } from '../../../src/client/composables/keys'
@@ -74,6 +74,33 @@ describe('NavDrawer', () => {
       new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }),
     )
     expect(document.activeElement).toBe(firstLink)
+
+    wrapper.unmount()
+  })
+
+  it('closes the drawer when the viewport crosses back to desktop', async () => {
+    let changeListener: ((event: { matches: boolean }) => void) | null = null
+    const mql = {
+      matches: true,
+      addEventListener: (_type: string, fn: (event: { matches: boolean }) => void) => {
+        changeListener = fn
+      },
+      removeEventListener: () => {},
+    }
+    vi.spyOn(window, 'matchMedia').mockReturnValue(mql as unknown as MediaQueryList)
+
+    const drawerOpen = ref(true)
+    const wrapper = mountShell(NavDrawer, {
+      global: {
+        provide: { [SYNCTROL_DRAWER_OPEN_KEY as symbol]: drawerOpen },
+      },
+    })
+    await nextTick()
+    expect(drawerOpen.value).toBe(true)
+
+    changeListener!({ matches: false })
+    await nextTick()
+    expect(drawerOpen.value).toBe(false)
 
     wrapper.unmount()
   })

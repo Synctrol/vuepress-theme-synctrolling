@@ -11,6 +11,7 @@ const drawerRef = ref<HTMLElement | null>(null)
 let trap: FocusTrap | null = null
 let opener: HTMLElement | null = null
 let activateRaf = 0
+let mobileMedia: MediaQueryList | null = null
 
 function cancelActivateRaf(): void {
   if (activateRaf) {
@@ -26,6 +27,14 @@ function close(): void {
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape' && drawerOpen.value) {
     event.preventDefault()
+    close()
+  }
+}
+
+// Crossing back to desktop hides the menu button and the drawer, so
+// close the drawer to avoid a stuck open state.
+function onViewportChange(event: MediaQueryListEvent): void {
+  if (!event.matches && drawerOpen.value) {
     close()
   }
 }
@@ -53,10 +62,13 @@ watch(
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  mobileMedia = window.matchMedia('(max-width: 768px)')
+  mobileMedia.addEventListener('change', onViewportChange)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  mobileMedia?.removeEventListener('change', onViewportChange)
   cancelActivateRaf()
   trap?.deactivate()
 })
