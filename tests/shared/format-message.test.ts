@@ -14,4 +14,14 @@ describe('formatMessage', () => {
   it('leaves unknown placeholders intact', () => {
     expect(formatMessage('Hello {name}', {})).toBe('Hello {name}')
   })
+
+  it('replaces string and number placeholders and leaves unknown placeholders intact', () => {
+    expect(formatMessage('{tag} · {title}', { tag: 'Releases', title: 'News' })).toBe(
+      'Releases · News',
+    )
+    expect(formatMessage('{title} · Page {page}', { title: 'News', page: 2 })).toBe(
+      'News · Page 2',
+    )
+    expect(formatMessage('Hello {name}', {})).toBe('Hello {name}')
+  })
 })

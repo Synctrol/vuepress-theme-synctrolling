@@ -24,3 +24,14 @@ export type {
   PlatformsOptions,
   PlatformTypesConfig,
 } from './shared/options.js'
+export type {
+  NewsCollectionPageData,
+  NewsDetailPageData,
+  NewsListItem,
+  NewsTagCount,
+  NewsTagLink,
+  PageDetailPageData,
+  SynctrolHomeFrontmatter,
+  SynctrolNewsFrontmatter,
+  SynctrolPageFrontmatter,
+} from './shared/types/news.js'
