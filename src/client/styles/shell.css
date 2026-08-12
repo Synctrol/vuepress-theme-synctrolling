@@ -28,7 +28,7 @@
     minmax(0, 1fr)
     var(--syn-dock-content-clearance);
   color: var(--syn-fg);
-  background: var(--syn-bg);
+  background: transparent;
   font-family: var(--syn-font-body);
 }
 
