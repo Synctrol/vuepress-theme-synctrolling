@@ -79,4 +79,26 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-home-logo p\s*\{[^}]*text-transform:\s*uppercase/)
     expect(css).toMatch(/\.syn-home-logo p\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
   })
+
+  it('aligns dock and language controls with reference letter-spacing and hover', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-social-links__link:hover[^{]*\{[^}]*background:\s*var\(--syn-deco-symbol-bg\)/)
+    expect(css).toMatch(/\.syn-social-links__link:hover[^{]*\s*\.syn-social-links__icon[^{]*\{[^}]*filter:\s*invert\(1\)/)
+    expect(css).toMatch(/:root\[data-theme='dark'\][^{]*\.syn-social-links__link:hover[^{]*\s*\.syn-social-links__icon[^{]*\{[^}]*filter:\s*invert\(0\)/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*letter-spacing:\s*1px/)
+    expect(css).toMatch(/\.syn-language__option\s*\{[^}]*letter-spacing:\s*1px/)
+    expect(css).toMatch(/\.syn-language__toggle:hover[^{]*\{[^}]*text-decoration:\s*underline/)
+    expect(css).toMatch(/\.syn-nav-drawer__close\s*\{[^}]*letter-spacing:\s*1px/)
+  })
+
+  it('adds the reference 640px mobile breakpoint', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    const idx = css.indexOf('@media (max-width: 640px)')
+    expect(idx).toBeGreaterThan(-1)
+    const mobile = css.slice(idx)
+    expect(mobile).toMatch(/\.syn-header\s*\{[^}]*font-size:\s*11px/)
+    expect(mobile).toMatch(/\.syn-home-logo h1\s*\{[^}]*font-size:\s*52px/)
+    expect(mobile).toMatch(/\.syn-navigation__link\s*\{[^}]*padding:\s*14px 16px/)
+    expect(mobile).toMatch(/\.syn-home-logo p\s*\{[^}]*font-size:\s*10px/)
+  })
 })
