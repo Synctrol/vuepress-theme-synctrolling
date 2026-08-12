@@ -271,3 +271,23 @@
     max-width: 40vw;
   }
 }
+
+.syn-home-logo {
+  text-align: right;
+}
+
+.syn-home-logo h1 {
+  font-size: clamp(48px, 9vw, 96px);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -2px;
+  margin: 0;
+}
+
+.syn-home-logo p {
+  font-size: 14px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--syn-sub-title-fg);
+  margin-top: 12px;
+}

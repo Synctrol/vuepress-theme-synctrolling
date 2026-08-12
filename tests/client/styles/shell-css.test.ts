@@ -66,4 +66,17 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-navigation__link:focus-visible[^{]*\{[^}]*color:\s*var\(--syn-deco-bg\)/)
     expect(css).toMatch(/\.syn-navigation__item\s*\+\s*\.syn-navigation__item\s*\{[^}]*border-block-start:\s*var\(--syn-border-strong\)/)
   })
+
+  it('applies reference display metrics to the home logo', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-home-logo\s*\{[^}]*text-align:\s*right/)
+    expect(css).toMatch(/\.syn-home-logo h1\s*\{[^}]*font-size:\s*clamp\(48px,\s*9vw,\s*96px\)/)
+    expect(css).toMatch(/\.syn-home-logo h1\s*\{[^}]*font-weight:\s*900/)
+    expect(css).toMatch(/\.syn-home-logo h1\s*\{[^}]*line-height:\s*0\.9/)
+    expect(css).toMatch(/\.syn-home-logo h1\s*\{[^}]*letter-spacing:\s*-2px/)
+    expect(css).toMatch(/\.syn-home-logo p\s*\{[^}]*font-size:\s*14px/)
+    expect(css).toMatch(/\.syn-home-logo p\s*\{[^}]*letter-spacing:\s*4px/)
+    expect(css).toMatch(/\.syn-home-logo p\s*\{[^}]*text-transform:\s*uppercase/)
+    expect(css).toMatch(/\.syn-home-logo p\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
+  })
 })
