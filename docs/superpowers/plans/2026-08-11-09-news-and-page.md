@@ -2,184 +2,196 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Render News indexes, tag archives, News detail articles, and general Pages through the Synctrol shell with correct list fallback badges, pagination, draft badges, and Home markdown formatters that feed the Footer slot.
+## Revision Notes (executable against Plans 01-08 @ HEAD `cursor/synctrol-theme-design-ee11`)
 
-**Architecture:** Pure Node view-model builders turn Plan 03 `CompiledPage` collection data plus Plan 02 packages/definitions into typed News list items and tag counts. Vue client layouts consume those models inside Plan 05’s shell and Plan 01’s `--syn-content-width: 760px` column. Home `home-logo` / `home-footer` markdown-it containers register at theme boot so Home Main and Footer receive formatter content without a layout field. RSS exclusion of fallback items is stamped on list models here and enforced later by Plan 10.
+Revised after Plan 09 preflight against HEAD on branch `cursor/synctrol-theme-design-ee11`. Binding decisions (do not re-litigate):
 
-**Tech Stack:** TypeScript, Vitest, Vue 3, `@vue/test-utils`, happy-dom (from Plan 05), VuePress 2 markdown-it containers, package layout from Plan 01 (`vuepress-theme-synctrolling`).
+1. **Frontmatter bridge follows Release.**
+   - Add typed `SynctrolNewsFrontmatter`, `SynctrolPageFrontmatter`, and `SynctrolHomeFrontmatter` under shared types.
+   - Stamp runtime data in `src/compiler/theme.ts` as `frontmatter.synctrol.news`, `frontmatter.synctrol.page`, and `frontmatter.synctrol.home`.
+   - Do not introduce `pageDataByRoute` or a theme data store.
+
+2. **Patch single `Layout.vue`.**
+   - HEAD registers only `Layout` from `src/client/config.ts`.
+   - Do **not** create `src/client/layouts/resolve-layout.ts` or any layout registry.
+   - In `src/client/layouts/Layout.vue`, keep Release handling first, then switch on `synctrol.news`, `synctrol.page`, and `synctrol.home`, and keep the final `<Content v-else />` fallback.
+
+3. **Shared column and pagination are Plan 09 work.**
+   - Create `src/client/components/ContentColumn.vue`.
+   - Create `src/client/components/PaginationNav.vue`.
+   - `PaginationNav` mirrors the existing `ReleaseIndex.vue` pagination UX and accessibility (`<nav aria-label="Pagination">`, previous/next links).
+
+4. **Use current module names and route helpers.**
+   - `ContentIdentity` comes from `src/shared/route-types.ts`.
+   - Theme option types come from `src/shared/options.ts`.
+   - Definitions are `ContentDefinitions` from `src/shared/types.ts`, not `DefinitionsFile`.
+   - Use `encodeRouteSegment` from `src/compiler/path-suffix.ts`, `buildUrlLayers` from `src/compiler/url-layers.ts`, and prefer `CompiledPage.url.publicPath` for browser links.
+
+5. **Base-aware links are mandatory.**
+   - News detail links must come from matching detail `CompiledPage.url.publicPath`.
+   - Pagination links must come from sibling collection `CompiledPage.url.publicPath`.
+   - Tag links must come from matching tag archive `CompiledPage.url.publicPath` whenever that page exists; only construct fallback public paths with `buildUrlLayers` and the current `base`.
+
+6. **Home formatters bind to the actual VuePress hook.**
+   - `src/compiler/theme.ts` adds `extendsMarkdown: (md, app) => { registerHomeFormatters(md) }`.
+   - Home logo assertion runs during locale Markdown parsing for Home content.
+   - Rendered formatter HTML is stored under `frontmatter.synctrol.home.logoHtml` and `frontmatter.synctrol.home.footerHtml`.
+
+7. **Existing files are extended or reused.**
+   - `src/shared/format-message.ts` already exists; Task 1 verifies its `{string | number}` behavior and only extends exports/types.
+   - `src/client/components/DraftBadge.vue` already exists; Task 5 extends styling/contract in place.
+   - Leave `src/index.ts` exporting `formatMessage` through `src/platforms/format-message.ts` unless a test proves it must change.
+
+8. **Compiler integration tests use HEAD signatures.**
+   - `compileContent({ contentRoot, sourceDir, configDir, mainLocale, platformTypes? })`.
+   - `buildRoutePackages({ packages, localeKeys })` from `src/compiler/route-packages.ts`.
+   - `compileSiteRoutes({ packages, options, base, declaredTags })`.
+   - Prefer existing helpers from `tests/helpers/route-fixtures.ts`.
+
+9. **Calendar date formatting is a small shared helper.**
+   - Create `src/shared/format-calendar-date.ts`.
+   - Use it consistently from News collection/detail and Page/News tests via injected `formatDate`.
+
+10. **Markdown dependencies are direct when imported.**
+    - Task 10 adds `markdown-it`, `markdown-it-container`, `@types/markdown-it`, and `@types/markdown-it-container` directly if they are not already direct dependencies.
+
+11. **Shell footer target is `ShellLayout`.**
+    - Home footer formatter output is passed through `<ShellLayout><template #footer>...</template></ShellLayout>`.
+    - There is no `SynctrolShell.vue` target at HEAD.
+
+12. **Preserve Plans 03-08 contracts.**
+    - NodeNext `.js` suffixes on all relative imports under `src/**`.
+    - Vitest `projects` stay unchanged.
+    - Only `src/compiler/theme.ts` imports `vuepress/*`.
+    - `theme.ts` patches are additive and preserve `contentAssets`, `release`, `platformDefinitions`, backgrounds Vite plugin, CSP generation, root router writing, and asset compilation.
+
+**Goal:** Render News indexes, News tag indexes/archives, News detail articles, general Pages, and Home formatter slots through the existing Synctrol shell with base-aware links, localized fallback/draft badges, 760px content columns, and Release-style `frontmatter.synctrol` data.
+
+**Architecture:** Compiler helpers assemble News/Page/Home frontmatter models from Plan 03 routes, Plan 02 packages, Plan 04 asset manifests, and resolved theme options. `src/compiler/theme.ts` injects those models into nested frontmatter while preserving Plans 03-08 data. The single client `Layout.vue` chooses Release, News, Page, Home, or default `<Content />` rendering without a registry.
+
+**Tech Stack:** TypeScript (NodeNext), Vitest `projects` from HEAD, Vue 3 SFCs, `@vue/test-utils`, happy-dom, VuePress 2 `extendsMarkdown`, markdown-it containers, package `vuepress-theme-synctrolling`.
 
 ## Global Constraints
 
 - Package name: `vuepress-theme-synctrolling`
-- Content types remain only `home | release | news | page`; there is no `member` type and no per-page `layout` field
+- Content types remain only `home | release | news | page`; generated collection routes remain `release-collection` / `news-collection`
+- No per-page `layout` field and no Page automatic listing
 - News uses `date` (required), optional `updated`, required `tags` (may be empty), optional `cover`
-- `updated` cannot precede `date`; dates are `YYYY-MM-DD` calendar dates without timezone conversion
+- `updated` cannot precede `date`; dates are `YYYY-MM-DD` calendar dates and must render without timezone off-by-one conversion
 - Default `news.urlSegment` is `news`; default `news.tags.urlSegment` is `tags`; both are scalar strings shared by every locale
 - `news.index.pagination` defaults to `12`, accepts a positive integer or `false`; tag archives reuse the same pagination setting
-- `news.index.enabled: false` suppresses News Index and its pagination only; details and tag pages still generate
-- `news.tags.index.enabled: false` suppresses only the News Tags Index; individual tag archives still generate
+- `news.index.enabled: false` suppresses News Index and its pagination only; News details and tag archives still generate
+- `news.tags.index.enabled: false` suppresses only the News Tags Index; individual tag archives still generate when they have visible items
 - News Tags Index lists declared tags with visible article counts and is never paginated
-- News sorts by date descending, then slug for stability
-- Fallback list items keep target-locale URL/shell, use main-locale title/description with local `lang`, show translation-unavailable badge, set `excludeFromRss: true`
-- Draft list/detail surfaces show localized draft badges when `showDrafts` made them visible
+- News sorts by date descending, then slug for stability; route compiler already emits collection slices in that order
+- Fallback list items keep target-locale URL/shell, use body-locale title/description with body-locale `lang`, show translation-unavailable badge, set `excludeFromRss: true`
+- Draft list/detail surfaces show localized draft badges when `showDrafts` made them visible; drafts set `excludeFromRss: true`
 - News detail and Page Main body max width is `760px`; no search UI and no table of contents
-- Page has no automatic listing and optional `cover` only
-- Brand tokens fixed: black/white, `3px` strong border, `0` radius, Archivo Black display
-- Tests run with `npm test -- <path>` (or `npm test -- <path>` if the package uses npm scripts equivalently)
-- Plans 01–05 and 08 are assumed complete for shared types, content compiler, routes, assets, shell, and Release pagination/date helpers reused here
-
-## Downstream note (Plan 04 contract sync)
-
-- Cover/public asset resolution uses Plan 04 `publicPath` maps (`contentPublicPaths` / `frontmatter.synctrol.contentAssets` / client `resolveContentAsset`), not a separate `resolveContentAssetPublicUrl` API.
-- Import asset types from `src/shared/asset-types`.
+- Page has optional `cover` only; no list/index route
+- Brand tokens fixed: black/white, `3px` strong border, `0` radius, Archivo Black display, `--syn-content-width: 760px`
+- Browser links in models use `CompiledPage.url.publicPath` whenever possible and are VuePress `base` aware
+- Tests run with `npm test -- <path>`
+- Plans 01-08 are assumed complete at HEAD: shared types/options, content compiler, locale routes/collections, assets, shell, backgrounds, platforms, CSP, root router, and Release frontmatter bridge
+- All later tasks inherit these constraints and the Revision Notes
 
 ## File Structure
 
 | File | Responsibility |
 | --- | --- |
-| `src/shared/types/news.ts` | `NewsListItem`, `NewsTagCount`, `NewsCollectionPageData` view-model types |
-| `src/shared/format-message.ts` | Interpolate `{title}`, `{page}`, `{tag}` message templates |
-| `src/compiler/news/build-news-list-items.ts` | Build per-locale list items from packages + detail pages (fallback/draft flags) |
-| `src/compiler/news/build-news-tags-index.ts` | Declared tags + visible counts for News Tags Index |
-| `src/compiler/news/attach-news-page-data.ts` | Attach list/tag/detail page data onto compiled news-collection pages |
-| `src/compiler/markdown/home-formatters.ts` | Register `home-logo` (required) and `home-footer` (optional) containers |
-| `src/compiler/markdown/assert-home-formatters.ts` | Build-time assert Home packages include `home-logo` |
-| `src/client/components/DraftBadge.vue` | Localized draft badge |
-| `src/client/components/TranslationUnavailableBadge.vue` | Localized translation-unavailable badge |
-| `src/client/components/ContentCover.vue` | Optional cover image for News/Page detail and News list |
-| `src/client/components/news/NewsListItem.vue` | Cover or text-only list row |
-| `src/client/components/news/NewsList.vue` | List + empty state |
-| `src/client/components/news/NewsTagsList.vue` | Unpaginated tags + counts |
-| `src/client/components/ArticleMeta.vue` | Published / updated / tags meta row |
-| `src/client/layouts/NewsIndexLayout.vue` | News index + pagination |
-| `src/client/layouts/NewsTagsIndexLayout.vue` | Tags index |
-| `src/client/layouts/NewsTagArchiveLayout.vue` | Tag archive + pagination |
-| `src/client/layouts/NewsDetailLayout.vue` | News article 760px, no TOC/search |
-| `src/client/layouts/PageDetailLayout.vue` | General page 760px, optional cover |
-| `src/client/components/home/HomeLogoSlot.vue` | Renders `home-logo` formatter output in Main |
-| `src/client/components/home/HomeFooterSlot.vue` | Renders `home-footer` into shell Footer |
-| `tests/compiler/news/*.test.ts` | View-model and page-data attachment tests |
-| `tests/shared/format-message.test.ts` | Message interpolation tests |
-| `tests/compiler/markdown/home-formatters.test.ts` | Formatter registration / Home assert tests |
-| `tests/client/components/*.test.ts` | Badge, list item, meta, cover component tests |
-| `tests/client/layouts/*.test.ts` | Layout composition tests |
-| `tests/integration/news-page-fixtures.test.ts` | Fixture build assertions for routes + list models |
+| `src/shared/types/news.ts` | News/Page/Home view-model and frontmatter types |
+| `src/shared/format-message.ts` | **Existing:** verify/extend named placeholder interpolation |
+| `src/shared/format-calendar-date.ts` | Shared UTC-safe `YYYY-MM-DD` calendar formatter |
+| `src/compiler/news/build-news-list-items.ts` | Build per-locale News list items from route packages + detail pages; base-aware detail/tag links |
+| `src/compiler/news/build-news-tags-index.ts` | Declared tag counts for News Tags Index; tag links from archive pages when present |
+| `src/compiler/news/attach-news-page-data.ts` | Build `SynctrolNewsFrontmatter` for News collection/detail pages |
+| `src/compiler/page/attach-page-page-data.ts` | Build `SynctrolPageFrontmatter` for Page detail pages |
+| `src/compiler/markdown/home-formatters.ts` | Register `home-logo` / `home-footer` markdown-it containers and assert Home logo |
+| `src/compiler/home/extract-home-formatter-html.ts` | Render/extract Home formatter HTML for frontmatter |
+| `src/compiler/home/build-home-frontmatter.ts` | Build `SynctrolHomeFrontmatter` for Home pages |
+| `src/compiler/locale-markdown.ts` | **Modify:** assert `home-logo` while parsing Home locale Markdown |
+| `src/compiler/theme.ts` | **Modify:** `extendsMarkdown`; inject `synctrol.news/page/home` additively |
+| `src/client/components/DraftBadge.vue` | **Existing:** extend presentational draft badge |
+| `src/client/components/TranslationUnavailableBadge.vue` | Translation-unavailable status badge |
+| `src/client/components/ContentColumn.vue` | 760px shared content column using `--syn-content-width` |
+| `src/client/components/PaginationNav.vue` | Shared previous/next pagination nav mirroring ReleaseIndex UX/a11y |
+| `src/client/components/ContentCover.vue` | Optional cover image component for News/Page |
+| `src/client/components/ArticleMeta.vue` | Published/updated dates and tag links for News detail |
+| `src/client/components/news/NewsListItem.vue` | Cover/text-only News list row with fallback/draft badges |
+| `src/client/components/news/NewsList.vue` | News list and empty state |
+| `src/client/components/news/NewsTagsList.vue` | Unpaginated tag-count list |
+| `src/client/components/home/HomeLogoSlot.vue` | Render `frontmatter.synctrol.home.logoHtml` in Home main |
+| `src/client/components/home/HomeFooterSlot.vue` | Render `frontmatter.synctrol.home.footerHtml` in `ShellLayout` footer slot |
+| `src/client/layouts/NewsIndexLayout.vue` | News index collection layout |
+| `src/client/layouts/NewsTagsIndexLayout.vue` | News tags index layout |
+| `src/client/layouts/NewsTagArchiveLayout.vue` | News tag archive layout |
+| `src/client/layouts/NewsDetailLayout.vue` | News detail layout wrapping `<Content />` body |
+| `src/client/layouts/PageDetailLayout.vue` | Page detail layout wrapping `<Content />` body |
+| `src/client/layouts/Layout.vue` | **Modify:** single switch after Release handling; pass `ShellLayout` footer slot |
+| `tests/helpers/news-fixtures.ts` | News/Page fixtures reusing `tests/helpers/route-fixtures.ts` |
+| `tests/shared/*.test.ts` | Format message, calendar date, News type tests |
+| `tests/compiler/news/*.test.ts` | News list/tag/frontmatter builder tests |
+| `tests/compiler/page/*.test.ts` | Page frontmatter builder tests |
+| `tests/compiler/markdown/*.test.ts` | Home formatter registration/assert/extraction tests |
+| `tests/client/components/*.test.ts` | Shared client primitive and News component tests |
+| `tests/client/layouts/*.test.ts` | News/Page/Home layout composition tests |
+| `tests/compiler/theme.integration.test.ts` | **Extend:** frontmatter injection smoke for News/Page/Home |
+| `tests/integration/news-page-fixtures.test.ts` | End-to-end route + model assertions with HEAD compiler signatures |
+| `package.json` / `package-lock.json` | **Modify in Task 10 only if needed:** direct markdown dependencies |
 
-**Prerequisite interfaces (import; do not redefine):**
+**Out of scope:** RSS/Sitemap/JSON-LD/OG emission (Plan 10), npm publishing (Plan 11), Release UI changes (Plan 08 complete), shell redesign, layout registry, search, table of contents.
+
+**Prerequisite interfaces (import; do not redeclare):**
 
 ```ts
-// Plan 01 — src/shared/types.ts / messages.ts
-export type ContentType = 'home' | 'release' | 'news' | 'page'
-export type LocaleKey = string
-export type Multilanguage = string | Record<LocaleKey, string>
-export interface LocaleMessages {
-  draft: string
-  translationUnavailable: string
-  published: string
-  updated: string
-  emptyNews: string
-  previousPage: string
-  nextPage: string
-  paginatedTitle: string // {title}, {page}
-  tagArchiveTitle: string // {tag}, {title}
-  // … remaining keys
-}
+// src/shared/options.ts
 export interface NewsOptions {
   urlSegment: string
   index: { enabled: boolean; pagination: number | false }
   tags: { urlSegment: string; index: { enabled: boolean } }
 }
-export interface SynctrolThemeOptions {
-  mainLocale: LocaleKey
-  locales: Record<LocaleKey, { lang: string; label: string; messages: LocaleMessages; dateFormat?: Intl.DateTimeFormatOptions }>
-  showDrafts?: boolean
+export interface ResolvedSynctrolThemeOptions {
+  mainLocale: string
+  locales: Record<string, { lang: string; label: string; dateFormat: Intl.DateTimeFormatOptions; messages: LocaleMessages }>
+  showDrafts: boolean
   news: NewsOptions
-  seo: {
-    collections: {
-      news: { title: Multilanguage; description: Multilanguage }
-    }
-  }
-  // …
+  seo: { collections: { news: { title: Multilanguage; description: Multilanguage } } }
 }
 
-// Plan 03 — LocaleMarkdown / RouteContentPackage live in src/shared/types.ts
-// (Plan 03 Task 1). Do not redeclare them here. Canonical shape:
-//   RouteContentPackage {
-//     dir, identity, type, slug, date?, updated?, draft, path?, tags,
-//     cover?, artwork?, locales
-//   }
-//   LocaleMarkdown { filePath, title, description?, draft, body }
-// Plan 03 still stamps CompiledPage's packagePath field from pkg.dir.
-import type { LocaleMarkdown, RouteContentPackage } from '../types'
-export interface TagDefinition {
-  title: Multilanguage
-}
-export interface DefinitionsFile {
-  tags: Record<string, TagDefinition>
-  platforms: Record<string, unknown>
-}
-
-// Plan 03 — CompiledPage
+// src/shared/route-types.ts
+export type ContentIdentity = 'home' | `release:${string}` | `news:${string}` | `page:${string}`
 export interface CompiledPage {
-  identity: import('../route-types').PageIdentity
-  locale: LocaleKey
-  contentType: ContentType | 'release-collection' | 'news-collection'
-  url: import('../route-types').UrlLayers
+  identity: ContentIdentity | 'news-index' | `news-page:${number}` | 'news-tags-index' | `news-tag:${string}` | `news-tag:${string}:page:${number}` | 'release-index' | `release-page:${number}`
+  locale: string
+  contentType: 'home' | 'release' | 'news' | 'page' | 'release-collection' | 'news-collection'
+  url: { routePath: string; outputPath: string; publicPath: string; absoluteUrl: string }
   isFallback: boolean
   isDraft: boolean
   noindex: boolean
-  bodyLocale: LocaleKey
-  canonicalLocale: LocaleKey
+  bodyLocale: string
+  canonicalLocale: string
   packagePath?: string
   slug?: string | null
   title: string
   description?: string
-  collection?: {
-    page: number
-    pageCount: number
-    itemIdentities: import('../route-types').ContentIdentity[]
-    tag?: string
-  }
+  collection?: { page: number; pageCount: number; itemIdentities: ContentIdentity[]; tag?: string }
 }
-
-// Plan 04 — content asset public paths (assumed)
-// Client: resolveContentAsset from vuepress-theme-synctrolling/client
-//   (reads frontmatter.synctrol.contentAssets).
-// Node: AssetManifest.contentPublicPaths[pkg.identity][relativePath] → publicPath.
-// Prefer those over inventing resolveContentAssetPublicUrl; if a thin wrapper
-// is needed locally, return publicPath (not absolute URL) unless SEO needs absoluteUrl.
-
-// Plan 05 — shell / locale composables (assumed)
-// SynctrolShell.vue provides Header/Main/Nav/Footer/Social/LanguageSwitcher
-// useLocaleMessages(): LocaleMessages
-// useLocaleOptions(): { lang: string; label: string; dateFormat?: Intl.DateTimeFormatOptions }
-// ContentColumn.vue wraps Main article children with max-width: var(--syn-content-width)
-
-// Plan 08 — shared helpers (assumed)
-export function formatCalendarDate(
-  date: string,
-  localeLang: string,
-  dateFormat?: Intl.DateTimeFormatOptions,
-): string
-// PaginationNav.vue props: { prevHref?: string; nextHref?: string; prevLabel: string; nextLabel: string }
 ```
 
 ---
 
-### Task 1: Shared News view-model types and message interpolation
+### Task 1: Shared News/Page/Home types and message interpolation verification
 
 **Files:**
 - Create: `src/shared/types/news.ts`
-- Create: `src/shared/format-message.ts`
-- Create: `tests/shared/format-message.test.ts`
 - Create: `tests/shared/news-types.test.ts`
-- Modify: `src/index.ts` (re-export news types)
+- Modify: `tests/shared/format-message.test.ts`
+- Modify: `src/index.ts` only to export News/Page/Home types; keep `formatMessage` platform re-export unchanged
 
 **Interfaces:**
-- Consumes: `LocaleKey`, `ContentIdentity` from Plans 01/03
-- Produces: `NewsListItem`, `NewsTagLink`, `NewsTagCount`, `NewsCollectionPageData`, `formatMessage(template, vars)`
+- Consumes: `LocaleKey`, `ContentDefinitions`, `LocaleMessages`, `RouteContentPackage` from `src/shared/types.ts`; `ContentIdentity` from `src/shared/route-types.ts`; existing `formatMessage(template, vars)` from `src/shared/format-message.ts`
+- Produces: `NewsListItem`, `NewsTagLink`, `NewsTagCount`, `NewsCollectionPageData`, `NewsDetailPageData`, `PageDetailPageData`, `SynctrolNewsFrontmatter`, `SynctrolPageFrontmatter`, `SynctrolHomeFrontmatter`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Extend format-message coverage for HEAD behavior**
 
 ```ts
 // tests/shared/format-message.test.ts
@@ -187,85 +199,101 @@ import { describe, expect, it } from 'vitest'
 import { formatMessage } from '../../src/shared/format-message'
 
 describe('formatMessage', () => {
-  it('replaces named placeholders', () => {
-    expect(
-      formatMessage('{tag} · {title}', { tag: 'Releases', title: 'News' }),
-    ).toBe('Releases · News')
-    expect(
-      formatMessage('{title} · Page {page}', { title: 'News', page: '2' }),
-    ).toBe('News · Page 2')
-  })
-
-  it('leaves unknown placeholders intact', () => {
+  it('replaces string and number placeholders and leaves unknown placeholders intact', () => {
+    expect(formatMessage('{tag} · {title}', { tag: 'Releases', title: 'News' })).toBe(
+      'Releases · News',
+    )
+    expect(formatMessage('{title} · Page {page}', { title: 'News', page: 2 })).toBe(
+      'News · Page 2',
+    )
     expect(formatMessage('Hello {name}', {})).toBe('Hello {name}')
   })
 })
 ```
 
+- [ ] **Step 2: Add News/Page/Home type tests**
+
 ```ts
 // tests/shared/news-types.test.ts
 import { describe, expect, it } from 'vitest'
-import type { NewsListItem, NewsTagCount } from '../../src/shared/types/news'
+import type {
+  NewsListItem,
+  NewsTagCount,
+  SynctrolHomeFrontmatter,
+  SynctrolNewsFrontmatter,
+  SynctrolPageFrontmatter,
+} from '../../src/shared/types/news'
 
-describe('news view-model types', () => {
-  it('requires excludeFromRss on every list item', () => {
+describe('Plan 09 frontmatter types', () => {
+  it('models news collection, page detail, and home formatter payloads', () => {
     const item: NewsListItem = {
       identity: 'news:launch',
       slug: 'launch',
-      publicPath: '/en/news/launch/',
+      publicPath: '/base/en/news/launch/',
       title: '发布',
       titleLang: 'zh-CN',
       description: '摘要',
       descriptionLang: 'zh-CN',
       date: '2026-08-11',
       updated: '2026-08-12',
-      coverPublicUrl: undefined,
-      tags: [{ key: 'release', title: 'Releases', publicPath: '/en/news/tags/release/' }],
+      coverPublicPath: undefined,
+      tags: [{ key: 'release', title: 'Releases', publicPath: '/base/en/news/tags/release/' }],
       isFallback: true,
       isDraft: false,
       excludeFromRss: true,
     }
-    expect(item.excludeFromRss).toBe(true)
-    expect(item.isFallback).toBe(true)
-  })
-
-  it('models unpaginated tag counts', () => {
-    const row: NewsTagCount = {
+    const tag: NewsTagCount = {
       key: 'release',
-      title: '作品发布',
-      titleLang: 'zh-CN',
-      count: 3,
-      publicPath: '/zh/news/tags/release/',
+      title: 'Releases',
+      titleLang: 'en-US',
+      count: 1,
+      publicPath: '/base/en/news/tags/release/',
     }
-    expect(row.count).toBe(3)
+    const news: SynctrolNewsFrontmatter = {
+      kind: 'index',
+      data: {
+        kind: 'news-index',
+        heading: 'News',
+        description: 'All news',
+        items: [item],
+        pagination: null,
+      },
+    }
+    const page: SynctrolPageFrontmatter = {
+      kind: 'detail',
+      data: {
+        kind: 'page-detail',
+        slug: 'team',
+        title: 'Team',
+        titleLang: 'en-US',
+        isFallback: false,
+        isDraft: false,
+        bodyLang: 'en-US',
+      },
+    }
+    const home: SynctrolHomeFrontmatter = {
+      kind: 'home',
+      logoHtml: '<div data-syn-formatter="home-logo">SYNCTROL</div>',
+    }
+    expect(news.data.items[0]).toBe(item)
+    expect(tag.count).toBe(1)
+    expect(page.data.kind).toBe('page-detail')
+    expect(home.logoHtml).toContain('home-logo')
   })
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 3: Run tests to verify they fail only for missing News types**
 
 Run: `npm test -- tests/shared/format-message.test.ts tests/shared/news-types.test.ts`
 
-Expected: FAIL with module not found for `format-message` / `types/news`.
+Expected: `format-message` assertions pass or remain compatible; `news-types` fails because `src/shared/types/news.ts` is missing.
 
-- [ ] **Step 3: Write minimal implementation**
-
-```ts
-// src/shared/format-message.ts
-export function formatMessage(
-  template: string,
-  vars: Record<string, string>,
-): string {
-  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key: string) => {
-    return Object.prototype.hasOwnProperty.call(vars, key) ? vars[key]! : match
-  })
-}
-```
+- [ ] **Step 4: Add shared types**
 
 ```ts
 // src/shared/types/news.ts
-import type { LocaleKey } from '../types.js'
-import type { ContentIdentity } from './routes.js'
+import type { ContentIdentity } from '../route-types.js'
 
 export interface NewsTagLink {
   key: string
@@ -274,24 +302,19 @@ export interface NewsTagLink {
 }
 
 export interface NewsListItem {
-  identity: ContentIdentity
+  identity: Extract<ContentIdentity, `news:${string}`>
   slug: string
   publicPath: string
   title: string
-  /** BCP 47 lang of the title text (main lang when fallback). */
   titleLang: string
   description?: string
   descriptionLang?: string
   date: string
   updated?: string
-  coverPublicUrl?: string
+  coverPublicPath?: string
   tags: NewsTagLink[]
   isFallback: boolean
   isDraft: boolean
-  /**
-   * Plan 10 must exclude this item from locale RSS when true.
-   * Always true for fallback list items; also true for drafts.
-   */
   excludeFromRss: boolean
 }
 
@@ -300,22 +323,27 @@ export interface NewsTagCount {
   title: string
   titleLang: string
   count: number
-  publicPath: string
+  /** Present only when a tag archive page exists. */
+  publicPath?: string
 }
 
+export interface NewsPagination {
+  page: number
+  pageCount: number
+  prevPublicPath?: string
+  nextPublicPath?: string
+}
+
+export type NewsCollectionKind = 'news-index' | 'news-tags-index' | 'news-tag'
+
 export interface NewsCollectionPageData {
-  kind: 'news-index' | 'news-tag' | 'news-tags-index'
+  kind: NewsCollectionKind
   heading: string
   description: string
   items: NewsListItem[]
   tags?: NewsTagCount[]
   tagKey?: string
-  pagination: {
-    page: number
-    pageCount: number
-    prevPublicPath?: string
-    nextPublicPath?: string
-  } | null
+  pagination: NewsPagination | null
 }
 
 export interface NewsDetailPageData {
@@ -325,7 +353,7 @@ export interface NewsDetailPageData {
   titleLang: string
   date: string
   updated?: string
-  coverPublicUrl?: string
+  coverPublicPath?: string
   tags: NewsTagLink[]
   isFallback: boolean
   isDraft: boolean
@@ -338,46 +366,64 @@ export interface PageDetailPageData {
   slug: string
   title: string
   titleLang: string
-  coverPublicUrl?: string
+  coverPublicPath?: string
   isFallback: boolean
   isDraft: boolean
   translationUnavailableMessage?: string
   bodyLang: string
 }
 
-export type LocaleLangLookup = Record<LocaleKey, string>
+export type SynctrolNewsFrontmatter =
+  | { kind: 'index'; data: NewsCollectionPageData }
+  | { kind: 'tags-index'; data: NewsCollectionPageData }
+  | { kind: 'tag'; data: NewsCollectionPageData }
+  | { kind: 'detail'; data: NewsDetailPageData }
+
+export interface SynctrolPageFrontmatter {
+  kind: 'detail'
+  data: PageDetailPageData
+}
+
+export interface SynctrolHomeFrontmatter {
+  kind: 'home'
+  logoHtml: string
+  footerHtml?: string
+}
 ```
 
-Re-export from `src/index.ts`:
+Add only type exports at the package root:
 
 ```ts
+// src/index.ts
 export type {
+  NewsCollectionPageData,
+  NewsDetailPageData,
   NewsListItem,
   NewsTagCount,
   NewsTagLink,
-  NewsCollectionPageData,
-  NewsDetailPageData,
   PageDetailPageData,
+  SynctrolHomeFrontmatter,
+  SynctrolNewsFrontmatter,
+  SynctrolPageFrontmatter,
 } from './shared/types/news.js'
-export { formatMessage } from './shared/format-message.js'
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 5: Run tests to verify they pass**
 
 Run: `npm test -- tests/shared/format-message.test.ts tests/shared/news-types.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/shared/format-message.ts src/shared/types/news.ts src/index.ts tests/shared/format-message.test.ts tests/shared/news-types.test.ts
-git commit -m "feat(news): add news view-model types and message interpolation"
+git add src/shared/types/news.ts src/index.ts tests/shared/format-message.test.ts tests/shared/news-types.test.ts
+git commit -m "feat(news): add news page and home frontmatter types"
 ```
 
 ---
 
-### Task 2: Build News list items with fallback and draft badges metadata
+### Task 2: Build base-aware News list items
 
 **Files:**
 - Create: `src/compiler/news/build-news-list-items.ts`
@@ -385,68 +431,33 @@ git commit -m "feat(news): add news view-model types and message interpolation"
 - Create: `tests/helpers/news-fixtures.ts`
 
 **Interfaces:**
-- Consumes: `RouteContentPackage`, `CompiledPage`, `DefinitionsFile`, `NewsOptions`, `resolveMultilanguage`, Plan 04 content asset `publicPath` lookup (`contentPublicPaths` / `resolveContentAsset`), `encodePathSegment`
+- Consumes: `RouteContentPackage`, `ContentDefinitions`, `LocaleKey` from `src/shared/types.ts`; `ResolvedSynctrolThemeOptions` from `src/shared/options.ts`; `CompiledPage` from `src/shared/route-types.ts`; `resolveMultilanguage`; detail/tag archive `CompiledPage.url.publicPath`; Plan 04 cover `publicPath`
 - Produces: `buildNewsListItems(input): NewsListItem[]`
 
-Rules encoded in tests:
-- Sort by `date` descending, then `slug` ascending
-- Title/description from the locale Markdown that backs the detail page (`bodyLocale`)
-- When `isFallback`, annotate `titleLang` / `descriptionLang` with main locale’s `lang`, set `excludeFromRss: true`
-- When not fallback, langs equal current locale `lang`, `excludeFromRss: false` unless `isDraft`
-- Drafts always `excludeFromRss: true`
-- Text-only when `cover` absent (`coverPublicUrl` undefined)
-- Tag links use `/{locale}/{news.urlSegment}/{tags.urlSegment}/{encodedTag}/`
-
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Add fixtures reusing HEAD helpers**
 
 ```ts
 // tests/helpers/news-fixtures.ts
-import type { RouteContentPackage, LocaleMarkdown, SynctrolThemeOptions } from '../../src/shared/types'
 import type { CompiledPage } from '../../src/shared/route-types'
-import { themeOptions as baseThemeOptions } from './route-fixtures'
+import type { ContentDefinitions, RouteContentPackage } from '../../src/shared/types'
+import { newsPackage, themeOptions } from './route-fixtures'
 
-export function md(
-  partial: Partial<LocaleMarkdown> & { title: string },
-): LocaleMarkdown {
-  return {
-    filePath: partial.filePath ?? 'zh.md',
-    title: partial.title,
-    description: partial.description,
-    draft: partial.draft ?? false,
-    body: partial.body ?? '# body',
-  }
-}
+export { newsPackage, pagePackage, homePackage, themeOptions } from './route-fixtures'
 
-export function newsPkg(overrides: Partial<RouteContentPackage> & { slug: string }): RouteContentPackage {
-  const defaults: RouteContentPackage = {
-    dir: `/content/news/${overrides.slug}`,
-    identity: `news:${overrides.slug}`,
-    type: 'news',
-    slug: overrides.slug,
-    date: '2026-08-11',
-    draft: false,
-    tags: ['release'],
-    locales: {
-      zh: md({ title: `中文-${overrides.slug}`, description: '中文摘要', filePath: 'zh.md' }),
-      en: md({ title: `EN-${overrides.slug}`, description: 'EN summary', filePath: 'en.md' }),
-    },
-  }
-  return {
-    ...defaults,
-    ...overrides,
-    type: 'news',
-    slug: overrides.slug,
-    dir: overrides.dir ?? defaults.dir,
-    identity: overrides.identity ?? defaults.identity,
-  }
+export const newsDefinitions: ContentDefinitions = {
+  tags: {
+    release: { title: { zh: '作品发布', en: 'Releases' } },
+    tour: { title: { zh: '巡演', en: 'Tour' } },
+  },
+  platforms: {},
 }
 
 export function newsDetailPage(
   pkg: RouteContentPackage,
   locale: string,
-  flags: Partial<Pick<CompiledPage, 'isFallback' | 'isDraft' | 'bodyLocale'>> = {},
+  overrides: Partial<CompiledPage> = {},
 ): CompiledPage {
-  const bodyLocale = flags.bodyLocale ?? (flags.isFallback ? 'zh' : locale)
+  const bodyLocale = overrides.bodyLocale ?? (overrides.isFallback ? 'zh' : locale)
   const body = pkg.locales[bodyLocale]!
   return {
     identity: `news:${pkg.slug}`,
@@ -455,93 +466,96 @@ export function newsDetailPage(
     url: {
       routePath: `/${locale}/news/${pkg.slug}/`,
       outputPath: `${locale}/news/${pkg.slug}/index.html`,
-      publicPath: `/${locale}/news/${pkg.slug}/`,
-      absoluteUrl: `https://synctrol.com/${locale}/news/${pkg.slug}/`,
+      publicPath: `/base/${locale}/news/${pkg.slug}/`,
+      absoluteUrl: `https://synctrol.com/base/${locale}/news/${pkg.slug}/`,
     },
-    isFallback: flags.isFallback ?? false,
-    isDraft: flags.isDraft ?? false,
-    noindex: Boolean(flags.isFallback || flags.isDraft),
+    isFallback: false,
+    isDraft: false,
+    noindex: false,
     bodyLocale,
-    canonicalLocale: flags.isFallback ? 'zh' : locale,
+    canonicalLocale: bodyLocale,
     packagePath: pkg.dir,
     slug: pkg.slug,
     title: body.title,
     description: body.description,
+    ...overrides,
   }
 }
 
-export function newsTheme(
-  partial: Partial<SynctrolThemeOptions> = {},
-): SynctrolThemeOptions {
-  return baseThemeOptions({
-    news: {
-      urlSegment: 'news',
-      index: { enabled: true, pagination: 12 },
-      tags: { urlSegment: 'tags', index: { enabled: true } },
+export function tagArchivePage(tag: string, locale = 'en'): CompiledPage {
+  return {
+    identity: `news-tag:${tag}`,
+    locale,
+    contentType: 'news-collection',
+    url: {
+      routePath: `/${locale}/news/tags/${tag}/`,
+      outputPath: `${locale}/news/tags/${tag}/index.html`,
+      publicPath: `/base/${locale}/news/tags/${tag}/`,
+      absoluteUrl: `https://synctrol.com/base/${locale}/news/tags/${tag}/`,
     },
-    ...partial,
-  })
+    isFallback: false,
+    isDraft: false,
+    noindex: false,
+    bodyLocale: locale,
+    canonicalLocale: locale,
+    title: `news-tag:${tag}`,
+    collection: { page: 1, pageCount: 1, itemIdentities: [], tag },
+  }
 }
 ```
+
+- [ ] **Step 2: Write failing list-item tests**
 
 ```ts
 // tests/compiler/news/build-news-list-items.test.ts
 import { describe, expect, it } from 'vitest'
 import { buildNewsListItems } from '../../../src/compiler/news/build-news-list-items'
 import {
+  newsDefinitions,
   newsDetailPage,
-  newsPkg,
-  newsTheme,
+  newsPackage,
+  tagArchivePage,
+  themeOptions,
 } from '../../helpers/news-fixtures'
 
-const definitions = {
-  tags: {
-    release: { title: { zh: '作品发布', en: 'Releases' } },
-  },
-  platforms: {},
-}
-
 describe('buildNewsListItems', () => {
-  it('sorts by date descending then slug and maps cover/title/description/date/tags', () => {
-    const a = newsPkg({ slug: 'a', date: '2026-08-10' })
-    const b = newsPkg({ slug: 'b', date: '2026-08-11', cover: './assets/c.webp' })
-    const c = newsPkg({ slug: 'c', date: '2026-08-11' })
-    const options = newsTheme()
-    const details = [
-      newsDetailPage(a, 'zh'),
-      newsDetailPage(b, 'zh'),
-      newsDetailPage(c, 'zh'),
-    ]
-    const items = buildNewsListItems({
-      locale: 'zh',
-      packages: [a, b, c],
-      detailPages: details,
-      options,
-      definitions,
-      resolveCoverUrl: (pkg, rel) =>
-        `/assets/content/news/${pkg.slug}/${rel.replace(/^\.\//, '')}`,
-    })
-    expect(items.map((i) => i.slug)).toEqual(['b', 'c', 'a'])
-    expect(items[0]).toMatchObject({
-      title: '中文-b',
-      description: '中文摘要',
+  it('sorts by date desc then slug and uses detail/tag publicPath links', () => {
+    const a = newsPackage({ slug: 'a', date: '2026-08-10', tags: ['release'] })
+    const b = newsPackage({
+      slug: 'b',
       date: '2026-08-11',
-      coverPublicUrl: '/assets/content/news/b/assets/c.webp',
-      titleLang: 'zh-CN',
-      isFallback: false,
+      cover: './assets/b.webp',
+      tags: ['release', 'tour'],
+    })
+    const c = newsPackage({ slug: 'c', date: '2026-08-11', tags: ['tour'] })
+    const items = buildNewsListItems({
+      locale: 'en',
+      packages: [a, b, c],
+      detailPages: [newsDetailPage(a, 'en'), newsDetailPage(b, 'en'), newsDetailPage(c, 'en')],
+      tagArchivePages: [tagArchivePage('release'), tagArchivePage('tour')],
+      options: themeOptions(),
+      definitions: newsDefinitions,
+      resolveCoverPublicPath: (pkg, rel) => `/base/assets/${pkg.slug}/${rel.replace(/^\.\//, '')}`,
+      base: '/base/',
+    })
+    expect(items.map((item) => item.slug)).toEqual(['b', 'c', 'a'])
+    expect(items[0]).toMatchObject({
+      publicPath: '/base/en/news/b/',
+      coverPublicPath: '/base/assets/b/assets/b.webp',
+      title: 'Launch',
+      titleLang: 'en-US',
       excludeFromRss: false,
     })
-    expect(items[0]!.tags[0]).toEqual({
-      key: 'release',
-      title: '作品发布',
-      publicPath: '/zh/news/tags/release/',
-    })
-    expect(items[1]!.coverPublicUrl).toBeUndefined()
+    expect(items[0]!.tags.map((tag) => tag.publicPath)).toEqual([
+      '/base/en/news/tags/release/',
+      '/base/en/news/tags/tour/',
+    ])
   })
 
-  it('uses main-locale title/description with main lang and excludeFromRss for fallbacks', () => {
-    const pkg = newsPkg({
-      slug: 'launch',
+  it('uses body-locale text/lang and excludes fallback or draft items from RSS', () => {
+    const pkg = newsPackage({
+      slug: 'fallback',
+      draft: true,
       locales: {
         zh: {
           filePath: 'zh.md',
@@ -552,205 +566,171 @@ describe('buildNewsListItems', () => {
         },
       },
     })
-    const enFallback = newsDetailPage(pkg, 'en', {
-      isFallback: true,
-      bodyLocale: 'zh',
-    })
     const items = buildNewsListItems({
       locale: 'en',
       packages: [pkg],
-      detailPages: [enFallback],
-      options: newsTheme(),
-      definitions,
-      resolveCoverUrl: () => {
-        throw new Error('no cover')
-      },
+      detailPages: [
+        newsDetailPage(pkg, 'en', {
+          isFallback: true,
+          isDraft: true,
+          noindex: true,
+          bodyLocale: 'zh',
+          canonicalLocale: 'zh',
+        }),
+      ],
+      tagArchivePages: [tagArchivePage('release')],
+      options: themeOptions({ showDrafts: true }),
+      definitions: newsDefinitions,
+      resolveCoverPublicPath: () => undefined,
+      base: '/base/',
     })
-    expect(items).toHaveLength(1)
     expect(items[0]).toMatchObject({
       title: '发布',
       titleLang: 'zh-CN',
       description: '中文说明',
       descriptionLang: 'zh-CN',
       isFallback: true,
-      excludeFromRss: true,
-      publicPath: '/en/news/launch/',
-    })
-  })
-
-  it('marks drafts excludeFromRss and isDraft', () => {
-    const pkg = newsPkg({ slug: 'drafty', draft: true })
-    const page = newsDetailPage(pkg, 'zh', { isDraft: true })
-    const items = buildNewsListItems({
-      locale: 'zh',
-      packages: [pkg],
-      detailPages: [page],
-      options: newsTheme({ showDrafts: true }),
-      definitions,
-      resolveCoverUrl: () => undefined as never,
-    })
-    expect(items[0]).toMatchObject({
       isDraft: true,
       excludeFromRss: true,
+      publicPath: '/base/en/news/fallback/',
     })
-  })
-
-  it('only includes packages present as detail pages for that locale', () => {
-    const shown = newsPkg({ slug: 'shown' })
-    const hidden = newsPkg({ slug: 'hidden' })
-    const items = buildNewsListItems({
-      locale: 'zh',
-      packages: [shown, hidden],
-      detailPages: [newsDetailPage(shown, 'zh')],
-      options: newsTheme(),
-      definitions,
-      resolveCoverUrl: () => undefined as never,
-    })
-    expect(items.map((i) => i.slug)).toEqual(['shown'])
   })
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 3: Run tests to verify they fail**
 
 Run: `npm test -- tests/compiler/news/build-news-list-items.test.ts`
 
-Expected: FAIL with `buildNewsListItems` not found.
+Expected: FAIL with `buildNewsListItems` module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Implement with compiled publicPath links**
 
 ```ts
 // src/compiler/news/build-news-list-items.ts
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
-import type { RouteContentPackage, DefinitionsFile, LocaleKey, SynctrolThemeOptions } from '../../shared/types.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
 import type { CompiledPage } from '../../shared/route-types.js'
+import type { ContentDefinitions, LocaleKey, RouteContentPackage } from '../../shared/types.js'
 import type { NewsListItem, NewsTagLink } from '../../shared/types/news.js'
-import { encodePathSegment } from '../url/validate-segment.js'
+import { encodeRouteSegment } from '../path-suffix.js'
+import { buildUrlLayers } from '../url-layers.js'
 
 export interface BuildNewsListItemsInput {
   locale: LocaleKey
-  packages: RouteContentPackage[]
-  detailPages: CompiledPage[]
-  options: SynctrolThemeOptions
-  definitions: DefinitionsFile
-  resolveCoverUrl: (pkg: RouteContentPackage, relativePath: string) => string
+  packages: readonly RouteContentPackage[]
+  detailPages: readonly CompiledPage[]
+  tagArchivePages: readonly CompiledPage[]
+  options: ResolvedSynctrolThemeOptions
+  definitions: ContentDefinitions
+  resolveCoverPublicPath: (pkg: RouteContentPackage, relativePath: string) => string | undefined
+  base: string
+}
+
+function compareNews(left: RouteContentPackage, right: RouteContentPackage): number {
+  const byDate = (right.date ?? '').localeCompare(left.date ?? '')
+  return byDate === 0 ? (left.slug ?? '').localeCompare(right.slug ?? '') : byDate
 }
 
 function tagPublicPath(
+  tag: string,
   locale: LocaleKey,
-  newsSegment: string,
-  tagsSegment: string,
-  tagKey: string,
+  pages: readonly CompiledPage[],
+  options: ResolvedSynctrolThemeOptions,
+  base: string,
 ): string {
-  return `/${locale}/${newsSegment}/${tagsSegment}/${encodePathSegment(tagKey)}/`
-}
-
-function buildTagLinks(
-  keys: string[],
-  locale: LocaleKey,
-  options: SynctrolThemeOptions,
-  definitions: DefinitionsFile,
-): NewsTagLink[] {
-  const newsSegment = options.news.urlSegment
-  const tagsSegment = options.news.tags.urlSegment
-  return keys.map((key) => {
-    const def = definitions.tags[key]
-    if (!def) {
-      throw new Error(`Unknown news tag "${key}"`)
-    }
-    const resolved = resolveMultilanguage(def.title, locale, options.mainLocale)
-    return {
-      key,
-      title: resolved.text,
-      publicPath: tagPublicPath(locale, newsSegment, tagsSegment, key),
-    }
-  })
+  const compiled = pages.find(
+    (page) =>
+      page.locale === locale &&
+      page.contentType === 'news-collection' &&
+      page.identity === `news-tag:${tag}` &&
+      page.collection?.page === 1,
+  )
+  if (compiled) return compiled.url.publicPath
+  return buildUrlLayers({
+    locale: encodeRouteSegment(locale, 'locale'),
+    pathSuffix: `/${encodeRouteSegment(options.news.urlSegment, 'options.news.urlSegment')}/${encodeRouteSegment(options.news.tags.urlSegment, 'options.news.tags.urlSegment')}/${encodeRouteSegment(tag, 'tag')}/`,
+    base,
+    siteUrl: options.siteUrl,
+  }).publicPath
 }
 
 export function buildNewsListItems(input: BuildNewsListItemsInput): NewsListItem[] {
-  const { locale, packages, detailPages, options, definitions, resolveCoverUrl } =
-    input
-  const byIdentity = new Map(
-    detailPages
-      .filter((p) => p.locale === locale && p.contentType === 'news')
-      .map((p) => [p.identity, p]),
+  const detailByIdentity = new Map(
+    input.detailPages
+      .filter((page) => page.locale === input.locale && page.contentType === 'news')
+      .map((page) => [page.identity, page]),
   )
 
-  const items: NewsListItem[] = []
-  for (const pkg of packages) {
-    if (pkg.type !== 'news' || !pkg.slug) continue
-    const identity = `news:${pkg.slug}` as const
-    const page = byIdentity.get(identity)
-    if (!page) continue
-
-    const bodyMd = pkg.locales[page.bodyLocale]
-    if (!bodyMd) {
-      throw new Error(`Missing body locale ${page.bodyLocale} for ${pkg.dir}`)
-    }
-
-    const titleLang = options.locales[page.bodyLocale]!.lang
-    const descriptionLang = bodyMd.description
-      ? options.locales[page.bodyLocale]!.lang
-      : undefined
-
-    items.push({
-      identity,
-      slug: pkg.slug,
-      publicPath: page.url.publicPath,
-      title: bodyMd.title,
-      titleLang,
-      description: bodyMd.description,
-      descriptionLang,
-      date: pkg.date!,
-      updated: pkg.updated,
-      coverPublicUrl: pkg.cover ? resolveCoverUrl(pkg, pkg.cover) : undefined,
-      tags: buildTagLinks(pkg.tags ?? [], locale, options, definitions),
-      isFallback: page.isFallback,
-      isDraft: page.isDraft,
-      excludeFromRss: page.isFallback || page.isDraft,
+  return input.packages
+    .filter((pkg) => pkg.type === 'news' && pkg.slug !== null)
+    .filter((pkg) => detailByIdentity.has(`news:${pkg.slug}`))
+    .sort(compareNews)
+    .map((pkg) => {
+      const page = detailByIdentity.get(`news:${pkg.slug}`)!
+      const body = pkg.locales[page.bodyLocale]
+      if (body === undefined) {
+        throw new Error(`Missing ${page.bodyLocale} markdown for ${pkg.identity}`)
+      }
+      const bodyLocale = input.options.locales[page.bodyLocale] ?? input.options.locales[input.options.mainLocale]
+      const tags: NewsTagLink[] = pkg.tags.map((key) => {
+        const resolved = resolveMultilanguage(
+          input.definitions.tags[key]!.title,
+          input.locale,
+          input.options.mainLocale,
+        )
+        return {
+          key,
+          title: resolved.text,
+          publicPath: tagPublicPath(key, input.locale, input.tagArchivePages, input.options, input.base),
+        }
+      })
+      return {
+        identity: `news:${pkg.slug}`,
+        slug: pkg.slug,
+        publicPath: page.url.publicPath,
+        title: body.title,
+        titleLang: bodyLocale.lang,
+        description: body.description,
+        descriptionLang: body.description === undefined ? undefined : bodyLocale.lang,
+        date: pkg.date!,
+        updated: pkg.updated,
+        coverPublicPath: pkg.cover ? input.resolveCoverPublicPath(pkg, pkg.cover) : undefined,
+        tags,
+        isFallback: page.isFallback,
+        isDraft: page.isDraft,
+        excludeFromRss: page.isFallback || page.isDraft,
+      }
     })
-  }
-
-  items.sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? 1 : -1
-    return a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0
-  })
-  return items
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 5: Run tests to verify they pass**
 
 Run: `npm test -- tests/compiler/news/build-news-list-items.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/compiler/news/build-news-list-items.ts tests/compiler/news/build-news-list-items.test.ts tests/helpers/news-fixtures.ts
-git commit -m "feat(news): build list items with fallback lang and RSS exclusion flags"
+git commit -m "feat(news): build base-aware news list items"
 ```
 
 ---
 
-### Task 3: News Tags Index counts (unpaginated)
+### Task 3: Build News Tags Index counts
 
 **Files:**
 - Create: `src/compiler/news/build-news-tags-index.ts`
 - Create: `tests/compiler/news/build-news-tags-index.test.ts`
 
 **Interfaces:**
-- Consumes: `buildNewsListItems` output or equivalent visible packages; `DefinitionsFile.tags`; `NewsOptions`
+- Consumes: `NewsListItem[]`, `ContentDefinitions`, `ResolvedSynctrolThemeOptions`, tag archive `CompiledPage.url.publicPath`
 - Produces: `buildNewsTagsIndex(input): NewsTagCount[]`
 
-Rules:
-- Include every **declared** tag from definitions (unused tags allowed with count `0`)
-- Count is number of visible News list items in this locale that include the tag
-- Not paginated; order is definitions key insertion order
-- Titles resolve with Multilanguage fallback; `titleLang` reflects resolved locale
-
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing tests**
 
 ```ts
 // tests/compiler/news/build-news-tags-index.test.ts
@@ -758,85 +738,68 @@ import { describe, expect, it } from 'vitest'
 import { buildNewsListItems } from '../../../src/compiler/news/build-news-list-items'
 import { buildNewsTagsIndex } from '../../../src/compiler/news/build-news-tags-index'
 import {
+  newsDefinitions,
   newsDetailPage,
-  newsPkg,
-  newsTheme,
+  newsPackage,
+  tagArchivePage,
+  themeOptions,
 } from '../../helpers/news-fixtures'
 
-const definitions = {
-  tags: {
-    release: { title: { zh: '作品发布', en: 'Releases' } },
-    tour: { title: { zh: '巡演', en: 'Tour' } },
-  },
-  platforms: {},
-}
-
 describe('buildNewsTagsIndex', () => {
-  it('lists all declared tags with visible counts and is not paginated', () => {
-    const a = newsPkg({ slug: 'a', tags: ['release'] })
-    const b = newsPkg({ slug: 'b', tags: ['release', 'tour'] })
+  it('lists all declared tags with visible counts and compiled archive links', () => {
+    const a = newsPackage({ slug: 'a', tags: ['release'] })
+    const b = newsPackage({ slug: 'b', tags: ['release', 'tour'] })
+    const options = themeOptions()
+    const tagPages = [tagArchivePage('release'), tagArchivePage('tour')]
     const items = buildNewsListItems({
-      locale: 'zh',
+      locale: 'en',
       packages: [a, b],
-      detailPages: [newsDetailPage(a, 'zh'), newsDetailPage(b, 'zh')],
-      options: newsTheme(),
-      definitions,
-      resolveCoverUrl: () => '/x.webp',
+      detailPages: [newsDetailPage(a, 'en'), newsDetailPage(b, 'en')],
+      tagArchivePages: tagPages,
+      options,
+      definitions: newsDefinitions,
+      resolveCoverPublicPath: () => undefined,
+      base: '/base/',
     })
-    const rows = buildNewsTagsIndex({
-      locale: 'zh',
-      items,
-      definitions,
-      options: newsTheme(),
-    })
-    expect(rows).toEqual([
+    expect(
+      buildNewsTagsIndex({
+        locale: 'en',
+        items,
+        definitions: newsDefinitions,
+        options,
+        tagArchivePages: tagPages,
+      }),
+    ).toEqual([
       {
         key: 'release',
-        title: '作品发布',
-        titleLang: 'zh-CN',
+        title: 'Releases',
+        titleLang: 'en-US',
         count: 2,
-        publicPath: '/zh/news/tags/release/',
+        publicPath: '/base/en/news/tags/release/',
       },
       {
         key: 'tour',
-        title: '巡演',
-        titleLang: 'zh-CN',
+        title: 'Tour',
+        titleLang: 'en-US',
         count: 1,
-        publicPath: '/zh/news/tags/tour/',
+        publicPath: '/base/en/news/tags/tour/',
       },
     ])
   })
 
-  it('keeps unused declared tags at count 0', () => {
+  it('keeps unused declared tags at count 0 without fabricating a missing archive link', () => {
     const rows = buildNewsTagsIndex({
-      locale: 'en',
+      locale: 'zh',
       items: [],
-      definitions,
-      options: newsTheme(),
+      definitions: newsDefinitions,
+      options: themeOptions(),
+      tagArchivePages: [],
     })
-    expect(rows.find((r) => r.key === 'tour')).toMatchObject({
-      count: 0,
-      title: 'Tour',
-      titleLang: 'en-US',
-    })
-  })
-
-  it('falls back tag title lang to mainLocale when missing', () => {
-    const defs = {
-      tags: {
-        release: { title: { zh: '作品发布' } },
-      },
-      platforms: {},
-    }
-    const rows = buildNewsTagsIndex({
-      locale: 'en',
-      items: [],
-      definitions: defs,
-      options: newsTheme(),
-    })
-    expect(rows[0]).toMatchObject({
-      title: '作品发布',
+    expect(rows.find((row) => row.key === 'tour')).toMatchObject({
+      title: '巡演',
       titleLang: 'zh-CN',
+      count: 0,
+      publicPath: undefined,
     })
   })
 })
@@ -848,48 +811,48 @@ Run: `npm test -- tests/compiler/news/build-news-tags-index.test.ts`
 
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement counts**
 
 ```ts
 // src/compiler/news/build-news-tags-index.ts
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
-import type { DefinitionsFile, LocaleKey, SynctrolThemeOptions } from '../../shared/types.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { ContentDefinitions, LocaleKey } from '../../shared/types.js'
 import type { NewsListItem, NewsTagCount } from '../../shared/types/news.js'
-import { encodePathSegment } from '../url/validate-segment.js'
 
 export interface BuildNewsTagsIndexInput {
   locale: LocaleKey
-  items: NewsListItem[]
-  definitions: DefinitionsFile
-  options: SynctrolThemeOptions
+  items: readonly NewsListItem[]
+  definitions: ContentDefinitions
+  options: ResolvedSynctrolThemeOptions
+  tagArchivePages: readonly CompiledPage[]
 }
 
 export function buildNewsTagsIndex(input: BuildNewsTagsIndexInput): NewsTagCount[] {
-  const { locale, items, definitions, options } = input
-  const newsSegment = options.news.urlSegment
-  const tagsSegment = options.news.tags.urlSegment
-  const counts = new Map<string, number>()
-  for (const key of Object.keys(definitions.tags)) {
-    counts.set(key, 0)
-  }
-  for (const item of items) {
+  const counts = new Map(Object.keys(input.definitions.tags).map((key) => [key, 0]))
+  for (const item of input.items) {
     for (const tag of item.tags) {
       counts.set(tag.key, (counts.get(tag.key) ?? 0) + 1)
     }
   }
 
-  return Object.keys(definitions.tags).map((key) => {
+  return Object.keys(input.definitions.tags).map((key) => {
     const resolved = resolveMultilanguage(
-      definitions.tags[key]!.title,
-      locale,
-      options.mainLocale,
+      input.definitions.tags[key]!.title,
+      input.locale,
+      input.options.mainLocale,
+    )
+    const locale = input.options.locales[resolved.locale] ?? input.options.locales[input.options.mainLocale]
+    const archive = input.tagArchivePages.find(
+      (page) => page.locale === input.locale && page.identity === `news-tag:${key}`,
     )
     return {
       key,
       title: resolved.text,
-      titleLang: options.locales[resolved.locale]!.lang,
+      titleLang: locale.lang,
       count: counts.get(key) ?? 0,
-      publicPath: `/${locale}/${newsSegment}/${tagsSegment}/${encodePathSegment(key)}/`,
+      publicPath: archive?.url.publicPath,
     }
   })
 }
@@ -899,293 +862,149 @@ export function buildNewsTagsIndex(input: BuildNewsTagsIndexInput): NewsTagCount
 
 Run: `npm test -- tests/compiler/news/build-news-tags-index.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/news/build-news-tags-index.ts tests/compiler/news/build-news-tags-index.test.ts
-git commit -m "feat(news): build unpaginated tags index with visible counts"
+git commit -m "feat(news): build unpaginated tag counts"
 ```
 
 ---
 
-### Task 4: Attach News collection and detail page data
+### Task 4: Build News frontmatter data
 
 **Files:**
 - Create: `src/compiler/news/attach-news-page-data.ts`
 - Create: `tests/compiler/news/attach-news-page-data.test.ts`
 
 **Interfaces:**
-- Consumes: `CompiledSite` / `CompiledPage[]`, `buildNewsListItems`, `buildNewsTagsIndex`, `formatMessage`, `resolveMultilanguage` for `seo.collections.news`
-- Produces: `attachNewsPageData(input): Map<string, NewsCollectionPageData | NewsDetailPageData>` keyed by `routePath`; slices items by `collection.itemIdentities`
+- Consumes: Tasks 2-3 builders, `formatMessage`, `resolveMultilanguage`, `CompiledPage[]`, `RouteContentPackage[]`, `ResolvedSynctrolThemeOptions`, `ContentDefinitions`
+- Produces: `buildNewsFrontmatterForPage(input): SynctrolNewsFrontmatter | null`
 
-Rules:
-- News index / tag archive headings use `seo.collections.news` + `paginatedTitle` / `tagArchiveTitle`
-- Pagination links: page 1 = index/tag route; page ≥2 = `.../page/{n}/`
-- When `pagination: false`, `pagination` field is `null` and all items included
-- Detail data includes optional `updated`, cover, tags, fallback message from `messages.translationUnavailable`
-
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing tests for collection, tag, and detail data**
 
 ```ts
 // tests/compiler/news/attach-news-page-data.test.ts
 import { describe, expect, it } from 'vitest'
-import { attachNewsPageData } from '../../../src/compiler/news/attach-news-page-data'
+import { buildNewsFrontmatterForPage } from '../../../src/compiler/news/attach-news-page-data'
 import {
+  newsDefinitions,
   newsDetailPage,
-  newsPkg,
-  newsTheme,
+  newsPackage,
+  tagArchivePage,
+  themeOptions,
 } from '../../helpers/news-fixtures'
 import type { CompiledPage } from '../../../src/shared/route-types'
 
-const definitions = {
-  tags: {
-    release: { title: { zh: '作品发布', en: 'Releases' } },
-  },
-  platforms: {},
-}
-
-function collectionPage(
-  partial: Partial<CompiledPage> & Pick<CompiledPage, 'identity' | 'url' | 'collection'>,
-): CompiledPage {
+function collectionPage(partial: Partial<CompiledPage> & Pick<CompiledPage, 'identity' | 'url' | 'collection'>): CompiledPage {
   return {
-    locale: 'zh',
+    locale: 'en',
     contentType: 'news-collection',
     isFallback: false,
     isDraft: false,
     noindex: false,
-    bodyLocale: 'zh',
-    canonicalLocale: 'zh',
+    bodyLocale: 'en',
+    canonicalLocale: 'en',
     title: String(partial.identity),
     ...partial,
   }
 }
 
-describe('attachNewsPageData', () => {
-  it('slices news index pages and builds paginated titles', () => {
-    const pkgs = [
-      newsPkg({ slug: 'a', date: '2026-08-11' }),
-      newsPkg({ slug: 'b', date: '2026-08-10' }),
-      newsPkg({ slug: 'c', date: '2026-08-09' }),
-    ]
-    const details = pkgs.map((p) => newsDetailPage(p, 'zh'))
-    const index: CompiledPage = collectionPage({
+describe('buildNewsFrontmatterForPage', () => {
+  it('builds index data with paginated title and sibling publicPath pagination', () => {
+    const a = newsPackage({ slug: 'a', date: '2026-08-11' })
+    const b = newsPackage({ slug: 'b', date: '2026-08-10' })
+    const index = collectionPage({
       identity: 'news-index',
-      url: {
-        routePath: '/zh/news/',
-        outputPath: 'zh/news/index.html',
-        publicPath: '/zh/news/',
-        absoluteUrl: 'https://synctrol.com/zh/news/',
-      },
-      collection: {
-        page: 1,
-        pageCount: 2,
-        itemIdentities: ['news:a', 'news:b'],
-      },
+      url: { routePath: '/en/news/', outputPath: 'en/news/index.html', publicPath: '/base/en/news/', absoluteUrl: 'https://synctrol.com/base/en/news/' },
+      collection: { page: 1, pageCount: 2, itemIdentities: ['news:a'] },
     })
-    const page2: CompiledPage = collectionPage({
+    const page2 = collectionPage({
       identity: 'news-page:2',
-      url: {
-        routePath: '/zh/news/page/2/',
-        outputPath: 'zh/news/page/2/index.html',
-        publicPath: '/zh/news/page/2/',
-        absoluteUrl: 'https://synctrol.com/zh/news/page/2/',
-      },
-      collection: {
-        page: 2,
-        pageCount: 2,
-        itemIdentities: ['news:c'],
-      },
+      url: { routePath: '/en/news/page/2/', outputPath: 'en/news/page/2/index.html', publicPath: '/base/en/news/page/2/', absoluteUrl: 'https://synctrol.com/base/en/news/page/2/' },
+      collection: { page: 2, pageCount: 2, itemIdentities: ['news:b'] },
     })
-    const options = newsTheme({
-      seo: {
-        name: { zh: 'Synctrol', en: 'Synctrol' },
-        description: { zh: 'd', en: 'd' },
-        defaultImage: './assets/social-default.webp',
-        organization: { name: 'Synctrol', logo: './assets/logo.svg' },
-        collections: {
-          release: {
-            title: { zh: '作品', en: 'Releases' },
-            description: { zh: 'r', en: 'r' },
-          },
-          news: {
-            title: { zh: '新闻', en: 'News' },
-            description: { zh: 'Synctrol 新闻', en: 'Synctrol news' },
-          },
+    const frontmatter = buildNewsFrontmatterForPage({
+      compiled: page2,
+      allPages: [newsDetailPage(a, 'en'), newsDetailPage(b, 'en'), index, page2, tagArchivePage('release')],
+      packages: [a, b],
+      options: themeOptions(),
+      definitions: newsDefinitions,
+      resolveCoverPublicPath: () => undefined,
+      base: '/base/',
+    })
+    expect(frontmatter).toMatchObject({
+      kind: 'index',
+      data: {
+        kind: 'news-index',
+        heading: 'News · Page 2',
+        pagination: {
+          page: 2,
+          pageCount: 2,
+          prevPublicPath: '/base/en/news/',
+          nextPublicPath: undefined,
         },
       },
-      news: {
-        urlSegment: 'news',
-        index: { enabled: true, pagination: 2 },
-        tags: { urlSegment: 'tags', index: { enabled: true } },
-      },
     })
-
-    const map = attachNewsPageData({
-      pages: [...details, index, page2],
-      packages: pkgs,
-      options,
-      definitions,
-      resolveCoverUrl: () => '/cover.webp',
-    })
-
-    const indexData = map.get('/zh/news/')
-    expect(indexData).toMatchObject({
-      kind: 'news-index',
-      heading: '新闻',
-      description: 'Synctrol 新闻',
-    })
-    expect(indexData && 'items' in indexData && indexData.items.map((i) => i.slug)).toEqual([
-      'a',
-      'b',
-    ])
-    expect(indexData && 'pagination' in indexData && indexData.pagination).toEqual({
-      page: 1,
-      pageCount: 2,
-      prevPublicPath: undefined,
-      nextPublicPath: '/zh/news/page/2/',
-    })
-
-    const p2 = map.get('/zh/news/page/2/')
-    expect(p2).toMatchObject({
-      kind: 'news-index',
-      heading: '新闻 · 第 2 页',
-    })
-    expect(p2 && 'pagination' in p2 && p2.pagination).toEqual({
-      page: 2,
-      pageCount: 2,
-      prevPublicPath: '/zh/news/',
-      nextPublicPath: undefined,
-    })
+    expect(frontmatter?.data.items.map((item) => item.slug)).toEqual(['b'])
   })
 
-  it('builds tags index data without pagination', () => {
-    const pkg = newsPkg({ slug: 'a' })
+  it('builds tags index and tag archive frontmatter', () => {
+    const pkg = newsPackage({ slug: 'a', tags: ['release'] })
     const tagsIndex = collectionPage({
       identity: 'news-tags-index',
-      url: {
-        routePath: '/zh/news/tags/',
-        outputPath: 'zh/news/tags/index.html',
-        publicPath: '/zh/news/tags/',
-        absoluteUrl: 'https://synctrol.com/zh/news/tags/',
-      },
+      url: { routePath: '/en/news/tags/', outputPath: 'en/news/tags/index.html', publicPath: '/base/en/news/tags/', absoluteUrl: 'https://synctrol.com/base/en/news/tags/' },
       collection: { page: 1, pageCount: 1, itemIdentities: [] },
     })
-    const options = newsTheme({
-      seo: {
-        name: { zh: 'Synctrol', en: 'Synctrol' },
-        description: { zh: 'd', en: 'd' },
-        defaultImage: './a.webp',
-        organization: { name: 'Synctrol', logo: './l.svg' },
-        collections: {
-          release: { title: '作品', description: 'r' },
-          news: { title: { zh: '新闻', en: 'News' }, description: { zh: 'n', en: 'n' } },
-        },
-      },
-    })
-    const map = attachNewsPageData({
-      pages: [newsDetailPage(pkg, 'zh'), tagsIndex],
-      packages: [pkg],
-      options,
-      definitions,
-      resolveCoverUrl: () => '/c.webp',
-    })
-    const data = map.get('/zh/news/tags/')
-    expect(data).toMatchObject({ kind: 'news-tags-index', pagination: null })
-    expect(data && 'tags' in data && data.tags?.[0]).toMatchObject({
-      key: 'release',
-      count: 1,
-    })
+    const archive = tagArchivePage('release')
+    const allPages = [newsDetailPage(pkg, 'en'), tagsIndex, archive]
+    expect(
+      buildNewsFrontmatterForPage({
+        compiled: tagsIndex,
+        allPages,
+        packages: [pkg],
+        options: themeOptions(),
+        definitions: newsDefinitions,
+        resolveCoverPublicPath: () => undefined,
+        base: '/base/',
+      }),
+    ).toMatchObject({ kind: 'tags-index', data: { kind: 'news-tags-index', pagination: null } })
+    expect(
+      buildNewsFrontmatterForPage({
+        compiled: archive,
+        allPages,
+        packages: [pkg],
+        options: themeOptions(),
+        definitions: newsDefinitions,
+        resolveCoverPublicPath: () => undefined,
+        base: '/base/',
+      }),
+    ).toMatchObject({ kind: 'tag', data: { kind: 'news-tag', heading: 'Releases · News', tagKey: 'release' } })
   })
 
-  it('builds tag archive heading with tagArchiveTitle and filters items', () => {
-    const a = newsPkg({ slug: 'a', tags: ['release'] })
-    const archive = collectionPage({
-      identity: 'news-tag:release',
-      url: {
-        routePath: '/zh/news/tags/release/',
-        outputPath: 'zh/news/tags/release/index.html',
-        publicPath: '/zh/news/tags/release/',
-        absoluteUrl: 'https://synctrol.com/zh/news/tags/release/',
-      },
-      collection: {
-        page: 1,
-        pageCount: 1,
-        itemIdentities: ['news:a'],
-        tag: 'release',
-      },
-    })
-    const options = newsTheme({
-      seo: {
-        name: 'Synctrol',
-        description: 'd',
-        defaultImage: './a.webp',
-        organization: { name: 'Synctrol', logo: './l.svg' },
-        collections: {
-          release: { title: '作品', description: 'r' },
-          news: { title: { zh: '新闻', en: 'News' }, description: { zh: 'n', en: 'n' } },
-        },
-      },
-    })
-    const map = attachNewsPageData({
-      pages: [newsDetailPage(a, 'zh'), archive],
-      packages: [a],
-      options,
-      definitions,
-      resolveCoverUrl: () => '/c.webp',
-    })
-    expect(map.get('/zh/news/tags/release/')).toMatchObject({
-      kind: 'news-tag',
-      heading: '作品发布 · 新闻',
-      tagKey: 'release',
-    })
-  })
-
-  it('builds news detail page data with fallback message', () => {
-    const pkg = newsPkg({
-      slug: 'launch',
-      updated: '2026-08-12',
-      cover: './assets/n.webp',
-      locales: {
-        zh: {
-          filePath: 'zh.md',
-          title: '发布',
-          description: '摘要',
-          draft: false,
-          body: '正文',
-        },
-      },
-    })
-    const page = newsDetailPage(pkg, 'en', { isFallback: true, bodyLocale: 'zh' })
-    const options = newsTheme()
-    const map = attachNewsPageData({
-      pages: [page],
+  it('builds detail data with fallback message and cover publicPath', () => {
+    const pkg = newsPackage({ slug: 'launch', updated: '2026-08-12', cover: './assets/n.webp' })
+    const page = newsDetailPage(pkg, 'en', { isFallback: true, bodyLocale: 'zh', canonicalLocale: 'zh' })
+    const frontmatter = buildNewsFrontmatterForPage({
+      compiled: page,
+      allPages: [page, tagArchivePage('release')],
       packages: [pkg],
-      options,
-      definitions,
-      resolveCoverUrl: (_p, rel) => `/hashed/${rel}`,
+      options: themeOptions(),
+      definitions: newsDefinitions,
+      resolveCoverPublicPath: (_pkg, ref) => `/base/assets/${ref}`,
+      base: '/base/',
     })
-    expect(map.get('/en/news/launch/')).toEqual({
-      kind: 'news-detail',
-      slug: 'launch',
-      title: '发布',
-      titleLang: 'zh-CN',
-      date: '2026-08-11',
-      updated: '2026-08-12',
-      coverPublicUrl: '/hashed/./assets/n.webp',
-      tags: [
-        {
-          key: 'release',
-          title: 'Releases',
-          publicPath: '/en/news/tags/release/',
-        },
-      ],
-      isFallback: true,
-      isDraft: false,
-      translationUnavailableMessage:
-        'This article is not yet available in English. Showing the original version.',
-      bodyLang: 'zh-CN',
+    expect(frontmatter).toMatchObject({
+      kind: 'detail',
+      data: {
+        slug: 'launch',
+        titleLang: 'zh-CN',
+        updated: '2026-08-12',
+        coverPublicPath: '/base/assets/./assets/n.webp',
+        translationUnavailableMessage: 'This article is not yet available in English. Showing the original version.',
+      },
     })
   })
 })
@@ -1197,469 +1016,146 @@ Run: `npm test -- tests/compiler/news/attach-news-page-data.test.ts`
 
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement frontmatter builder**
 
-```ts
-// src/compiler/news/attach-news-page-data.ts
-import { formatMessage } from '../../shared/format-message.js'
-import { resolveMultilanguage } from '../../shared/multilanguage.js'
-import type { RouteContentPackage, DefinitionsFile, SynctrolThemeOptions } from '../../shared/types.js'
-import type { CompiledPage } from '../../shared/route-types.js'
-import type {
-  NewsCollectionPageData,
-  NewsDetailPageData,
-  NewsListItem,
-} from '../../shared/types/news.js'
-import { buildNewsListItems } from './build-news-list-items.js'
-import { buildNewsTagsIndex } from './build-news-tags-index.js'
-
-export interface AttachNewsPageDataInput {
-  pages: CompiledPage[]
-  packages: RouteContentPackage[]
-  options: SynctrolThemeOptions
-  definitions: DefinitionsFile
-  resolveCoverUrl: (pkg: RouteContentPackage, relativePath: string) => string
-}
-
-export type AttachedNewsData = NewsCollectionPageData | NewsDetailPageData
-
-function newsCollectionTitle(options: SynctrolThemeOptions, locale: string): string {
-  return resolveMultilanguage(
-    options.seo.collections.news.title,
-    locale,
-    options.mainLocale,
-  ).text
-}
-
-function newsCollectionDescription(options: SynctrolThemeOptions, locale: string): string {
-  return resolveMultilanguage(
-    options.seo.collections.news.description,
-    locale,
-    options.mainLocale,
-  ).text
-}
-
-function paginationPaths(
-  page: CompiledPage,
-  allPages: CompiledPage[],
-): NewsCollectionPageData['pagination'] {
-  const c = page.collection
-  if (!c || c.pageCount <= 1) {
-    return c ? { page: c.page, pageCount: c.pageCount } : null
-  }
-  const locale = page.locale
-  const sameFamily = allPages.filter((p) => {
-    if (p.locale !== locale || p.contentType !== 'news-collection') return false
-    if (page.collection?.tag) {
-      return p.collection?.tag === page.collection.tag
-    }
-    return (
-      p.identity === 'news-index' ||
-      (typeof p.identity === 'string' && p.identity.startsWith('news-page:'))
-    )
-  })
-  const prev = sameFamily.find((p) => p.collection?.page === c.page - 1)
-  const next = sameFamily.find((p) => p.collection?.page === c.page + 1)
-  return {
-    page: c.page,
-    pageCount: c.pageCount,
-    prevPublicPath: prev?.url.publicPath,
-    nextPublicPath: next?.url.publicPath,
-  }
-}
-
-function sliceItems(
-  all: NewsListItem[],
-  identities: CompiledPage['collection'],
-): NewsListItem[] {
-  if (!identities) return all
-  const set = new Set(identities.itemIdentities)
-  return all.filter((i) => set.has(i.identity))
-}
-
-export function attachNewsPageData(
-  input: AttachNewsPageDataInput,
-): Map<string, AttachedNewsData> {
-  const { pages, packages, options, definitions, resolveCoverUrl } = input
-  const out = new Map<string, AttachedNewsData>()
-  const locales = [...new Set(pages.map((p) => p.locale))]
-
-  const itemsByLocale = new Map<string, NewsListItem[]>()
-  for (const locale of locales) {
-    itemsByLocale.set(
-      locale,
-      buildNewsListItems({
-        locale,
-        packages,
-        detailPages: pages,
-        options,
-        definitions,
-        resolveCoverUrl,
-      }),
-    )
-  }
-
-  for (const page of pages) {
-    const messages = options.locales[page.locale]!.messages
-    const allItems = itemsByLocale.get(page.locale) ?? []
-
-    if (page.contentType === 'news' && typeof page.identity === 'string') {
-      const pkg = packages.find(
-        (p) => p.type === 'news' && `news:${p.slug}` === page.identity,
-      )
-      if (!pkg || !pkg.slug) continue
-      const bodyMd = pkg.locales[page.bodyLocale]!
-      const listItem = allItems.find((i) => i.identity === page.identity)
-      out.set(page.url.routePath, {
-        kind: 'news-detail',
-        slug: pkg.slug,
-        title: bodyMd.title,
-        titleLang: options.locales[page.bodyLocale]!.lang,
-        date: pkg.date!,
-        updated: pkg.updated,
-        coverPublicUrl: listItem?.coverPublicUrl,
-        tags: listItem?.tags ?? [],
-        isFallback: page.isFallback,
-        isDraft: page.isDraft,
-        translationUnavailableMessage: page.isFallback
-          ? messages.translationUnavailable
-          : undefined,
-        bodyLang: options.locales[page.bodyLocale]!.lang,
-      })
-      continue
-    }
-
-    if (page.contentType !== 'news-collection') continue
-
-    if (page.identity === 'news-tags-index') {
-      out.set(page.url.routePath, {
-        kind: 'news-tags-index',
-        heading: newsCollectionTitle(options, page.locale),
-        description: newsCollectionDescription(options, page.locale),
-        items: [],
-        tags: buildNewsTagsIndex({
-          locale: page.locale,
-          items: allItems,
-          definitions,
-          options,
-        }),
-        pagination: null,
-      })
-      continue
-    }
-
-    const baseTitle = newsCollectionTitle(options, page.locale)
-    const description = newsCollectionDescription(options, page.locale)
-    const pageNum = page.collection?.page ?? 1
-    let heading = baseTitle
-    let kind: NewsCollectionPageData['kind'] = 'news-index'
-    let tagKey: string | undefined
-
-    if (page.collection?.tag) {
-      kind = 'news-tag'
-      tagKey = page.collection.tag
-      const tagTitle = resolveMultilanguage(
-        definitions.tags[tagKey]!.title,
-        page.locale,
-        options.mainLocale,
-      ).text
-      heading = formatMessage(messages.tagArchiveTitle, {
-        tag: tagTitle,
-        title: baseTitle,
-      })
-    }
-
-    if (pageNum >= 2) {
-      heading = formatMessage(messages.paginatedTitle, {
-        title: heading,
-        page: String(pageNum),
-      })
-    }
-
-    out.set(page.url.routePath, {
-      kind,
-      heading,
-      description,
-      items: sliceItems(allItems, page.collection),
-      tagKey,
-      pagination: paginationPaths(page, pages),
-    })
-  }
-
-  return out
-}
-```
+Implementation requirements:
+- Select `detailPages = allPages.filter((page) => page.contentType === 'news' && page.locale === compiled.locale)`.
+- Select `tagArchivePages = allPages.filter((page) => page.contentType === 'news-collection' && String(page.identity).startsWith('news-tag:') && !String(page.identity).includes(':page:'))`.
+- Use `buildNewsListItems` once per `compiled.locale`, then slice/reorder collection items by `compiled.collection.itemIdentities`.
+- Resolve collection title/description from `options.seo.collections.news` with `resolveMultilanguage`.
+- Use `formatMessage(messages.paginatedTitle, { title, page })` for News index pages after page 1.
+- Use `formatMessage(messages.tagArchiveTitle, { tag, title })` for tag archives.
+- Pagination prev/next is found from sibling collection pages with matching `contentType`, `locale`, same `collection.tag`, and adjacent page numbers; values are `page.url.publicPath`.
+- Return `null` for non-News pages.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npm test -- tests/compiler/news/attach-news-page-data.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/news/attach-news-page-data.ts tests/compiler/news/attach-news-page-data.test.ts
-git commit -m "feat(news): attach collection and detail page data models"
+git commit -m "feat(news): build news frontmatter data"
 ```
 
 ---
 
-### Task 5: DraftBadge and TranslationUnavailableBadge components
+### Task 5: Shared badges, content column, pagination, and cover primitives
 
 **Files:**
-- Create: `src/client/components/DraftBadge.vue`
+- Modify: `src/client/components/DraftBadge.vue`
 - Create: `src/client/components/TranslationUnavailableBadge.vue`
-- Create: `tests/client/components/badges.test.ts`
+- Create: `src/client/components/ContentColumn.vue`
+- Create: `src/client/components/PaginationNav.vue`
+- Create: `src/client/components/ContentCover.vue`
+- Create: `tests/client/components/shared-content-components.test.ts`
 
 **Interfaces:**
-- Consumes: Plan 05 `useLocaleMessages()` (or explicit `label` prop for unit tests)
-- Produces: presentational badge components with `data-testid` hooks
+- Consumes: existing shell tokens (`--syn-content-width`, borders)
+- Produces: shared presentational components used by News/Page layouts
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing component tests**
 
 ```ts
-// tests/client/components/badges.test.ts
+// tests/client/components/shared-content-components.test.ts
 /** @vitest-environment happy-dom */
-import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+import ContentColumn from '../../../src/client/components/ContentColumn.vue'
+import ContentCover from '../../../src/client/components/ContentCover.vue'
 import DraftBadge from '../../../src/client/components/DraftBadge.vue'
+import PaginationNav from '../../../src/client/components/PaginationNav.vue'
 import TranslationUnavailableBadge from '../../../src/client/components/TranslationUnavailableBadge.vue'
 
-describe('badges', () => {
-  it('renders the draft label', () => {
-    const wrapper = mount(DraftBadge, { props: { label: 'Draft' } })
-    expect(wrapper.attributes('data-testid')).toBe('draft-badge')
-    expect(wrapper.text()).toBe('Draft')
+describe('Plan 09 shared content components', () => {
+  it('extends DraftBadge and adds translation status badge', () => {
+    expect(mount(DraftBadge, { props: { label: 'Draft' } }).find('[data-testid="draft-badge"]').text()).toBe('Draft')
+    const translation = mount(TranslationUnavailableBadge, { props: { label: 'Unavailable' } })
+    expect(translation.find('[data-testid="translation-unavailable-badge"]').attributes('role')).toBe('status')
+    expect(translation.text()).toBe('Unavailable')
   })
 
-  it('renders the translation-unavailable label', () => {
-    const wrapper = mount(TranslationUnavailableBadge, {
-      props: { label: 'This article is not yet available in English. Showing the original version.' },
+  it('renders a 760px content column wrapper', () => {
+    const wrapper = mount(ContentColumn, { slots: { default: '<p>Body</p>' } })
+    expect(wrapper.find('[data-testid="content-column"]').classes()).toContain('syn-content-column')
+    expect(wrapper.text()).toBe('Body')
+  })
+
+  it('mirrors ReleaseIndex pagination nav accessibility and links', () => {
+    const wrapper = mount(PaginationNav, {
+      props: {
+        prevHref: '/base/en/news/',
+        nextHref: '/base/en/news/page/3/',
+        prevLabel: 'Previous',
+        nextLabel: 'Next',
+      },
     })
-    expect(wrapper.attributes('data-testid')).toBe('translation-unavailable-badge')
-    expect(wrapper.text()).toContain('not yet available')
+    expect(wrapper.find('nav').attributes('aria-label')).toBe('Pagination')
+    expect(wrapper.find('[data-testid="pagination-prev"]').attributes('href')).toBe('/base/en/news/')
+    expect(wrapper.find('[data-testid="pagination-next"]').attributes('href')).toBe('/base/en/news/page/3/')
+  })
+
+  it('renders optional covers with lazy/eager loading', () => {
+    const wrapper = mount(ContentCover, { props: { src: '/cover.webp', alt: 'Cover', eager: true } })
+    expect(wrapper.find('[data-testid="content-cover"]').attributes()).toMatchObject({
+      src: '/cover.webp',
+      alt: 'Cover',
+      loading: 'eager',
+    })
   })
 })
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `npm test -- tests/client/components/badges.test.ts`
+Run: `npm test -- tests/client/components/shared-content-components.test.ts`
 
-Expected: FAIL with component module not found.
+Expected: FAIL for missing new components; existing `DraftBadge` may pass before styling is extended.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement components**
 
 ```vue
-<!-- src/client/components/DraftBadge.vue -->
-<script setup lang="ts">
-defineProps<{ label: string }>()
-</script>
-
+<!-- src/client/components/ContentColumn.vue -->
 <template>
-  <span class="syn-badge syn-badge--draft" data-testid="draft-badge">{{ label }}</span>
+  <div class="syn-content-column" data-testid="content-column">
+    <slot />
+  </div>
 </template>
 
 <style scoped>
-.syn-badge {
-  display: inline-block;
-  border: var(--syn-border-strong);
-  border-radius: var(--syn-radius);
-  padding: 0.15em 0.4em;
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.syn-content-column {
+  max-width: var(--syn-content-width);
+  margin-inline: auto;
 }
 </style>
 ```
 
 ```vue
-<!-- src/client/components/TranslationUnavailableBadge.vue -->
+<!-- src/client/components/PaginationNav.vue -->
 <script setup lang="ts">
-defineProps<{ label: string }>()
+defineProps<{
+  prevHref?: string
+  nextHref?: string
+  prevLabel: string
+  nextLabel: string
+}>()
 </script>
 
 <template>
-  <p
-    class="syn-badge syn-badge--translation"
-    data-testid="translation-unavailable-badge"
-    role="status"
+  <nav
+    v-if="prevHref || nextHref"
+    class="syn-pagination"
+    aria-label="Pagination"
+    data-testid="pagination"
   >
-    {{ label }}
-  </p>
+    <a v-if="prevHref" data-testid="pagination-prev" :href="prevHref">{{ prevLabel }}</a>
+    <a v-if="nextHref" data-testid="pagination-next" :href="nextHref">{{ nextLabel }}</a>
+  </nav>
 </template>
-
-<style scoped>
-.syn-badge--translation {
-  border: var(--syn-border-subtle);
-  border-radius: var(--syn-radius);
-  padding: 0.75rem 1rem;
-  margin: 0 0 1.25rem;
-}
-</style>
 ```
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `npm test -- tests/client/components/badges.test.ts`
-
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/client/components/DraftBadge.vue src/client/components/TranslationUnavailableBadge.vue tests/client/components/badges.test.ts
-git commit -m "feat(ui): add draft and translation-unavailable badges"
-```
-
----
-
-### Task 6: NewsListItem and NewsList (cover vs text-only)
-
-**Files:**
-- Create: `src/client/components/ContentCover.vue`
-- Create: `src/client/components/news/NewsListItem.vue`
-- Create: `src/client/components/news/NewsList.vue`
-- Create: `tests/client/components/news-list.test.ts`
-
-**Interfaces:**
-- Consumes: `NewsListItem`, `DraftBadge`, `TranslationUnavailableBadge`, Plan 08 `formatCalendarDate` (inject via props `formattedDate` in unit tests)
-- Produces: list UI with `data-layout="cover" | "text"` 
-
-- [ ] **Step 1: Write the failing tests**
-
-```ts
-// tests/client/components/news-list.test.ts
-/** @vitest-environment happy-dom */
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
-import NewsList from '../../../src/client/components/news/NewsList.vue'
-import NewsListItem from '../../../src/client/components/news/NewsListItem.vue'
-import type { NewsListItem as Item } from '../../../src/shared/types/news'
-
-function item(partial: Partial<Item> & Pick<Item, 'slug' | 'title'>): Item {
-  return {
-    identity: `news:${partial.slug}`,
-    slug: partial.slug,
-    publicPath: `/zh/news/${partial.slug}/`,
-    title: partial.title,
-    titleLang: partial.titleLang ?? 'zh-CN',
-    description: partial.description,
-    descriptionLang: partial.descriptionLang,
-    date: partial.date ?? '2026-08-11',
-    updated: partial.updated,
-    coverPublicUrl: partial.coverPublicUrl,
-    tags: partial.tags ?? [
-      { key: 'release', title: '作品发布', publicPath: '/zh/news/tags/release/' },
-    ],
-    isFallback: partial.isFallback ?? false,
-    isDraft: partial.isDraft ?? false,
-    excludeFromRss: partial.excludeFromRss ?? false,
-  }
-}
-
-describe('NewsListItem', () => {
-  it('uses cover layout when coverPublicUrl is set', () => {
-    const wrapper = mount(NewsListItem, {
-      props: {
-        item: item({
-          slug: 'with-cover',
-          title: '有封面',
-          coverPublicUrl: '/assets/c.webp',
-          description: '摘要',
-        }),
-        formattedDate: '2026年8月11日',
-        draftLabel: '未发布',
-        translationUnavailableLabel: '暂无翻译',
-      },
-    })
-    expect(wrapper.attributes('data-layout')).toBe('cover')
-    expect(wrapper.find('img').attributes('src')).toBe('/assets/c.webp')
-    expect(wrapper.find('img').attributes('alt')).toBe('有封面')
-  })
-
-  it('uses text-only layout when cover is absent', () => {
-    const wrapper = mount(NewsListItem, {
-      props: {
-        item: item({ slug: 'text', title: '纯文字', description: '说明' }),
-        formattedDate: '2026年8月11日',
-        draftLabel: '未发布',
-        translationUnavailableLabel: '暂无翻译',
-      },
-    })
-    expect(wrapper.attributes('data-layout')).toBe('text')
-    expect(wrapper.find('img').exists()).toBe(false)
-  })
-
-  it('annotates fallback title with lang and shows both badges when needed', () => {
-    const wrapper = mount(NewsListItem, {
-      props: {
-        item: item({
-          slug: 'fb',
-          title: '发布',
-          titleLang: 'zh-CN',
-          description: '中文说明',
-          descriptionLang: 'zh-CN',
-          isFallback: true,
-          isDraft: true,
-          excludeFromRss: true,
-        }),
-        formattedDate: 'August 11, 2026',
-        draftLabel: 'Draft',
-        translationUnavailableLabel: 'Unavailable',
-      },
-    })
-    expect(wrapper.find('[data-testid="item-title"]').attributes('lang')).toBe('zh-CN')
-    expect(wrapper.find('[data-testid="item-description"]').attributes('lang')).toBe(
-      'zh-CN',
-    )
-    expect(wrapper.find('[data-testid="draft-badge"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="translation-unavailable-badge"]').exists()).toBe(
-      true,
-    )
-  })
-})
-
-describe('NewsList', () => {
-  it('renders emptyNews when there are no items', () => {
-    const wrapper = mount(NewsList, {
-      props: {
-        items: [],
-        emptyLabel: '暂无新闻',
-        draftLabel: '未发布',
-        translationUnavailableLabel: 'x',
-        formatDate: () => 'd',
-      },
-    })
-    expect(wrapper.find('[data-testid="empty-news"]').text()).toBe('暂无新闻')
-  })
-
-  it('renders one row per item', () => {
-    const wrapper = mount(NewsList, {
-      props: {
-        items: [
-          item({ slug: 'a', title: 'A' }),
-          item({ slug: 'b', title: 'B', coverPublicUrl: '/b.webp' }),
-        ],
-        emptyLabel: '暂无新闻',
-        draftLabel: '未发布',
-        translationUnavailableLabel: 'x',
-        formatDate: (d) => d,
-      },
-    })
-    expect(wrapper.findAllComponents(NewsListItem)).toHaveLength(2)
-  })
-})
-```
-
-- [ ] **Step 2: Run tests to verify they fail**
-
-Run: `npm test -- tests/client/components/news-list.test.ts`
-
-Expected: FAIL with modules not found.
-
-- [ ] **Step 3: Write minimal implementation**
 
 ```vue
 <!-- src/client/components/ContentCover.vue -->
@@ -1677,140 +1173,231 @@ defineProps<{ src: string; alt: string; eager?: boolean }>()
     decoding="async"
   />
 </template>
-
-<style scoped>
-.syn-cover {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: var(--syn-border-strong);
-  border-radius: var(--syn-radius);
-}
-</style>
 ```
 
-```vue
-<!-- src/client/components/news/NewsListItem.vue -->
-<script setup lang="ts">
-import type { NewsListItem } from '../../../shared/types/news.js'
-import ContentCover from '../ContentCover.vue'
-import DraftBadge from '../DraftBadge.vue'
-import TranslationUnavailableBadge from '../TranslationUnavailableBadge.vue'
+Extend `DraftBadge.vue` without changing its prop:
 
-defineProps<{
-  item: NewsListItem
-  formattedDate: string
-  draftLabel: string
-  translationUnavailableLabel: string
-}>()
+```vue
+<!-- src/client/components/DraftBadge.vue -->
+<script setup lang="ts">
+defineProps<{ label: string }>()
 </script>
 
 <template>
-  <article
-    class="syn-news-item"
-    :data-layout="item.coverPublicUrl ? 'cover' : 'text'"
-  >
-    <a class="syn-news-item__link" :href="item.publicPath">
-      <ContentCover
-        v-if="item.coverPublicUrl"
-        :src="item.coverPublicUrl"
-        :alt="item.title"
-      />
-      <h2 data-testid="item-title" :lang="item.titleLang">{{ item.title }}</h2>
-    </a>
-    <p
-      v-if="item.description"
-      data-testid="item-description"
-      class="syn-news-item__desc"
-      :lang="item.descriptionLang"
-    >
-      {{ item.description }}
-    </p>
-    <p class="syn-news-item__date">
-      <time :datetime="item.date">{{ formattedDate }}</time>
-    </p>
-    <ul v-if="item.tags.length" class="syn-news-item__tags">
-      <li v-for="tag in item.tags" :key="tag.key">
-        <a :href="tag.publicPath">{{ tag.title }}</a>
-      </li>
-    </ul>
-    <DraftBadge v-if="item.isDraft" :label="draftLabel" />
-    <TranslationUnavailableBadge
-      v-if="item.isFallback"
-      :label="translationUnavailableLabel"
-    />
-  </article>
+  <span class="syn-badge syn-draft-badge" data-testid="draft-badge">{{ label }}</span>
 </template>
-
-<style scoped>
-.syn-news-item {
-  border-bottom: var(--syn-border-strong);
-  padding: 1.25rem 0;
-  border-radius: var(--syn-radius);
-}
-.syn-news-item__link {
-  color: inherit;
-  text-decoration: none;
-}
-.syn-news-item__link:focus-visible {
-  outline: var(--syn-border-strong);
-}
-.syn-news-item__tags {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-</style>
 ```
 
 ```vue
-<!-- src/client/components/news/NewsList.vue -->
+<!-- src/client/components/TranslationUnavailableBadge.vue -->
 <script setup lang="ts">
-import type { NewsListItem } from '../../../shared/types/news.js'
-import NewsListItemRow from './NewsListItem.vue'
-
-defineProps<{
-  items: NewsListItem[]
-  emptyLabel: string
-  draftLabel: string
-  translationUnavailableLabel: string
-  formatDate: (date: string) => string
-}>()
+defineProps<{ label: string }>()
 </script>
 
 <template>
-  <div class="syn-news-list">
-    <p v-if="items.length === 0" data-testid="empty-news">{{ emptyLabel }}</p>
-    <NewsListItemRow
-      v-for="item in items"
-      :key="item.identity"
-      :item="item"
-      :formatted-date="formatDate(item.date)"
-      :draft-label="draftLabel"
-      :translation-unavailable-label="translationUnavailableLabel"
-    />
-  </div>
+  <p class="syn-badge syn-translation-badge" data-testid="translation-unavailable-badge" role="status">
+    {{ label }}
+  </p>
 </template>
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npm test -- tests/client/components/news-list.test.ts`
+Run: `npm test -- tests/client/components/shared-content-components.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/client/components/ContentCover.vue src/client/components/news/NewsListItem.vue src/client/components/news/NewsList.vue tests/client/components/news-list.test.ts
-git commit -m "feat(news): add cover and text-only news list components"
+git add src/client/components/DraftBadge.vue src/client/components/TranslationUnavailableBadge.vue src/client/components/ContentColumn.vue src/client/components/PaginationNav.vue src/client/components/ContentCover.vue tests/client/components/shared-content-components.test.ts
+git commit -m "feat(ui): add shared content primitives"
 ```
 
 ---
 
-### Task 7: NewsTagsList and collection layouts (index, tags index, tag archive)
+### Task 6: Calendar date helper and News list components
+
+**Files:**
+- Create: `src/shared/format-calendar-date.ts`
+- Create: `src/client/components/news/NewsListItem.vue`
+- Create: `src/client/components/news/NewsList.vue`
+- Create: `tests/shared/format-calendar-date.test.ts`
+- Create: `tests/client/components/news-list.test.ts`
+
+**Interfaces:**
+- Consumes: `NewsListItem`, Task 5 primitives
+- Produces: UTC-safe `formatCalendarDate`; list UI with `data-layout="cover" | "text"`
+
+- [ ] **Step 1: Write date-helper tests**
+
+```ts
+// tests/shared/format-calendar-date.test.ts
+import { describe, expect, it } from 'vitest'
+import { formatCalendarDate } from '../../src/shared/format-calendar-date'
+
+describe('formatCalendarDate', () => {
+  it('formats YYYY-MM-DD in UTC without shifting calendar day', () => {
+    expect(formatCalendarDate('2026-08-11', 'en-US', { dateStyle: 'medium' })).toBe(
+      'Aug 11, 2026',
+    )
+  })
+
+  it('returns input for invalid calendar strings', () => {
+    expect(formatCalendarDate('not-a-date', 'en-US')).toBe('not-a-date')
+  })
+})
+```
+
+- [ ] **Step 2: Write News list component tests**
+
+```ts
+// tests/client/components/news-list.test.ts
+/** @vitest-environment happy-dom */
+import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+import NewsList from '../../../../src/client/components/news/NewsList.vue'
+import NewsListItem from '../../../../src/client/components/news/NewsListItem.vue'
+import type { NewsListItem as Item } from '../../../../src/shared/types/news'
+
+function item(partial: Partial<Item> & Pick<Item, 'slug' | 'title'>): Item {
+  return {
+    identity: `news:${partial.slug}`,
+    slug: partial.slug,
+    publicPath: partial.publicPath ?? `/base/en/news/${partial.slug}/`,
+    title: partial.title,
+    titleLang: partial.titleLang ?? 'en-US',
+    description: partial.description,
+    descriptionLang: partial.descriptionLang,
+    date: partial.date ?? '2026-08-11',
+    updated: partial.updated,
+    coverPublicPath: partial.coverPublicPath,
+    tags: partial.tags ?? [{ key: 'release', title: 'Releases', publicPath: '/base/en/news/tags/release/' }],
+    isFallback: partial.isFallback ?? false,
+    isDraft: partial.isDraft ?? false,
+    excludeFromRss: partial.excludeFromRss ?? false,
+  }
+}
+
+describe('NewsListItem', () => {
+  it('uses cover layout when coverPublicPath exists', () => {
+    const wrapper = mount(NewsListItem, {
+      props: {
+        item: item({ slug: 'cover', title: 'Cover', coverPublicPath: '/cover.webp' }),
+        formattedDate: 'Aug 11, 2026',
+        draftLabel: 'Draft',
+        translationUnavailableLabel: 'Unavailable',
+      },
+    })
+    expect(wrapper.attributes('data-layout')).toBe('cover')
+    expect(wrapper.find('[data-testid="content-cover"]').attributes('src')).toBe('/cover.webp')
+  })
+
+  it('uses text layout and fallback/draft badges when needed', () => {
+    const wrapper = mount(NewsListItem, {
+      props: {
+        item: item({
+          slug: 'fallback',
+          title: '发布',
+          titleLang: 'zh-CN',
+          description: '中文说明',
+          descriptionLang: 'zh-CN',
+          isFallback: true,
+          isDraft: true,
+        }),
+        formattedDate: 'Aug 11, 2026',
+        draftLabel: 'Draft',
+        translationUnavailableLabel: 'Unavailable',
+      },
+    })
+    expect(wrapper.attributes('data-layout')).toBe('text')
+    expect(wrapper.find('[data-testid="item-title"]').attributes('lang')).toBe('zh-CN')
+    expect(wrapper.find('[data-testid="draft-badge"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="translation-unavailable-badge"]').exists()).toBe(true)
+  })
+})
+
+describe('NewsList', () => {
+  it('renders empty state or one row per item', () => {
+    const empty = mount(NewsList, {
+      props: {
+        items: [],
+        emptyLabel: 'No news',
+        draftLabel: 'Draft',
+        translationUnavailableLabel: 'Unavailable',
+        formatDate: (date: string) => date,
+      },
+    })
+    expect(empty.find('[data-testid="empty-news"]').text()).toBe('No news')
+
+    const filled = mount(NewsList, {
+      props: {
+        items: [item({ slug: 'a', title: 'A' }), item({ slug: 'b', title: 'B' })],
+        emptyLabel: 'No news',
+        draftLabel: 'Draft',
+        translationUnavailableLabel: 'Unavailable',
+        formatDate: (date: string) => date,
+      },
+    })
+    expect(filled.findAllComponents(NewsListItem)).toHaveLength(2)
+  })
+})
+```
+
+- [ ] **Step 3: Run tests to verify they fail**
+
+Run: `npm test -- tests/shared/format-calendar-date.test.ts tests/client/components/news-list.test.ts`
+
+Expected: FAIL with missing helper/components.
+
+- [ ] **Step 4: Implement helper and components**
+
+```ts
+// src/shared/format-calendar-date.ts
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+
+export function formatCalendarDate(
+  date: string,
+  localeLang: string,
+  dateFormat: Intl.DateTimeFormatOptions = { dateStyle: 'long' },
+): string {
+  const match = DATE_PATTERN.exec(date)
+  if (match === null) return date
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const value = new Date(Date.UTC(year, month - 1, day))
+  return new Intl.DateTimeFormat(localeLang, {
+    timeZone: 'UTC',
+    ...dateFormat,
+  }).format(value)
+}
+```
+
+Implement `NewsListItem.vue` and `NewsList.vue` with Task 5 primitives:
+- `NewsListItem` root is `<article data-layout="cover|text">`.
+- Main title link uses `item.publicPath`.
+- Cover uses `item.coverPublicPath`.
+- Date receives already formatted text from prop `formattedDate`.
+- Tags use each tag `publicPath`.
+- Fallback and draft badges render from props.
+
+- [ ] **Step 5: Run tests to verify they pass**
+
+Run: `npm test -- tests/shared/format-calendar-date.test.ts tests/client/components/news-list.test.ts`
+
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/shared/format-calendar-date.ts src/client/components/news/NewsListItem.vue src/client/components/news/NewsList.vue tests/shared/format-calendar-date.test.ts tests/client/components/news-list.test.ts
+git commit -m "feat(news): add calendar formatter and news list components"
+```
+
+---
+
+### Task 7: News tag list and collection layouts
 
 **Files:**
 - Create: `src/client/components/news/NewsTagsList.vue`
@@ -1818,108 +1405,80 @@ git commit -m "feat(news): add cover and text-only news list components"
 - Create: `src/client/layouts/NewsTagsIndexLayout.vue`
 - Create: `src/client/layouts/NewsTagArchiveLayout.vue`
 - Create: `tests/client/layouts/news-collections.test.ts`
-- Modify: theme client layout registry from Plan 05 to map `news-collection` identities to these layouts
 
 **Interfaces:**
-- Consumes: `NewsCollectionPageData`, `NewsList`, Plan 08 `PaginationNav`
-- Produces: three layouts; Tags Index never renders `PaginationNav`
+- Consumes: `NewsCollectionPageData`, `NewsList`, `NewsTagsList`, `ContentColumn`, `PaginationNav`
+- Produces: three collection layouts; Tags Index never renders pagination
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing layout tests**
 
 ```ts
 // tests/client/layouts/news-collections.test.ts
 /** @vitest-environment happy-dom */
-import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
 import NewsIndexLayout from '../../../src/client/layouts/NewsIndexLayout.vue'
-import NewsTagsIndexLayout from '../../../src/client/layouts/NewsTagsIndexLayout.vue'
 import NewsTagArchiveLayout from '../../../src/client/layouts/NewsTagArchiveLayout.vue'
-import type { NewsCollectionPageData } from '../../../src/shared/types/news'
+import NewsTagsIndexLayout from '../../../src/client/layouts/NewsTagsIndexLayout.vue'
+import type { NewsCollectionPageData, NewsListItem } from '../../../src/shared/types/news'
 
-const listItem = {
-  identity: 'news:a' as const,
+const listItem: NewsListItem = {
+  identity: 'news:a',
   slug: 'a',
-  publicPath: '/zh/news/a/',
+  publicPath: '/base/en/news/a/',
   title: 'A',
-  titleLang: 'zh-CN',
+  titleLang: 'en-US',
   date: '2026-08-11',
-  tags: [] as [],
+  tags: [],
   isFallback: false,
   isDraft: false,
   excludeFromRss: false,
 }
 
 describe('News collection layouts', () => {
-  it('NewsIndexLayout renders heading, list, and pagination', () => {
+  it('renders News index with shared pagination', () => {
     const data: NewsCollectionPageData = {
       kind: 'news-index',
-      heading: '新闻',
-      description: 'Synctrol 新闻',
+      heading: 'News',
+      description: 'All news',
       items: [listItem],
-      pagination: {
-        page: 1,
-        pageCount: 2,
-        nextPublicPath: '/zh/news/page/2/',
-      },
+      pagination: { page: 1, pageCount: 2, nextPublicPath: '/base/en/news/page/2/' },
     }
     const wrapper = mount(NewsIndexLayout, {
       props: {
         data,
-        emptyLabel: '暂无新闻',
-        draftLabel: '未发布',
-        translationUnavailableLabel: 'x',
-        previousPageLabel: '上一页',
-        nextPageLabel: '下一页',
-        formatDate: (d: string) => d,
-      },
-      global: {
-        stubs: {
-          PaginationNav: {
-            props: ['prevHref', 'nextHref', 'prevLabel', 'nextLabel'],
-            template:
-              '<nav data-testid="pagination"><a v-if="nextHref" :href="nextHref">{{ nextLabel }}</a></nav>',
-          },
-          ContentColumn: { template: '<div class="col"><slot /></div>' },
-        },
+        emptyLabel: 'No news',
+        draftLabel: 'Draft',
+        translationUnavailableLabel: 'Unavailable',
+        previousPageLabel: 'Previous',
+        nextPageLabel: 'Next',
+        formatDate: (date: string) => date,
       },
     })
-    expect(wrapper.find('h1').text()).toBe('新闻')
-    expect(wrapper.find('[data-testid="pagination"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="content-column"]').exists()).toBe(true)
+    expect(wrapper.find('h1').text()).toBe('News')
+    expect(wrapper.find('[data-testid="pagination-next"]').attributes('href')).toBe('/base/en/news/page/2/')
   })
 
-  it('NewsTagsIndexLayout lists tags with counts and has no pagination', () => {
+  it('renders Tags Index with counts and no pagination', () => {
     const data: NewsCollectionPageData = {
       kind: 'news-tags-index',
-      heading: '新闻',
-      description: 'n',
+      heading: 'News tags',
+      description: 'Browse tags',
       items: [],
-      tags: [
-        {
-          key: 'release',
-          title: '作品发布',
-          titleLang: 'zh-CN',
-          count: 2,
-          publicPath: '/zh/news/tags/release/',
-        },
-      ],
+      tags: [{ key: 'release', title: 'Releases', titleLang: 'en-US', count: 2, publicPath: '/base/en/news/tags/release/' }],
       pagination: null,
     }
-    const wrapper = mount(NewsTagsIndexLayout, {
-      props: { data },
-      global: {
-        stubs: { ContentColumn: { template: '<div><slot /></div>' } },
-      },
-    })
-    expect(wrapper.find('[data-testid="news-tags-list"]').text()).toContain('作品发布')
-    expect(wrapper.find('[data-testid="news-tags-list"]').text()).toContain('2')
+    const wrapper = mount(NewsTagsIndexLayout, { props: { data } })
+    expect(wrapper.find('[data-testid="news-tags-list"]').text()).toContain('Releases')
     expect(wrapper.find('[data-testid="pagination"]').exists()).toBe(false)
   })
 
-  it('NewsTagArchiveLayout filters heading and list for a tag', () => {
+  it('renders Tag Archive with data-tag and optional pagination', () => {
     const data: NewsCollectionPageData = {
       kind: 'news-tag',
-      heading: '作品发布 · 新闻',
-      description: 'n',
+      heading: 'Releases · News',
+      description: 'All news',
       tagKey: 'release',
       items: [listItem],
       pagination: { page: 1, pageCount: 1 },
@@ -1927,22 +1486,16 @@ describe('News collection layouts', () => {
     const wrapper = mount(NewsTagArchiveLayout, {
       props: {
         data,
-        emptyLabel: '暂无新闻',
-        draftLabel: '未发布',
-        translationUnavailableLabel: 'x',
-        previousPageLabel: '上一页',
-        nextPageLabel: '下一页',
-        formatDate: (d: string) => d,
-      },
-      global: {
-        stubs: {
-          PaginationNav: true,
-          ContentColumn: { template: '<div><slot /></div>' },
-        },
+        emptyLabel: 'No news',
+        draftLabel: 'Draft',
+        translationUnavailableLabel: 'Unavailable',
+        previousPageLabel: 'Previous',
+        nextPageLabel: 'Next',
+        formatDate: (date: string) => date,
       },
     })
-    expect(wrapper.find('h1').text()).toBe('作品发布 · 新闻')
     expect(wrapper.attributes('data-tag')).toBe('release')
+    expect(wrapper.find('[data-testid="pagination"]').exists()).toBe(false)
   })
 })
 ```
@@ -1953,200 +1506,47 @@ Run: `npm test -- tests/client/layouts/news-collections.test.ts`
 
 Expected: FAIL with layout modules not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement collection layouts**
 
-```vue
-<!-- src/client/components/news/NewsTagsList.vue -->
-<script setup lang="ts">
-import type { NewsTagCount } from '../../../shared/types/news.js'
-
-defineProps<{ tags: NewsTagCount[] }>()
-</script>
-
-<template>
-  <ul class="syn-news-tags" data-testid="news-tags-list">
-    <li v-for="tag in tags" :key="tag.key">
-      <a :href="tag.publicPath" :lang="tag.titleLang">{{ tag.title }}</a>
-      <span data-testid="tag-count">{{ tag.count }}</span>
-    </li>
-  </ul>
-</template>
-
-<style scoped>
-.syn-news-tags {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.syn-news-tags li {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: var(--syn-border-subtle);
-  padding: 0.75rem 0;
-}
-</style>
-```
-
-```vue
-<!-- src/client/layouts/NewsIndexLayout.vue -->
-<script setup lang="ts">
-import type { NewsCollectionPageData } from '../../shared/types/news.js'
-import NewsList from '../components/news/NewsList.vue'
-import PaginationNav from '../components/PaginationNav.vue'
-import ContentColumn from '../components/ContentColumn.vue'
-
-defineProps<{
-  data: NewsCollectionPageData
-  emptyLabel: string
-  draftLabel: string
-  translationUnavailableLabel: string
-  previousPageLabel: string
-  nextPageLabel: string
-  formatDate: (date: string) => string
-}>()
-</script>
-
-<template>
-  <ContentColumn>
-    <header>
-      <h1>{{ data.heading }}</h1>
-      <p>{{ data.description }}</p>
-    </header>
-    <NewsList
-      :items="data.items"
-      :empty-label="emptyLabel"
-      :draft-label="draftLabel"
-      :translation-unavailable-label="translationUnavailableLabel"
-      :format-date="formatDate"
-    />
-    <PaginationNav
-      v-if="data.pagination && data.pagination.pageCount > 1"
-      :prev-href="data.pagination.prevPublicPath"
-      :next-href="data.pagination.nextPublicPath"
-      :prev-label="previousPageLabel"
-      :next-label="nextPageLabel"
-    />
-  </ContentColumn>
-</template>
-```
-
-```vue
-<!-- src/client/layouts/NewsTagsIndexLayout.vue -->
-<script setup lang="ts">
-import type { NewsCollectionPageData } from '../../shared/types/news.js'
-import NewsTagsList from '../components/news/NewsTagsList.vue'
-import ContentColumn from '../components/ContentColumn.vue'
-
-defineProps<{ data: NewsCollectionPageData }>()
-</script>
-
-<template>
-  <ContentColumn>
-    <header>
-      <h1>{{ data.heading }}</h1>
-      <p>{{ data.description }}</p>
-    </header>
-    <NewsTagsList :tags="data.tags ?? []" />
-  </ContentColumn>
-</template>
-```
-
-```vue
-<!-- src/client/layouts/NewsTagArchiveLayout.vue -->
-<script setup lang="ts">
-import type { NewsCollectionPageData } from '../../shared/types/news.js'
-import NewsList from '../components/news/NewsList.vue'
-import PaginationNav from '../components/PaginationNav.vue'
-import ContentColumn from '../components/ContentColumn.vue'
-
-defineProps<{
-  data: NewsCollectionPageData
-  emptyLabel: string
-  draftLabel: string
-  translationUnavailableLabel: string
-  previousPageLabel: string
-  nextPageLabel: string
-  formatDate: (date: string) => string
-}>()
-</script>
-
-<template>
-  <div class="syn-news-tag-archive" :data-tag="data.tagKey">
-    <ContentColumn>
-      <header>
-        <h1>{{ data.heading }}</h1>
-        <p>{{ data.description }}</p>
-      </header>
-      <NewsList
-        :items="data.items"
-        :empty-label="emptyLabel"
-        :draft-label="draftLabel"
-        :translation-unavailable-label="translationUnavailableLabel"
-        :format-date="formatDate"
-      />
-      <PaginationNav
-        v-if="data.pagination && data.pagination.pageCount > 1"
-        :prev-href="data.pagination.prevPublicPath"
-        :next-href="data.pagination.nextPublicPath"
-        :prev-label="previousPageLabel"
-        :next-label="nextPageLabel"
-      />
-    </ContentColumn>
-  </div>
-</template>
-```
-
-Wire layouts in the Plan 05 client app resolver (exact file from Plan 05, typically `src/client/layouts/resolve-layout.ts`):
-
-```ts
-import NewsIndexLayout from './NewsIndexLayout.vue'
-import NewsTagsIndexLayout from './NewsTagsIndexLayout.vue'
-import NewsTagArchiveLayout from './NewsTagArchiveLayout.vue'
-
-export function resolveNewsCollectionLayout(identity: string) {
-  if (identity === 'news-tags-index') return NewsTagsIndexLayout
-  if (identity === 'news-index' || identity.startsWith('news-page:')) {
-    return NewsIndexLayout
-  }
-  if (identity.startsWith('news-tag:')) return NewsTagArchiveLayout
-  return null
-}
-```
+Implementation requirements:
+- `NewsTagsList.vue` renders `<a>` only when `tag.publicPath` exists; otherwise render a `<span>` for zero-count tags.
+- Each layout wraps content in `ContentColumn`.
+- `NewsIndexLayout` and `NewsTagArchiveLayout` render `PaginationNav` only when `data.pagination?.pageCount > 1`.
+- No `resolve-layout.ts` changes in this task.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npm test -- tests/client/layouts/news-collections.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/client/components/news/NewsTagsList.vue src/client/layouts/NewsIndexLayout.vue src/client/layouts/NewsTagsIndexLayout.vue src/client/layouts/NewsTagArchiveLayout.vue src/client/layouts/resolve-layout.ts tests/client/layouts/news-collections.test.ts
-git commit -m "feat(news): add index, tags index, and tag archive layouts"
+git add src/client/components/news/NewsTagsList.vue src/client/layouts/NewsIndexLayout.vue src/client/layouts/NewsTagsIndexLayout.vue src/client/layouts/NewsTagArchiveLayout.vue tests/client/layouts/news-collections.test.ts
+git commit -m "feat(news): add news collection layouts"
 ```
 
 ---
 
-### Task 8: News detail layout (760px, meta, no TOC/search)
+### Task 8: News detail layout
 
 **Files:**
 - Create: `src/client/components/ArticleMeta.vue`
 - Create: `src/client/layouts/NewsDetailLayout.vue`
 - Create: `tests/client/layouts/news-detail.test.ts`
-- Modify: `src/client/layouts/resolve-layout.ts`
 
 **Interfaces:**
-- Consumes: `NewsDetailPageData`, badges, `ContentCover`, `ContentColumn` (`max-width: var(--syn-content-width)` → 760px)
-- Produces: detail layout that never mounts TOC or search components
+- Consumes: `NewsDetailPageData`, `ArticleMeta`, badges, `ContentCover`, `ContentColumn`
+- Produces: News article layout with 760px column, no search, no table of contents, and slot for VuePress `<Content />`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing tests**
 
 ```ts
 // tests/client/layouts/news-detail.test.ts
 /** @vitest-environment happy-dom */
-import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
 import NewsDetailLayout from '../../../src/client/layouts/NewsDetailLayout.vue'
 import type { NewsDetailPageData } from '../../../src/shared/types/news'
 
@@ -2157,73 +1557,34 @@ const data: NewsDetailPageData = {
   titleLang: 'zh-CN',
   date: '2026-08-11',
   updated: '2026-08-12',
-  coverPublicUrl: '/assets/n.webp',
-  tags: [
-    { key: 'release', title: 'Releases', publicPath: '/en/news/tags/release/' },
-  ],
+  coverPublicPath: '/base/assets/news.webp',
+  tags: [{ key: 'release', title: 'Releases', publicPath: '/base/en/news/tags/release/' }],
   isFallback: true,
   isDraft: true,
-  translationUnavailableMessage:
-    'This article is not yet available in English. Showing the original version.',
+  translationUnavailableMessage: 'Unavailable',
   bodyLang: 'zh-CN',
 }
 
 describe('NewsDetailLayout', () => {
-  it('renders title, dates, tags, cover, badges, and body lang', () => {
+  it('renders metadata, badges, cover, and slotted markdown body', () => {
     const wrapper = mount(NewsDetailLayout, {
       props: {
         data,
         publishedLabel: 'Published',
         updatedLabel: 'Updated',
         draftLabel: 'Draft',
-        formatDate: (d: string) => `fmt:${d}`,
+        formatDate: (date: string) => `fmt:${date}`,
       },
-      slots: {
-        default: '<p>Main locale body</p>',
-      },
-      global: {
-        stubs: {
-          ContentColumn: {
-            template: '<div data-testid="content-column" class="syn-content-column"><slot /></div>',
-          },
-        },
-      },
+      slots: { default: '<p>Markdown body</p>' },
     })
     expect(wrapper.find('[data-testid="content-column"]').exists()).toBe(true)
     expect(wrapper.find('h1').attributes('lang')).toBe('zh-CN')
-    expect(wrapper.find('[data-testid="content-cover"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="draft-badge"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="translation-unavailable-badge"]').exists()).toBe(
-      true,
-    )
-    expect(wrapper.find('[data-testid="article-body"]').attributes('lang')).toBe('zh-CN')
+    expect(wrapper.find('[data-testid="content-cover"]').attributes('src')).toBe('/base/assets/news.webp')
     expect(wrapper.find('[data-testid="updated-date"]').text()).toContain('fmt:2026-08-12')
-    expect(wrapper.findComponent({ name: 'TableOfContents' }).exists()).toBe(false)
+    expect(wrapper.find('[data-testid="article-body"]').attributes('lang')).toBe('zh-CN')
+    expect(wrapper.find('[data-testid="article-body"]').text()).toContain('Markdown body')
     expect(wrapper.find('[data-testid="search"]').exists()).toBe(false)
-  })
-
-  it('omits cover and updated when absent', () => {
-    const wrapper = mount(NewsDetailLayout, {
-      props: {
-        data: {
-          ...data,
-          coverPublicUrl: undefined,
-          updated: undefined,
-          isFallback: false,
-          isDraft: false,
-          translationUnavailableMessage: undefined,
-        },
-        publishedLabel: 'Published',
-        updatedLabel: 'Updated',
-        draftLabel: 'Draft',
-        formatDate: (d: string) => d,
-      },
-      global: {
-        stubs: { ContentColumn: { template: '<div><slot /></div>' } },
-      },
-    })
-    expect(wrapper.find('[data-testid="content-cover"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="updated-date"]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'TableOfContents' }).exists()).toBe(false)
   })
 })
 ```
@@ -2232,195 +1593,61 @@ describe('NewsDetailLayout', () => {
 
 Run: `npm test -- tests/client/layouts/news-detail.test.ts`
 
-Expected: FAIL with module not found.
+Expected: FAIL with missing modules.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement News detail components**
 
-```vue
-<!-- src/client/components/ArticleMeta.vue -->
-<script setup lang="ts">
-import type { NewsTagLink } from '../../shared/types/news.js'
-
-defineProps<{
-  date: string
-  updated?: string
-  publishedLabel: string
-  updatedLabel: string
-  formatDate: (date: string) => string
-  tags: NewsTagLink[]
-}>()
-</script>
-
-<template>
-  <div class="syn-article-meta" data-testid="article-meta">
-    <p>
-      <span>{{ publishedLabel }}</span>
-      <time data-testid="published-date" :datetime="date">{{ formatDate(date) }}</time>
-    </p>
-    <p v-if="updated">
-      <span>{{ updatedLabel }}</span>
-      <time data-testid="updated-date" :datetime="updated">{{ formatDate(updated) }}</time>
-    </p>
-    <ul v-if="tags.length" class="syn-article-meta__tags">
-      <li v-for="tag in tags" :key="tag.key">
-        <a :href="tag.publicPath">{{ tag.title }}</a>
-      </li>
-    </ul>
-  </div>
-</template>
-
-<style scoped>
-.syn-article-meta__tags {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-</style>
-```
-
-```vue
-<!-- src/client/layouts/NewsDetailLayout.vue -->
-<script setup lang="ts">
-import type { NewsDetailPageData } from '../../shared/types/news.js'
-import ArticleMeta from '../components/ArticleMeta.vue'
-import ContentColumn from '../components/ContentColumn.vue'
-import ContentCover from '../components/ContentCover.vue'
-import DraftBadge from '../components/DraftBadge.vue'
-import TranslationUnavailableBadge from '../components/TranslationUnavailableBadge.vue'
-
-defineProps<{
-  data: NewsDetailPageData
-  publishedLabel: string
-  updatedLabel: string
-  draftLabel: string
-  formatDate: (date: string) => string
-}>()
-</script>
-
-<template>
-  <ContentColumn class="syn-news-detail" data-testid="news-detail">
-    <DraftBadge v-if="data.isDraft" :label="draftLabel" />
-    <TranslationUnavailableBadge
-      v-if="data.translationUnavailableMessage"
-      :label="data.translationUnavailableMessage"
-    />
-    <h1 :lang="data.titleLang">{{ data.title }}</h1>
-    <ArticleMeta
-      :date="data.date"
-      :updated="data.updated"
-      :published-label="publishedLabel"
-      :updated-label="updatedLabel"
-      :format-date="formatDate"
-      :tags="data.tags"
-    />
-    <ContentCover
-      v-if="data.coverPublicUrl"
-      :src="data.coverPublicUrl"
-      :alt="data.title"
-      eager
-    />
-    <div data-testid="article-body" class="syn-article-body" :lang="data.bodyLang">
-      <slot />
-    </div>
-  </ContentColumn>
-</template>
-```
-
-Assert `ContentColumn` CSS (from Plan 05 / tokens) includes:
-
-```css
-.syn-content-column {
-  max-width: var(--syn-content-width); /* 760px */
-  margin-inline: auto;
-}
-```
-
-Add a regression test in this task’s file or extend tokens test:
-
-```ts
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
-
-describe('content width token', () => {
-  it('keeps syn-content-width at 760px', () => {
-    const css = readFileSync(resolve('src/client/styles/tokens.css'), 'utf8')
-    expect(css).toContain('--syn-content-width: 760px;')
-  })
-})
-```
-
-Update `resolve-layout.ts` so `contentType === 'news'` maps to `NewsDetailLayout`.
+Implementation requirements:
+- `ArticleMeta.vue` renders published/updated `<time>` elements with `data-testid="published-date"` and `data-testid="updated-date"`.
+- Tag links use `tag.publicPath`.
+- `NewsDetailLayout.vue` wraps its default slot in `<div data-testid="article-body" :lang="data.bodyLang">`.
+- Cover uses `data.coverPublicPath`.
+- No registry or `Layout.vue` changes in this task.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npm test -- tests/client/layouts/news-detail.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/client/components/ArticleMeta.vue src/client/layouts/NewsDetailLayout.vue src/client/layouts/resolve-layout.ts tests/client/layouts/news-detail.test.ts
-git commit -m "feat(news): add 760px news detail layout without TOC or search"
+git add src/client/components/ArticleMeta.vue src/client/layouts/NewsDetailLayout.vue tests/client/layouts/news-detail.test.ts
+git commit -m "feat(news): add news detail layout"
 ```
 
 ---
 
-### Task 9: Page detail layout (unified 760px, optional cover, no listing)
+### Task 9: Page detail frontmatter and layout
 
 **Files:**
 - Create: `src/compiler/page/attach-page-page-data.ts`
 - Create: `src/client/layouts/PageDetailLayout.vue`
 - Create: `tests/compiler/page/attach-page-page-data.test.ts`
 - Create: `tests/client/layouts/page-detail.test.ts`
-- Modify: `src/client/layouts/resolve-layout.ts`
 
 **Interfaces:**
-- Consumes: `RouteContentPackage` type `page`, `CompiledPage`, badges, `ContentCover`, `ContentColumn`
-- Produces: `PageDetailPageData`; layout with no auto listing and no `layout` prop API
+- Consumes: `RouteContentPackage` type `page`, `CompiledPage`, `ResolvedSynctrolThemeOptions`, cover `publicPath`
+- Produces: `buildPageFrontmatterForPage(input): SynctrolPageFrontmatter | null`; Page detail layout with no listing and no `layout` prop API
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing compiler test**
 
 ```ts
 // tests/compiler/page/attach-page-page-data.test.ts
 import { describe, expect, it } from 'vitest'
-import { attachPagePageData } from '../../../src/compiler/page/attach-page-page-data'
-import { newsTheme } from '../../helpers/news-fixtures'
-import type { RouteContentPackage } from '../../../src/shared/types'
+import { buildPageFrontmatterForPage } from '../../../src/compiler/page/attach-page-page-data'
+import { pagePackage, themeOptions } from '../../helpers/news-fixtures'
 import type { CompiledPage } from '../../../src/shared/route-types'
 
-describe('attachPagePageData', () => {
+describe('buildPageFrontmatterForPage', () => {
   it('builds page detail data with optional cover and fallback message', () => {
-    const pkg: RouteContentPackage = {
-      dir: '/content/pages/team',
-      identity: 'page:team',
-      type: 'page',
-      slug: 'team',
-      draft: false,
-      tags: [],
-      cover: './assets/team.webp',
-      locales: {
-        zh: {
-          filePath: 'zh.md',
-          title: '团队',
-          draft: false,
-          body: '介绍',
-        },
-      },
-    }
+    const pkg = pagePackage({ slug: 'team', cover: './assets/team.webp' })
     const page: CompiledPage = {
       identity: 'page:team',
       locale: 'en',
       contentType: 'page',
-      url: {
-        routePath: '/en/team/',
-        outputPath: 'en/team/index.html',
-        publicPath: '/en/team/',
-        absoluteUrl: 'https://synctrol.com/en/team/',
-      },
+      url: { routePath: '/en/team/', outputPath: 'en/team/index.html', publicPath: '/base/en/team/', absoluteUrl: 'https://synctrol.com/base/en/team/' },
       isFallback: true,
       isDraft: false,
       noindex: true,
@@ -2430,664 +1657,413 @@ describe('attachPagePageData', () => {
       slug: 'team',
       title: '团队',
     }
-    const map = attachPagePageData({
-      pages: [page],
-      packages: [pkg],
-      options: newsTheme(),
-      resolveCoverUrl: () => '/assets/team.hash.webp',
-    })
-    expect(map.get('/en/team/')).toEqual({
-      kind: 'page-detail',
-      slug: 'team',
-      title: '团队',
-      titleLang: 'zh-CN',
-      coverPublicUrl: '/assets/team.hash.webp',
-      isFallback: true,
-      isDraft: false,
-      translationUnavailableMessage:
-        'This article is not yet available in English. Showing the original version.',
-      bodyLang: 'zh-CN',
-    })
-  })
-
-  it('omits cover when not configured', () => {
-    const pkg: RouteContentPackage = {
-      dir: '/content/pages/about',
-      identity: 'page:about',
-      type: 'page',
-      slug: 'about',
-      draft: false,
-      tags: [],
-      locales: {
-        zh: { filePath: 'zh.md', title: '关于', draft: false, body: 'x' },
+    expect(
+      buildPageFrontmatterForPage({
+        compiled: page,
+        packages: [pkg],
+        options: themeOptions(),
+        resolveCoverPublicPath: () => '/base/assets/team.webp',
+      }),
+    ).toEqual({
+      kind: 'detail',
+      data: {
+        kind: 'page-detail',
+        slug: 'team',
+        title: '关于',
+        titleLang: 'zh-CN',
+        coverPublicPath: '/base/assets/team.webp',
+        isFallback: true,
+        isDraft: false,
+        translationUnavailableMessage:
+          'This article is not yet available in English. Showing the original version.',
+        bodyLang: 'zh-CN',
       },
-    }
-    const page: CompiledPage = {
-      identity: 'page:about',
-      locale: 'zh',
-      contentType: 'page',
-      url: {
-        routePath: '/zh/about/',
-        outputPath: 'zh/about/index.html',
-        publicPath: '/zh/about/',
-        absoluteUrl: 'https://synctrol.com/zh/about/',
-      },
-      isFallback: false,
-      isDraft: false,
-      noindex: false,
-      bodyLocale: 'zh',
-      canonicalLocale: 'zh',
-      slug: 'about',
-      title: '关于',
-    }
-    const map = attachPagePageData({
-      pages: [page],
-      packages: [pkg],
-      options: newsTheme(),
-      resolveCoverUrl: () => {
-        throw new Error('should not resolve')
-      },
-    })
-    expect(map.get('/zh/about/')).toMatchObject({
-      coverPublicUrl: undefined,
-      translationUnavailableMessage: undefined,
     })
   })
 })
 ```
 
+- [ ] **Step 2: Write failing client layout test**
+
 ```ts
 // tests/client/layouts/page-detail.test.ts
 /** @vitest-environment happy-dom */
-import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
 import PageDetailLayout from '../../../src/client/layouts/PageDetailLayout.vue'
 import type { PageDetailPageData } from '../../../src/shared/types/news'
 
 describe('PageDetailLayout', () => {
-  it('renders unified 760px column with optional cover and no listing', () => {
+  it('renders 760px page body with optional cover and no listing', () => {
     const data: PageDetailPageData = {
       kind: 'page-detail',
       slug: 'team',
       title: 'Team',
       titleLang: 'en-US',
-      coverPublicUrl: '/c.webp',
+      coverPublicPath: '/base/team.webp',
       isFallback: false,
       isDraft: false,
       bodyLang: 'en-US',
     }
     const wrapper = mount(PageDetailLayout, {
       props: { data, draftLabel: 'Draft' },
-      slots: { default: '<p>Member bios via markdown</p>' },
-      global: {
-        stubs: {
-          ContentColumn: {
-            template:
-              '<div data-testid="content-column" class="syn-content-column"><slot /></div>',
-          },
-        },
-      },
+      slots: { default: '<p>Team body</p>' },
     })
     expect(wrapper.find('[data-testid="content-column"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="content-cover"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="content-cover"]').attributes('src')).toBe('/base/team.webp')
     expect(wrapper.find('[data-testid="page-listing"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="search"]').exists()).toBe(false)
-    // no layout selector prop surface
     expect((wrapper.props() as { layout?: unknown }).layout).toBeUndefined()
-  })
-
-  it('shows draft and translation badges when flagged', () => {
-    const data: PageDetailPageData = {
-      kind: 'page-detail',
-      slug: 'team',
-      title: '团队',
-      titleLang: 'zh-CN',
-      isFallback: true,
-      isDraft: true,
-      translationUnavailableMessage: 'Unavailable',
-      bodyLang: 'zh-CN',
-    }
-    const wrapper = mount(PageDetailLayout, {
-      props: { data, draftLabel: 'Draft' },
-      global: {
-        stubs: { ContentColumn: { template: '<div><slot /></div>' } },
-      },
-    })
-    expect(wrapper.find('[data-testid="draft-badge"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="translation-unavailable-badge"]').exists()).toBe(
-      true,
-    )
   })
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 3: Run tests to verify they fail**
 
 Run: `npm test -- tests/compiler/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts`
 
-Expected: FAIL with modules not found.
+Expected: FAIL with missing modules.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Implement Page builder and layout**
 
-```ts
-// src/compiler/page/attach-page-page-data.ts
-import type { RouteContentPackage, SynctrolThemeOptions } from '../../shared/types.js'
-import type { CompiledPage } from '../../shared/route-types.js'
-import type { PageDetailPageData } from '../../shared/types/news.js'
+Implementation requirements:
+- `buildPageFrontmatterForPage` returns `null` unless `compiled.contentType === 'page'`.
+- Find package by `compiled.identity` or `compiled.packagePath`.
+- Use `pkg.locales[compiled.bodyLocale]` for title and body lang.
+- Cover uses `pkg.cover ? resolveCoverPublicPath(pkg, pkg.cover) : undefined`.
+- Translation message comes from `options.locales[compiled.locale].messages.translationUnavailable` only when `compiled.isFallback`.
+- `PageDetailLayout.vue` mirrors the News detail body/cover/badges without ArticleMeta and without any listing.
+- No registry or `Layout.vue` changes in this task.
 
-export interface AttachPagePageDataInput {
-  pages: CompiledPage[]
-  packages: RouteContentPackage[]
-  options: SynctrolThemeOptions
-  resolveCoverUrl: (pkg: RouteContentPackage, relativePath: string) => string
-}
-
-export function attachPagePageData(
-  input: AttachPagePageDataInput,
-): Map<string, PageDetailPageData> {
-  const { pages, packages, options, resolveCoverUrl } = input
-  const out = new Map<string, PageDetailPageData>()
-
-  for (const page of pages) {
-    if (page.contentType !== 'page') continue
-    const pkg = packages.find(
-      (p) => p.type === 'page' && `page:${p.slug}` === page.identity,
-    )
-    if (!pkg || !pkg.slug) continue
-    const bodyMd = pkg.locales[page.bodyLocale]
-    if (!bodyMd) {
-      throw new Error(`Missing body for page ${pkg.dir}`)
-    }
-    out.set(page.url.routePath, {
-      kind: 'page-detail',
-      slug: pkg.slug,
-      title: bodyMd.title,
-      titleLang: options.locales[page.bodyLocale]!.lang,
-      coverPublicUrl: pkg.cover ? resolveCoverUrl(pkg, pkg.cover) : undefined,
-      isFallback: page.isFallback,
-      isDraft: page.isDraft,
-      translationUnavailableMessage: page.isFallback
-        ? options.locales[page.locale]!.messages.translationUnavailable
-        : undefined,
-      bodyLang: options.locales[page.bodyLocale]!.lang,
-    })
-  }
-
-  return out
-}
-```
-
-```vue
-<!-- src/client/layouts/PageDetailLayout.vue -->
-<script setup lang="ts">
-import type { PageDetailPageData } from '../../shared/types/news.js'
-import ContentColumn from '../components/ContentColumn.vue'
-import ContentCover from '../components/ContentCover.vue'
-import DraftBadge from '../components/DraftBadge.vue'
-import TranslationUnavailableBadge from '../components/TranslationUnavailableBadge.vue'
-
-defineProps<{
-  data: PageDetailPageData
-  draftLabel: string
-}>()
-</script>
-
-<template>
-  <ContentColumn class="syn-page-detail" data-testid="page-detail">
-    <DraftBadge v-if="data.isDraft" :label="draftLabel" />
-    <TranslationUnavailableBadge
-      v-if="data.translationUnavailableMessage"
-      :label="data.translationUnavailableMessage"
-    />
-    <h1 :lang="data.titleLang">{{ data.title }}</h1>
-    <ContentCover
-      v-if="data.coverPublicUrl"
-      :src="data.coverPublicUrl"
-      :alt="data.title"
-      eager
-    />
-    <div data-testid="article-body" class="syn-article-body" :lang="data.bodyLang">
-      <slot />
-    </div>
-  </ContentColumn>
-</template>
-```
-
-Map `contentType === 'page'` → `PageDetailLayout` in `resolve-layout.ts`. Do not add any Page index route, Page collection compiler, or `layout` frontmatter/manifest field.
-
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 5: Run tests to verify they pass**
 
 Run: `npm test -- tests/compiler/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/compiler/page/attach-page-page-data.ts src/client/layouts/PageDetailLayout.vue src/client/layouts/resolve-layout.ts tests/compiler/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts
-git commit -m "feat(page): add unified 760px page detail without auto listing"
+git add src/compiler/page/attach-page-page-data.ts src/client/layouts/PageDetailLayout.vue tests/compiler/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts
+git commit -m "feat(page): add page detail frontmatter and layout"
 ```
 
 ---
 
-### Task 10: Home `home-logo` and `home-footer` markdown formatters
+### Task 10: Home markdown formatters and footer slots
 
 **Files:**
 - Create: `src/compiler/markdown/home-formatters.ts`
-- Create: `src/compiler/markdown/assert-home-formatters.ts`
+- Create: `src/compiler/home/extract-home-formatter-html.ts`
+- Create: `src/compiler/home/build-home-frontmatter.ts`
 - Create: `src/client/components/home/HomeLogoSlot.vue`
 - Create: `src/client/components/home/HomeFooterSlot.vue`
 - Create: `tests/compiler/markdown/home-formatters.test.ts`
 - Create: `tests/client/components/home-formatters.test.ts`
-- Modify: theme markdown setup from Plan 01/05 to call `registerHomeFormatters(md)`
-- Modify: Home layout / shell Footer slot to render formatter outputs
+- Modify: `src/compiler/locale-markdown.ts`
+- Modify: `src/compiler/theme.ts` only to add `extendsMarkdown`
+- Modify: `package.json` / `package-lock.json` if direct markdown dependencies are absent
 
 **Interfaces:**
-- Consumes: markdown-it, Plan 05 Footer region
-- Produces: `registerHomeFormatters(md)`, `assertHomeHasLogo(markdownSource, packagePath)`, Vue slots for logo/footer HTML
+- Consumes: VuePress 2 theme hook `extendsMarkdown: (md, app) => void | Promise<void>`, markdown-it, `markdown-it-container`, Home `LocaleMarkdown.body`
+- Produces: `registerHomeFormatters(md)`, `assertHomeHasLogo(markdownSource, filePath)`, `buildHomeFrontmatterForPage(input): SynctrolHomeFrontmatter | null`
 
-Rules from spec §20.2:
-- `home-logo` is required
-- `home-footer` is optional; when absent, Footer renders empty
-- Formatters use `::: home-logo` / `::: home-footer` container syntax
-- Home frontmatter title remains SEO-only and is not rendered as the logo
+- [ ] **Step 1: Add direct markdown dependencies if needed**
 
-- [ ] **Step 1: Write the failing tests**
+Inspect `package.json`. If `markdown-it` or `markdown-it-container` are absent from direct dependencies, run:
+
+```bash
+npm install markdown-it markdown-it-container
+npm install --save-dev @types/markdown-it @types/markdown-it-container
+```
+
+Keep versions selected by npm; do not pin invented versions.
+
+- [ ] **Step 2: Write formatter tests**
 
 ```ts
 // tests/compiler/markdown/home-formatters.test.ts
 import MarkdownIt from 'markdown-it'
 import { describe, expect, it } from 'vitest'
-import {
-  assertHomeHasLogo,
-  registerHomeFormatters,
-} from '../../../src/compiler/markdown/home-formatters'
+import { buildHomeFrontmatterForPage } from '../../../src/compiler/home/build-home-frontmatter'
+import { extractHomeFormatterHtml } from '../../../src/compiler/home/extract-home-formatter-html'
+import { assertHomeHasLogo, registerHomeFormatters } from '../../../src/compiler/markdown/home-formatters'
+import { homePackage } from '../../helpers/news-fixtures'
+import type { CompiledPage } from '../../../src/shared/route-types'
 
 describe('home formatters', () => {
-  it('renders home-logo and home-footer containers as marked blocks', () => {
+  it('registers home-logo and home-footer markdown-it containers', () => {
     const md = new MarkdownIt()
     registerHomeFormatters(md)
-    const html = md.render(`::: home-logo
-# SYNCTROL
-
-WE SHAPE WAVE
-:::
-
-::: home-footer
-Contact
-:::
-`)
+    const html = md.render('::: home-logo\n# SYNCTROL\n:::\n\n::: home-footer\nContact\n:::\n')
     expect(html).toContain('data-syn-formatter="home-logo"')
     expect(html).toContain('SYNCTROL')
     expect(html).toContain('data-syn-formatter="home-footer"')
-    expect(html).toContain('Contact')
   })
 
-  it('assertHomeHasLogo passes when logo container exists', () => {
-    expect(() =>
-      assertHomeHasLogo(
-        '::: home-logo\n# SYNCTROL\n:::\n',
-        'content/home',
-      ),
-    ).not.toThrow()
+  it('asserts home-logo exists in Home markdown source', () => {
+    expect(() => assertHomeHasLogo('::: home-logo\n# SYNCTROL\n:::\n', '/content/home/zh.md')).not.toThrow()
+    expect(() => assertHomeHasLogo('# Missing', '/content/home/zh.md')).toThrow(/home-logo/)
   })
 
-  it('assertHomeHasLogo throws when logo container is missing', () => {
-    expect(() => assertHomeHasLogo('Just text', 'content/home')).toThrow(
-      /home-logo/,
-    )
+  it('extracts formatter HTML and builds Home frontmatter', () => {
+    const md = new MarkdownIt()
+    registerHomeFormatters(md)
+    const extracted = extractHomeFormatterHtml(md.render('::: home-logo\n# SYNCTROL\n:::\n'))
+    expect(extracted.logoHtml).toContain('SYNCTROL')
+    expect(extracted.footerHtml).toBeUndefined()
+
+    const pkg = homePackage({
+      locales: {
+        en: {
+          filePath: 'en.md',
+          title: 'Home SEO',
+          description: 'SEO only',
+          draft: false,
+          body: '::: home-logo\n# SYNCTROL\n:::\n',
+        },
+      },
+    })
+    const page: CompiledPage = {
+      identity: 'home',
+      locale: 'en',
+      contentType: 'home',
+      url: { routePath: '/en/', outputPath: 'en/index.html', publicPath: '/base/en/', absoluteUrl: 'https://synctrol.com/base/en/' },
+      isFallback: false,
+      isDraft: false,
+      noindex: false,
+      bodyLocale: 'en',
+      canonicalLocale: 'en',
+      packagePath: pkg.dir,
+      slug: null,
+      title: 'Home SEO',
+    }
+    expect(buildHomeFrontmatterForPage({ compiled: page, packages: [pkg] })).toMatchObject({
+      kind: 'home',
+      logoHtml: expect.stringContaining('SYNCTROL'),
+    })
   })
 })
 ```
+
+- [ ] **Step 3: Write Home slot component tests**
 
 ```ts
 // tests/client/components/home-formatters.test.ts
 /** @vitest-environment happy-dom */
-import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import HomeLogoSlot from '../../../src/client/components/home/HomeLogoSlot.vue'
-import HomeFooterSlot from '../../../src/client/components/home/HomeFooterSlot.vue'
+import { describe, expect, it } from 'vitest'
+import HomeFooterSlot from '../../../../src/client/components/home/HomeFooterSlot.vue'
+import HomeLogoSlot from '../../../../src/client/components/home/HomeLogoSlot.vue'
 
 describe('Home formatter slots', () => {
-  it('HomeLogoSlot renders provided logo html and is not the SEO title', () => {
+  it('renders logo HTML and ignores SEO title', () => {
     const wrapper = mount(HomeLogoSlot, {
       props: {
         html: '<div data-syn-formatter="home-logo"><h1>SYNCTROL</h1></div>',
-        seoTitle: 'Synctrol Home SEO',
+        seoTitle: 'Home SEO',
       },
     })
     expect(wrapper.find('[data-testid="home-logo"]').html()).toContain('SYNCTROL')
-    expect(wrapper.text()).not.toContain('Synctrol Home SEO')
+    expect(wrapper.text()).not.toContain('Home SEO')
   })
 
-  it('HomeFooterSlot renders empty when html is absent', () => {
-    const empty = mount(HomeFooterSlot, { props: { html: undefined } })
-    expect(empty.find('[data-testid="home-footer"]').text()).toBe('')
-    const filled = mount(HomeFooterSlot, {
-      props: { html: '<p>Footer note</p>' },
-    })
-    expect(filled.text()).toContain('Footer note')
+  it('renders optional footer HTML or empty content', () => {
+    expect(mount(HomeFooterSlot, { props: { html: undefined } }).find('[data-testid="home-footer"]').text()).toBe('')
+    expect(mount(HomeFooterSlot, { props: { html: '<p>Contact</p>' } }).text()).toContain('Contact')
   })
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 4: Run tests to verify they fail**
 
 Run: `npm test -- tests/compiler/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts`
 
-Expected: FAIL with modules not found. If `markdown-it` is not a dependency yet, add it as a `devDependency`/`dependency` matching VuePress’s markdown-it major before re-running.
+Expected: FAIL with missing modules or dependencies.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 5: Implement formatter helpers and assertion**
 
-```ts
-// src/compiler/markdown/home-formatters.ts
-import type MarkdownIt from 'markdown-it'
-import container from 'markdown-it-container'
+Implementation requirements:
+- `registerHomeFormatters(md)` uses `markdown-it-container` for names `home-logo` and `home-footer`, returning wrappers:
+  - opening: `<div class="syn-formatter syn-formatter--${name}" data-syn-formatter="${name}">\n`
+  - closing: `</div>\n`
+- `assertHomeHasLogo(source, filePath)` accepts both `:::` and longer marker fences; use a regex anchored to line start such as `/^:{3,}\s*home-logo\s*$/m`.
+- In `src/compiler/locale-markdown.ts`, after `type === 'home'` body extraction and description validation, call `assertHomeHasLogo(markdown.body, filePath)` before returning Home markdown.
+- `extractHomeFormatterHtml(renderedHtml)` extracts the complete generated wrapper for `home-logo` and optional `home-footer`; throw if logo is absent.
+- `buildHomeFrontmatterForPage` renders the Home body with an internal `MarkdownIt` instance using `registerHomeFormatters`, extracts HTML, and returns `null` for non-Home compiled pages.
 
-export function registerHomeFormatters(md: MarkdownIt): void {
-  for (const name of ['home-logo', 'home-footer'] as const) {
-    md.use(container, name, {
-      render(tokens: { info: string; nesting: number }[], idx: number) {
-        if (tokens[idx]!.nesting === 1) {
-          return `<div class="syn-formatter syn-formatter--${name}" data-syn-formatter="${name}">\n`
-        }
-        return '</div>\n'
-      },
-    })
-  }
-}
+- [ ] **Step 6: Add exact VuePress hook in theme**
 
-export function assertHomeHasLogo(markdownSource: string, packagePath: string): void {
-  if (!/(^|\n):::\s*home-logo\s*(\n|$)/.test(markdownSource)) {
-    throw new Error(
-      `Home package ${packagePath} must include a ::: home-logo formatter block`,
-    )
-  }
-}
-
-// re-export assert under dedicated path for discoverability
-export { assertHomeHasLogo as assertHomeFormatters }
-```
+Patch only `src/compiler/theme.ts`:
 
 ```ts
-// src/compiler/markdown/assert-home-formatters.ts
-export { assertHomeHasLogo } from './home-formatters.js'
-```
+import { registerHomeFormatters } from './markdown/home-formatters.js'
 
-```vue
-<!-- src/client/components/home/HomeLogoSlot.vue -->
-<script setup lang="ts">
-defineProps<{
-  html: string
-  /** SEO-only frontmatter title; must not be rendered as the logo. */
-  seoTitle: string
-}>()
-</script>
-
-<template>
-  <div
-    data-testid="home-logo"
-    class="syn-home-logo"
-    v-html="html"
-  />
-</template>
-
-<style scoped>
-.syn-home-logo {
-  font-family: 'Archivo Black', sans-serif;
-}
-</style>
-```
-
-```vue
-<!-- src/client/components/home/HomeFooterSlot.vue -->
-<script setup lang="ts">
-defineProps<{ html?: string }>()
-</script>
-
-<template>
-  <div data-testid="home-footer" class="syn-home-footer">
-    <div v-if="html" v-html="html" />
-  </div>
-</template>
-```
-
-During Home package compile (hook beside Plan 02/03 Home availability), call `assertHomeHasLogo(mainLocaleMarkdownSource, packagePath)` for every locale Markdown that is published or used as fallback body.
-
-In the Home layout (Plan 05 immersive Home Main), render:
-
-```vue
-<HomeLogoSlot :html="homeLogoHtml" :seo-title="frontmatterTitle" />
-```
-
-In `SynctrolShell` Footer slot for Home routes only:
-
-```vue
-<HomeFooterSlot :html="homeFooterHtml" />
-```
-
-Non-Home routes keep Footer empty (Plan 05 contract). Extract `homeLogoHtml` / `homeFooterHtml` by selecting nodes with `data-syn-formatter` from the rendered Markdown HTML in the Home page data attach step:
-
-```ts
-// src/compiler/home/extract-home-formatter-html.ts
-export function extractHomeFormatterHtml(renderedHtml: string): {
-  logoHtml: string
-  footerHtml?: string
-} {
-  const logoMatch = renderedHtml.match(
-    /<div class="syn-formatter syn-formatter--home-logo" data-syn-formatter="home-logo">([\s\S]*?)<\/div>/,
-  )
-  if (!logoMatch) {
-    throw new Error('Rendered Home HTML missing home-logo formatter')
-  }
-  const footerMatch = renderedHtml.match(
-    /<div class="syn-formatter syn-formatter--home-footer" data-syn-formatter="home-footer">([\s\S]*?)<\/div>/,
-  )
-  return {
-    logoHtml: logoMatch[0],
-    footerHtml: footerMatch?.[0],
-  }
-}
-```
-
-Add unit coverage inside the same markdown test file:
-
-```ts
-import { extractHomeFormatterHtml } from '../../../src/compiler/home/extract-home-formatter-html'
-
-it('extracts logo and optional footer html', () => {
-  const md = new MarkdownIt()
+// inside returned ThemeObject
+extendsMarkdown: (md): void => {
   registerHomeFormatters(md)
-  const html = md.render('::: home-logo\n# SYNCTROL\n:::\n')
-  const extracted = extractHomeFormatterHtml(html)
-  expect(extracted.logoHtml).toContain('SYNCTROL')
-  expect(extracted.footerHtml).toBeUndefined()
-})
+},
 ```
 
-Create `src/compiler/home/extract-home-formatter-html.ts` with the function above when implementing this step.
+Keep `onInitialized`, `extendsBundlerOptions`, and `onGenerated` behavior intact.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 7: Implement Home slot components**
+
+`HomeLogoSlot.vue` renders `html` with `v-html` inside `data-testid="home-logo"` and does not render `seoTitle`. `HomeFooterSlot.vue` renders an empty `data-testid="home-footer"` wrapper when `html` is absent.
+
+- [ ] **Step 8: Run tests to verify they pass**
 
 Run: `npm test -- tests/compiler/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/compiler/markdown/home-formatters.ts src/compiler/markdown/assert-home-formatters.ts src/compiler/home/extract-home-formatter-html.ts src/client/components/home/HomeLogoSlot.vue src/client/components/home/HomeFooterSlot.vue tests/compiler/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts
-git commit -m "feat(home): add home-logo and home-footer markdown formatters"
+git add package.json package-lock.json src/compiler/markdown/home-formatters.ts src/compiler/home/extract-home-formatter-html.ts src/compiler/home/build-home-frontmatter.ts src/compiler/locale-markdown.ts src/compiler/theme.ts src/client/components/home/HomeLogoSlot.vue src/client/components/home/HomeFooterSlot.vue tests/compiler/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts
+git commit -m "feat(home): add home markdown formatters"
 ```
 
 ---
 
-### Task 11: urlSegment / enabled-flag client wiring and integration fixtures
+### Task 11: Theme/Layout wiring and integration fixtures
 
 **Files:**
+- Modify: `src/compiler/theme.ts`
+- Modify: `src/client/layouts/Layout.vue`
+- Extend: `tests/compiler/theme.integration.test.ts`
 - Create: `tests/integration/news-page-fixtures.test.ts`
-- Create: `tests/fixtures/news-page-site/` (minimal content tree)
-- Modify: `src/compiler/compile-site-routes.ts` orchestration (or theme data plugin) to call `attachNewsPageData` / `attachPagePageData` and expose results on page data
+- Create: `tests/fixtures/news-page-site/**`
 
 **Interfaces:**
-- Consumes: Plan 03 `compileSiteRoutes`, Plan 02 compile content, Tasks 2–4 & 9 attachers
-- Produces: end-to-end assertions for default and custom segments, enabled flags, fallback list presence, draft badges metadata, Page isolation
+- Consumes: Tasks 1-10 frontmatter builders/layouts/components
+- Produces: additive runtime wiring for `frontmatter.synctrol.news/page/home`; single `Layout.vue` switch; integration coverage using HEAD compiler signatures
 
-Fixture tree:
+- [ ] **Step 1: Extend theme integration smoke**
 
-```text
-tests/fixtures/news-page-site/
-├── .vuepress/config.ts
-└── content/
-    ├── definitions.yml
-    ├── home/
-    │   ├── content.yml
-    │   ├── zh.md          # contains ::: home-logo
-    │   └── en.md
-    ├── news/
-    │   ├── alpha/
-    │   │   ├── content.yml  # date, tags, cover
-    │   │   ├── zh.md
-    │   │   └── en.md
-    │   └── beta/
-    │       ├── content.yml  # date, tags, no cover; zh only
-    │       └── zh.md
-    └── pages/
-        └── team/
-            ├── content.yml  # type: page, optional cover
-            ├── zh.md
-            └── en.md
-```
+Add coverage to `tests/compiler/theme.integration.test.ts` by reusing the existing `runBuild` helper style:
+- Assert a generated News detail page has `frontmatter.synctrol.news.kind === 'detail'`.
+- Assert a generated News index page has `frontmatter.synctrol.news.kind === 'index'`.
+- Assert a generated Page detail has `frontmatter.synctrol.page.kind === 'detail'`.
+- Assert the Home page has `frontmatter.synctrol.home.logoHtml`.
+- Assert existing `frontmatter.synctrol.contentAssets`, `release`, `platformDefinitions`, and `alternates` tests still pass unchanged.
 
-- [ ] **Step 1: Write the failing integration test**
+- [ ] **Step 2: Write integration fixture test with HEAD compiler signatures**
 
 ```ts
 // tests/integration/news-page-fixtures.test.ts
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { compileContent } from '../../src/compiler/compile-content'
 import { compileSiteRoutes } from '../../src/compiler/compile-site-routes'
-import { attachNewsPageData } from '../../src/compiler/news/attach-news-page-data'
-import { attachPagePageData } from '../../src/compiler/page/attach-page-page-data'
-import { resolve } from 'node:path'
-import { newsTheme } from '../helpers/news-fixtures'
+import { buildRoutePackages } from '../../src/compiler/route-packages'
+import { buildNewsFrontmatterForPage } from '../../src/compiler/news/attach-news-page-data'
+import { buildPageFrontmatterForPage } from '../../src/compiler/page/attach-page-page-data'
+import { themeOptions } from '../helpers/route-fixtures'
 
 const fixtureRoot = resolve('tests/fixtures/news-page-site')
 
-describe('news + page fixtures', () => {
-  it('emits default news/tags segments, list covers, fallback items, and page details', async () => {
-    const options = newsTheme({
-      siteUrl: 'https://synctrol.com',
-      mainLocale: 'zh',
-      seo: {
-        name: { zh: 'Synctrol', en: 'Synctrol' },
-        description: { zh: 'd', en: 'd' },
-        defaultImage: './assets/social-default.webp',
-        organization: { name: 'Synctrol', logo: './assets/logo.svg' },
-        collections: {
-          release: { title: '作品', description: 'r' },
-          news: {
-            title: { zh: '新闻', en: 'News' },
-            description: { zh: 'Synctrol 新闻', en: 'Synctrol news' },
-          },
-        },
-      },
-    })
-    const compiled = await compileContent({
-      sourceDir: resolve(fixtureRoot),
-      options,
-    })
-    const site = compileSiteRoutes({
-      packages: compiled.packages,
-      options,
-      base: '/',
-      localeKeys: ['zh', 'en'],
-    })
+function compileFixture(overrides = {}, base = '/base/') {
+  const options = themeOptions(overrides)
+  const content = compileContent({
+    contentRoot: join(fixtureRoot, 'content'),
+    sourceDir: fixtureRoot,
+    configDir: join(fixtureRoot, '.vuepress'),
+    mainLocale: options.mainLocale,
+  })
+  const packages = buildRoutePackages({
+    packages: content.packages,
+    localeKeys: Object.keys(options.locales),
+  })
+  const site = compileSiteRoutes({
+    packages,
+    options,
+    base,
+    declaredTags: Object.keys(content.definitions.tags),
+  })
+  return { options, content, packages, site }
+}
 
-    const paths = site.pages.map((p) => p.url.routePath)
-    expect(paths).toContain('/zh/news/')
-    expect(paths).toContain('/zh/news/tags/')
-    expect(paths).toContain('/zh/news/tags/release/')
-    expect(paths).toContain('/zh/news/alpha/')
-    expect(paths).toContain('/en/news/beta/') // fallback detail
-    expect(paths).toContain('/zh/team/')
-    expect(paths).not.toContain('/zh/pages/') // no auto page listing
+describe('news and page integration fixture', () => {
+  it('emits default routes, fallback list data, tag counts, and page frontmatter', () => {
+    const { options, content, packages, site } = compileFixture()
+    const paths = site.pages.map((page) => page.url.publicPath)
+    expect(paths).toContain('/base/zh/news/')
+    expect(paths).toContain('/base/zh/news/tags/')
+    expect(paths).toContain('/base/zh/news/tags/release/')
+    expect(paths).toContain('/base/en/news/beta/')
+    expect(paths).toContain('/base/zh/team/')
+    expect(paths).not.toContain('/base/zh/pages/')
 
-    const newsData = attachNewsPageData({
-      pages: site.pages,
-      packages: compiled.packages,
+    const enIndex = site.pages.find((page) => page.url.publicPath === '/base/en/news/')
+    const enIndexData = buildNewsFrontmatterForPage({
+      compiled: enIndex!,
+      allPages: site.pages,
+      packages,
       options,
-      definitions: compiled.definitions,
-      resolveCoverUrl: (pkg, rel) => `/assets/content/news/${pkg.slug}/${rel}`,
+      definitions: content.definitions,
+      resolveCoverPublicPath: (pkg, rel) => `/base/assets/${pkg.slug}/${rel}`,
+      base: '/base/',
     })
-    const zhIndex = newsData.get('/zh/news/')
-    expect(zhIndex && 'items' in zhIndex && zhIndex.items.length).toBeGreaterThan(0)
-    const enIndex = newsData.get('/en/news/')
-    const beta = enIndex && 'items' in enIndex
-      ? enIndex.items.find((i) => i.slug === 'beta')
-      : undefined
-    expect(beta).toMatchObject({
-      isFallback: true,
-      excludeFromRss: true,
-      titleLang: 'zh-CN',
-    })
-    const alphaZh = zhIndex && 'items' in zhIndex
-      ? zhIndex.items.find((i) => i.slug === 'alpha')
-      : undefined
-    expect(alphaZh?.coverPublicUrl).toBeTruthy()
-    const betaZh = zhIndex && 'items' in zhIndex
-      ? zhIndex.items.find((i) => i.slug === 'beta')
-      : undefined
-    expect(betaZh?.coverPublicUrl).toBeUndefined()
+    const beta = enIndexData?.data.items.find((item) => item.slug === 'beta')
+    expect(beta).toMatchObject({ isFallback: true, excludeFromRss: true, titleLang: 'zh-CN' })
 
-    const tagsIndex = newsData.get('/zh/news/tags/')
-    expect(tagsIndex).toMatchObject({ kind: 'news-tags-index', pagination: null })
-
-    const pagesData = attachPagePageData({
-      pages: site.pages,
-      packages: compiled.packages,
-      options,
-      resolveCoverUrl: () => '/assets/team.webp',
-    })
-    expect(pagesData.get('/zh/team/')?.kind).toBe('page-detail')
+    const team = site.pages.find((page) => page.url.publicPath === '/base/zh/team/')
+    expect(
+      buildPageFrontmatterForPage({
+        compiled: team!,
+        packages,
+        options,
+        resolveCoverPublicPath: () => '/base/assets/team.webp',
+      }),
+    ).toMatchObject({ kind: 'detail', data: { kind: 'page-detail' } })
   })
 
-  it('honors custom urlSegments and enabled flags', async () => {
-    const options = newsTheme({
-      siteUrl: 'https://synctrol.com',
+  it('honors custom urlSegments and enabled flags', () => {
+    const { site } = compileFixture({
       news: {
         urlSegment: 'journal',
         index: { enabled: false, pagination: 12 },
         tags: { urlSegment: 'topics', index: { enabled: false } },
       },
     })
-    const compiled = await compileContent({
-      sourceDir: resolve(fixtureRoot),
-      options,
-    })
-    const site = compileSiteRoutes({
-      packages: compiled.packages,
-      options,
-      base: '/',
-      localeKeys: ['zh'],
-    })
-    const paths = site.pages.map((p) => p.url.routePath)
-    expect(paths).not.toContain('/zh/journal/')
-    expect(paths).not.toContain('/zh/journal/topics/')
-    expect(paths).toContain('/zh/journal/alpha/')
-    expect(paths).toContain('/zh/journal/topics/release/')
+    const paths = site.pages.map((page) => page.url.publicPath)
+    expect(paths).not.toContain('/base/zh/journal/')
+    expect(paths).not.toContain('/base/zh/journal/topics/')
+    expect(paths).toContain('/base/zh/journal/alpha/')
+    expect(paths).toContain('/base/zh/journal/topics/release/')
   })
 })
 ```
 
-Create the fixture files with the YAML/Markdown described above (alpha with cover+both locales, beta zh-only no cover, team page, home with `home-logo`).
+- [ ] **Step 3: Add fixture tree**
 
-- [ ] **Step 2: Run tests to verify they fail**
+Create `tests/fixtures/news-page-site/`:
 
-Run: `npm test -- tests/integration/news-page-fixtures.test.ts`
-
-Expected: FAIL until fixtures exist and attach wiring matches (or FAIL on missing fixture files).
-
-- [ ] **Step 3: Add fixtures and wire page data into the theme data plugin**
+```text
+tests/fixtures/news-page-site/
+├── .vuepress/
+│   └── config.ts
+└── content/
+    ├── definitions.yml
+    ├── home/
+    │   ├── content.yml
+    │   ├── zh.md
+    │   └── en.md
+    ├── news/
+    │   ├── alpha/
+    │   │   ├── content.yml
+    │   │   ├── zh.md
+    │   │   └── en.md
+    │   └── beta/
+    │       ├── content.yml
+    │       └── zh.md
+    └── pages/
+        └── team/
+            ├── content.yml
+            ├── zh.md
+            └── en.md
+```
 
 Minimal `content/definitions.yml`:
 
@@ -3100,131 +2076,147 @@ tags:
 platforms: {}
 ```
 
-`content/news/alpha/content.yml`:
+Home Markdown files must include `::: home-logo`; `home-footer` may be present in only one locale to prove it is optional.
 
-```yaml
-type: news
-slug: alpha
-date: 2026-08-11
-updated: 2026-08-12
-cover: ./assets/alpha-cover.webp
-tags:
-  - release
-```
+- [ ] **Step 4: Patch `theme.ts` additively**
 
-`content/news/beta/content.yml`:
-
-```yaml
-type: news
-slug: beta
-date: 2026-08-10
-tags:
-  - release
-```
-
-`content/pages/team/content.yml`:
-
-```yaml
-type: page
-slug: team
-cover: ./assets/team.webp
-```
-
-`content/home/content.yml`:
-
-```yaml
-type: home
-draft: false
-```
-
-`content/home/zh.md`:
-
-```md
----
-title: Synctrol
-description: Synctrol 音乐团队官方网站
----
-
-::: home-logo
-# SYNCTROL
-
-WE SHAPE WAVE  
-AND DESCRIBE SOUND
-:::
-```
-
-Provide a 1×1 webp placeholder at `content/news/alpha/assets/alpha-cover.webp` and `content/pages/team/assets/team.webp` (or point `resolveCoverUrl` in the test at stable fake URLs without requiring real binaries when the Plan 04 pipeline is stubbed).
-
-In the theme Node plugin that already receives `CompiledSite`, merge:
+Inside the existing `for (const compiled of allPages)` loop:
+- Keep existing `contentAssets`, `alternates`, `platformDefinitions`, and `release` calculation.
+- Add:
+  - `const news = buildNewsFrontmatterForPage({ compiled, allPages, packages, options: resolved, definitions: built.definitions, resolveCoverPublicPath: ..., base: app.options.base })`
+  - `const pageFrontmatter = buildPageFrontmatterForPage({ compiled, packages, options: resolved, resolveCoverPublicPath: ... })`
+  - `const home = buildHomeFrontmatterForPage({ compiled, packages })`
+- Resolve covers through Plan 04 `assetManifest.contentPublicPaths[pkg.identity]?.[relativePath]`; return the `publicPath`.
+- Stamp:
 
 ```ts
-const newsPageData = attachNewsPageData({ ... })
-const pagePageData = attachPagePageData({ ... })
-for (const page of site.pages) {
-  const data = newsPageData.get(page.url.routePath) ?? pagePageData.get(page.url.routePath)
-  if (data) {
-    pageDataByRoute.set(page.url.routePath, data)
-  }
+synctrol: {
+  identity: compiled.identity,
+  locale: compiled.locale,
+  contentType: compiled.contentType,
+  isFallback: compiled.isFallback,
+  isDraft: compiled.isDraft,
+  noindex: compiled.noindex,
+  bodyLocale: compiled.bodyLocale,
+  canonicalLocale: compiled.canonicalLocale,
+  routePath: compiled.url.routePath,
+  contentAssets,
+  alternates,
+  platformDefinitions,
+  ...(release === null ? {} : { release }),
+  ...(news === null ? {} : { news }),
+  ...(pageFrontmatter === null ? {} : { page: pageFrontmatter }),
+  ...(home === null ? {} : { home }),
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+Do not remove any Plan 03-08 fields or hooks.
 
-Run: `npm test -- tests/integration/news-page-fixtures.test.ts`
+- [ ] **Step 5: Patch only `Layout.vue` for runtime switch**
 
-Expected: PASS
+Implementation requirements:
+- Import News/Page/Home layouts and shared types.
+- Extend `SynctrolFrontmatter` with:
 
-Also run the full News/Page suite:
-
-```bash
-npm test -- tests/shared/format-message.test.ts tests/shared/news-types.test.ts tests/compiler/news tests/compiler/page tests/compiler/markdown/home-formatters.test.ts tests/client/components/badges.test.ts tests/client/components/news-list.test.ts tests/client/components/home-formatters.test.ts tests/client/layouts tests/integration/news-page-fixtures.test.ts
+```ts
+news?: SynctrolNewsFrontmatter
+page?: SynctrolPageFrontmatter
+home?: SynctrolHomeFrontmatter
 ```
 
-Expected: all PASS
+- Add computed `formatDate`:
 
-- [ ] **Step 5: Commit**
+```ts
+const localeOption = computed(
+  () => theme.locales[locale.value] ?? theme.locales[theme.mainLocale],
+)
+const formatDate = (date: string) =>
+  formatCalendarDate(date, localeOption.value.lang, localeOption.value.dateFormat)
+```
+
+- Template order:
+  1. `<ReleaseIndex v-if="release?.kind === 'index'" ... />`
+  2. `<ReleaseDetail v-else-if="release?.kind === 'detail'" ... />`
+  3. `<NewsIndexLayout v-else-if="news?.kind === 'index'" ... />`
+  4. `<NewsTagsIndexLayout v-else-if="news?.kind === 'tags-index'" ... />`
+  5. `<NewsTagArchiveLayout v-else-if="news?.kind === 'tag'" ... />`
+  6. `<NewsDetailLayout v-else-if="news?.kind === 'detail'" ...><Content /></NewsDetailLayout>`
+  7. `<PageDetailLayout v-else-if="pageFrontmatter?.kind === 'detail'" ...><Content /></PageDetailLayout>`
+  8. `<HomeLogoSlot v-else-if="home?.kind === 'home'" :html="home.logoHtml" :seo-title="String(page.frontmatter.title ?? '')" />`
+  9. `<Content v-else />`
+- Target `ShellLayout` footer slot:
+
+```vue
+<template #footer>
+  <HomeFooterSlot v-if="home?.kind === 'home'" :html="home.footerHtml" />
+</template>
+```
+
+- [ ] **Step 6: Run targeted tests**
+
+Run:
 
 ```bash
-git add tests/fixtures/news-page-site tests/integration/news-page-fixtures.test.ts src/compiler/news src/compiler/page src/client
-git commit -m "test(news): add news and page integration fixtures for segments and fallbacks"
+npm test -- tests/compiler/theme.integration.test.ts tests/integration/news-page-fixtures.test.ts tests/client/layouts/news-collections.test.ts tests/client/layouts/news-detail.test.ts tests/client/layouts/page-detail.test.ts tests/client/components/home-formatters.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 7: Run full Plan 09 suite**
+
+Run:
+
+```bash
+npm test -- tests/shared/format-message.test.ts tests/shared/news-types.test.ts tests/shared/format-calendar-date.test.ts tests/compiler/news tests/compiler/page tests/compiler/markdown/home-formatters.test.ts tests/client/components/shared-content-components.test.ts tests/client/components/news-list.test.ts tests/client/components/home-formatters.test.ts tests/client/layouts tests/compiler/theme.integration.test.ts tests/integration/news-page-fixtures.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/compiler/theme.ts src/client/layouts/Layout.vue tests/compiler/theme.integration.test.ts tests/integration/news-page-fixtures.test.ts tests/fixtures/news-page-site
+git commit -m "feat(theme): wire news page and home frontmatter into layout"
 ```
 
 ---
 
 ## Self-Review
 
-### Spec coverage (§25 News, §26 Page, related)
+### Spec coverage
 
-| Spec requirement | Task |
+| Requirement | Task |
 | --- | --- |
-| News manifest `date` / `updated` / `cover` / `tags` consumed in models | Tasks 2, 4 (validation already Plan 02) |
-| Index shows cover, title, description, date, tags; text-only without cover | Tasks 2, 6 |
-| `news.index.enabled` / pagination; tag archives share pagination | Tasks 4, 7, 11 (routes Plan 03) |
-| Tags index enabled flag; archives still generate | Task 11 |
-| News Tags Index: declared tags + counts, unpaginated | Tasks 3, 7 |
-| `urlSegment` news/tags (defaults + custom) | Tasks 2, 3, 11 |
-| Fallback list: main title/description + `lang` + translation-unavailable badge; `excludeFromRss` | Tasks 2, 5, 6 |
-| News detail 760px; title/date/updated/tags/cover/markdown; no TOC/search | Task 8 |
-| Page unified 760px; optional cover; no layout field; no auto listing | Task 9 |
-| Home `home-logo` required / `home-footer` optional → Footer | Task 10 |
-| Draft badges on list + detail | Tasks 5, 6, 8, 9 |
-| Sort date desc then slug | Task 2 |
+| Typed News/Page/Home frontmatter under `frontmatter.synctrol` | Tasks 1, 4, 9, 10, 11 |
+| Single `Layout.vue` switch after Release handling | Task 11 |
+| Shared `ContentColumn.vue` and `PaginationNav.vue` | Task 5; consumed Tasks 7-9 |
+| Current type/module names and NodeNext `.js` imports | All implementation snippets under `src/**` |
+| Base-aware News detail/tag/pagination links | Tasks 2-4, 11 |
+| Exact VuePress markdown hook for Home formatters | Task 10 |
+| Assertion during Home content parsing | Task 10 (`locale-markdown.ts`) |
+| Home HTML stored under `frontmatter.synctrol.home` and rendered in `ShellLayout` footer slot | Tasks 10-11 |
+| Existing `format-message.ts` and `DraftBadge.vue` reused | Tasks 1 and 5 |
+| HEAD compiler signatures in integration tests | Task 11 |
+| `formatCalendarDate` concrete approach | Task 6 and Task 11 |
+| Direct `markdown-it-container` dependency if imported | Task 10 |
+| Additive `theme.ts` patch preserving Plans 03-08 fields | Task 11 |
 
 ### Placeholder scan
 
-No TBD/TODO/`implement later`/`similar to Task N` left in steps. Every code step includes concrete TypeScript/Vue.
+No placeholder markers remain. Each task has exact paths, commands, and concrete interfaces.
 
 ### Type consistency
 
-- `NewsListItem.excludeFromRss` is set in Task 2 and documented for Plan 10 RSS filtering
-- `NewsCollectionPageData.kind` discriminates index / tag / tags-index across Tasks 4 and 7
-- `attachNewsPageData` / `attachPagePageData` key by `routePath` matching Plan 03 `UrlLayers.routePath`
-- Badge `data-testid` values are shared by list and detail layouts
-- Home formatter `data-syn-formatter` attributes match extract + slot rendering
+- `NewsListItem.coverPublicPath` is used consistently in compiler and client tasks.
+- `SynctrolNewsFrontmatter.kind` maps directly to `Layout.vue` branches.
+- `SynctrolPageFrontmatter.kind` is `detail` only.
+- `SynctrolHomeFrontmatter.logoHtml/footerHtml` are the only Home runtime HTML fields.
+- `formatMessage` remains exported from `src/platforms/format-message.ts` at package root.
+- `ContentDefinitions`, `ResolvedSynctrolThemeOptions`, `ContentIdentity`, `encodeRouteSegment`, and `buildUrlLayers` match HEAD modules.
 
 ### Intentionally deferred
 
-- RSS/Sitemap emission and `excludeFromRss` enforcement → Plan 10
-- JSON-LD `Article` for News → Plan 10
-- Background module selection for `news` / `page` → Plan 06 (already type-keyed)
-- Release-specific UI → Plan 08
+- RSS/Sitemap emission and `excludeFromRss` enforcement: Plan 10.
+- News Article JSON-LD / OG tags: Plan 10.
+- NPM packaging and publish verification: Plan 11.
+- Custom client platform component bundling: outside Plan 09.
