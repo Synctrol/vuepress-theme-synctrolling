@@ -7,6 +7,8 @@ import type {
   SynctrolDiagnostic,
 } from '../src/compiler/index'
 import {
+  collectPackageDeclaredPaths,
+  compileAssets,
   compileContent,
   createDiagnostic,
   discoverContentPackages,
@@ -20,6 +22,7 @@ import {
   resolveDefinitionsPath,
   resolveThemeOptions,
   SynctrolDiagnosticError,
+  toAssetPackageSource,
   validatePlatformEntry,
   zhMessages,
 } from '../src/index'
@@ -72,6 +75,15 @@ describe('root public exports', () => {
     expect(compilerApi).not.toHaveProperty('loadYamlFile')
     expect(compilerApi).not.toHaveProperty('parseAlbumBook')
     expect(compilerApi).not.toHaveProperty('parseGiftBook')
+  })
+
+  it('exposes the Node asset API from the package root (not the Plan-02 compiler barrel)', () => {
+    expect(typeof compileAssets).toBe('function')
+    expect(typeof toAssetPackageSource).toBe('function')
+    expect(typeof collectPackageDeclaredPaths).toBe('function')
+    expect(compilerApi).not.toHaveProperty('compileAssets')
+    expect(compilerApi).not.toHaveProperty('toAssetPackageSource')
+    expect(compilerApi).not.toHaveProperty('collectPackageDeclaredPaths')
   })
 
   it('exposes compiler and compiled-package type contracts', () => {
