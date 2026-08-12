@@ -30,7 +30,7 @@
     "test:watch": "vitest",
     "assert:build-artifacts": "node scripts/assert-build-artifacts.mjs",
     "assert:pack": "node scripts/assert-pack-contents.mjs",
-    "assert:exports": "node scripts/assert-exports-resolve.mjs",
+    "assert:exports": "node scripts/smoke-built-exports.mjs && node scripts/assert-exports-resolve.mjs",
     "test:consumer-smoke": "node scripts/run-consumer-smoke.mjs",
     "prepublishOnly": "node scripts/prepublish-check.mjs"
   },
