@@ -205,3 +205,33 @@ export interface CompiledContentPackage {
   manifest: ContentManifest
   book?: Book
 }
+
+export interface LocaleMarkdown {
+  /** Absolute path to the locale Markdown file. */
+  filePath: string
+  title: string
+  description?: string
+  draft: boolean
+  /** Markdown body after the frontmatter block. */
+  body: string
+}
+
+/** Flattened package shape consumed by the route compiler. */
+export interface RouteContentPackage {
+  /** Absolute package directory. */
+  dir: string
+  /** Plan 02 identity: `home` or `${type}:${slug}`. */
+  identity: string
+  type: ContentType
+  /** `null` for Home only. */
+  slug: string | null
+  date?: string
+  updated?: string
+  draft: boolean
+  path?: LocalePath
+  /** Empty for every type except News. */
+  tags: string[]
+  cover?: string
+  artwork?: string
+  locales: Partial<Record<LocaleKey, LocaleMarkdown>>
+}

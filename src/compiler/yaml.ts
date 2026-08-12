@@ -16,21 +16,7 @@ function invalidYaml(absolutePath: string, detail: string): never {
   })
 }
 
-export function loadYamlFile(absolutePath: string): unknown {
-  let raw: string
-  try {
-    raw = readFileSync(absolutePath, 'utf8')
-  } catch (error) {
-    fail({
-      severity: 'error',
-      code: 'INVALID_YAML',
-      message: `Unable to read YAML file: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      path: absolutePath,
-    })
-  }
-
+export function parseYamlString(raw: string, absolutePath: string): unknown {
   let doc
   try {
     doc = parseDocument(raw, PARSE_OPTIONS)
@@ -57,4 +43,22 @@ export function loadYamlFile(absolutePath: string): unknown {
       error instanceof Error ? error.message : String(error),
     )
   }
+}
+
+export function loadYamlFile(absolutePath: string): unknown {
+  let raw: string
+  try {
+    raw = readFileSync(absolutePath, 'utf8')
+  } catch (error) {
+    fail({
+      severity: 'error',
+      code: 'INVALID_YAML',
+      message: `Unable to read YAML file: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      path: absolutePath,
+    })
+  }
+
+  return parseYamlString(raw, absolutePath)
 }
