@@ -24,3 +24,33 @@ export interface ResolvedReleaseImages {
 }
 
 export type ReleaseArtworkKind = 'artwork' | 'placeholder' | 'empty-frame'
+
+export interface ReleaseIndexTile {
+  identity: `release:${string}`
+  slug: string
+  title: string
+  /** Present for sorting/metadata; must not be rendered under the tile. */
+  date: string
+  href: string
+  artwork?: ResolvedAsset
+  artworkKind: ReleaseArtworkKind
+  isDraft: boolean
+  showDraftBadge: boolean
+  isFallback: boolean
+  /** Always false for Synctrol Release index display contract. */
+  showDate: false
+  /** Always false for Synctrol Release index display contract. */
+  showDescription: false
+  /** Accessible name / image alt source. */
+  accessibleName: string
+}
+
+export interface ReleaseIndexModel {
+  locale: string
+  page: number
+  pageCount: number
+  mobileGridColumns: number
+  desktopGridColumns: number
+  tiles: ReleaseIndexTile[]
+  empty: boolean
+}
