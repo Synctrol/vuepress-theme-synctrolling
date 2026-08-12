@@ -1,3 +1,4 @@
+import { encodePathSegment } from '../shared/encode-path-segment.js'
 import type { ResolvedSynctrolThemeOptions } from '../shared/options.js'
 import { assertRouteSegment } from '../shared/options-validation.js'
 import { normalizePathSuffix } from '../shared/route-path.js'
@@ -8,13 +9,12 @@ import type {
 } from '../shared/types.js'
 import { fail, type SynctrolDiagnostic } from './diagnostics.js'
 
+export { encodePathSegment }
+
 export type PathSuffixOptions = Pick<
   ResolvedSynctrolThemeOptions,
   'release' | 'news'
 >
-
-/** `encodeURIComponent` leaves these five unescaped; RFC 3986 does not. */
-const RFC3986_EXTRA = /[!'()*]/g
 
 /**
  * Characters where strict RFC 3986 encoding disagrees with the path VuePress
@@ -23,14 +23,6 @@ const RFC3986_EXTRA = /[!'()*]/g
  */
 const UNROUTABLE_SEGMENT_CHAR =
   /[\u0000-\u001F\u007F!"#$%&'()*+,:;<=>?@[\]^`{|}]/
-
-/** Strict RFC 3986 percent-encoding for a single path segment (slug or tag). */
-export function encodePathSegment(value: string): string {
-  return encodeURIComponent(value).replace(
-    RFC3986_EXTRA,
-    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  )
-}
 
 /**
  * Rejects segments VuePress would rewrite, so `routePath` always equals the
