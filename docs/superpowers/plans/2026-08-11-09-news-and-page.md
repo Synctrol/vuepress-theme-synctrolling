@@ -28,6 +28,11 @@
 - Tests run with `npm test -- <path>` (or `npm test -- <path>` if the package uses npm scripts equivalently)
 - Plans 01–05 and 08 are assumed complete for shared types, content compiler, routes, assets, shell, and Release pagination/date helpers reused here
 
+## Downstream note (Plan 04 contract sync)
+
+- Cover/public asset resolution uses Plan 04 `publicPath` maps (`contentPublicPaths` / `frontmatter.synctrol.contentAssets` / client `resolveContentAsset`), not a separate `resolveContentAssetPublicUrl` API.
+- Import asset types from `src/shared/asset-types`.
+
 ## File Structure
 
 | File | Responsibility |
@@ -137,11 +142,12 @@ export interface CompiledPage {
   }
 }
 
-// Plan 04 — resolved cover public URL helper (assumed)
-export function resolveContentAssetPublicUrl(
-  pkg: RouteContentPackage,
-  relativePath: string,
-): string
+// Plan 04 — content asset public paths (assumed)
+// Client: resolveContentAsset from vuepress-theme-synctrolling/client
+//   (reads frontmatter.synctrol.contentAssets).
+// Node: AssetManifest.contentPublicPaths[pkg.identity][relativePath] → publicPath.
+// Prefer those over inventing resolveContentAssetPublicUrl; if a thin wrapper
+// is needed locally, return publicPath (not absolute URL) unless SEO needs absoluteUrl.
 
 // Plan 05 — shell / locale composables (assumed)
 // SynctrolShell.vue provides Header/Main/Nav/Footer/Social/LanguageSwitcher
@@ -379,7 +385,7 @@ git commit -m "feat(news): add news view-model types and message interpolation"
 - Create: `tests/helpers/news-fixtures.ts`
 
 **Interfaces:**
-- Consumes: `RouteContentPackage`, `CompiledPage`, `DefinitionsFile`, `NewsOptions`, `resolveMultilanguage`, `resolveContentAssetPublicUrl`, `encodePathSegment`
+- Consumes: `RouteContentPackage`, `CompiledPage`, `DefinitionsFile`, `NewsOptions`, `resolveMultilanguage`, Plan 04 content asset `publicPath` lookup (`contentPublicPaths` / `resolveContentAsset`), `encodePathSegment`
 - Produces: `buildNewsListItems(input): NewsListItem[]`
 
 Rules encoded in tests:

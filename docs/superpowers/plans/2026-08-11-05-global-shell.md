@@ -22,6 +22,12 @@
 - Safe-area dock tokens from Plan 01 must be consumed, not redefined with different values.
 - All later tasks inherit these constraints.
 
+## Downstream note (Plan 04 contracts)
+
+- Plan 04 exports `resolveContentAsset` / `setContentAssetMap` / `createResolveContentAsset` from `vuepress-theme-synctrolling/client` (via `src/client/index.ts`). This plan's Layout/client enhance must call `setContentAssetMap` from `frontmatter.synctrol.contentAssets` on page change; do not invent a separate `./client/assets` package export.
+- Social icon option refs that are root-absolute (`/…`) or remote `http(s):` are preserved by Plan 04 (not hashed). Config-relative icons are hashed into `/assets/global/…`. Shell stubs remain valid either way.
+- Extend Plan 03/04 `theme.ts` in place — do not replace page registration, content-tree filtering, root-router write, or asset compile/inject.
+
 ---
 
 ## File Structure

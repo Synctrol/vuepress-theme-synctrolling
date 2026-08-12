@@ -155,6 +155,8 @@ export interface CompiledSite {
 
 **Asset contract from Plan 04 (injected; this plan does not hash assets):**
 
+Plan 04 may leave `seo.defaultImage` / `organization.logo` as root-absolute or remote URLs (preserved as-is) or as hashed `/assets/global/…` public paths. Builders of `SeoAssetContext` must turn whatever Plan 04 produced into absolute HTTPS URLs (`ResolvedAsset.absoluteUrl` when hashed; otherwise `siteUrl + path` or the remote URL unchanged).
+
 ```ts
 export interface SeoAssetContext {
   defaultImageAbsoluteUrl: string

@@ -4,9 +4,28 @@
 
 **Goal:** Build the Synctrol theme asset pipeline that hashes content, global, and theme assets into locale-free public URLs, resolves Markdown and config-relative references, rejects unsafe relative HTML attributes, and exposes `resolveContentAsset` for Vue components.
 
-**Architecture:** Pure Node modules under `src/compiler/assets/` take Plan 02 packages (manifest/book paths + locale Markdown) plus theme options and VuePress `base`/`siteUrl`/`configDir`, then emit a deterministic `AssetManifest` of content-hashed files. Content assets land at `/assets/content/{type}/{slug}/…` (Home omits slug). Config-relative social/SEO/placeholder icons and `.vuepress/assets` files land at `/assets/global/…`. Theme static files land at `/assets/theme/…`; Background module resource imports remain bundler-owned theme assets. A small client helper reads the per-package public-path map injected into page data. Plans 05+ consume the manifest; this plan does not build UI.
+**Architecture:** Pure Node modules under `src/compiler/assets/` take Plan 02 packages (manifest/book paths + locale Markdown) plus theme options and VuePress `base`/`siteUrl`/`configDir`, then emit a deterministic `AssetManifest` of content-hashed files. Content assets land at `/assets/content/{type}/{slug}/…` (Home omits slug). Config-relative social/SEO/placeholder icons and `.vuepress/assets` files land at `/assets/global/…`. Theme static files land at `/assets/theme/…`; Background module resource imports remain bundler-owned theme assets. A small client helper reads the per-package public-path map injected into `frontmatter.synctrol.contentAssets`. Plans 05+ consume the manifest; this plan does not build UI chrome.
 
-**Tech Stack:** TypeScript 5.x, Node `fs`/`path`/`crypto`, Vitest, package `vuepress-theme-synctrolling` from Plan 01; diagnostics from Plan 02 (`SynctrolDiagnosticError`); URL `base`/`siteUrl` conventions from Plan 03.
+**Tech Stack:** TypeScript 5.x (NodeNext), Node `fs`/`path`/`crypto`, Vitest, package `vuepress-theme-synctrolling` from Plan 01; diagnostics from Plan 02 (`SynctrolDiagnosticError`); URL `base`/`siteUrl` helpers from Plan 03 (`joinPublicPath` / `normalizeBase` / `assertSiteUrl`).
+
+## Revision Notes (read before executing)
+
+This plan was rewritten after a pre-execution consistency audit against shipped Plans 01–03 at HEAD `10c75d1`. The previous revision could not execute against the repository. Changes:
+
+1. **Asset types live in `src/shared/asset-types.ts`**, not `src/shared/types/assets.ts`. `src/shared/types.ts` remains the canonical home for `LocaleMarkdown`, `CompiledContentPackage`, and `RouteContentPackage`. Nested `src/compiler/assets/` is an intentional subsystem layout (Plan 03 compiler modules stay flat).
+2. **`AssetLocaleMarkdown` is `Pick<LocaleMarkdown, 'filePath' | 'body'>`** — do not redeclare `LocaleMarkdown`.
+3. **`CompileAssetsOptions.themeOptions` is typed from `ResolvedSynctrolThemeOptions`** (or a `Pick` of it), matching `buildSite` / `theme.ts`.
+4. **Every relative import/export under `src/**` ends in `.js`** (NodeNext). Test imports stay extensionless (`tsconfig.test.json` uses Bundler resolution).
+5. **URL builders reuse shipped helpers:** `buildAssetPublicPath` delegates to `joinPublicPath` from `src/shared/route-path.js`; `buildAssetAbsoluteUrl` uses `assertSiteUrl` from `src/compiler/site-url.js`. Do not duplicate `normalizeBase`.
+6. **Global option refs:** hash only **config-relative** refs (no leading `/`, no `http(s):`). Root-absolute (`/…`) and remote `http(s):` URLs are preserved as-is (not hashed, not failed). Existing theme/route fixtures with `/images/og.png`, `/i.png`, etc. remain valid without file existence.
+7. **Markdown asset extraction** only accepts package asset paths `./assets/...` and `assets/...`. Ordinary relative/route links are ignored. Raw HTML relative attrs are still rejected.
+8. **Markdown resolution root** is `dirname(markdown.filePath)`; manifest/book declared refs resolve relative to package `dir`.
+9. **`audio_player` collection** only gathers `src` values that `startsWith('./')` from platform links that have a `src` field (tests use platform key `audio` with type `audio_player`).
+10. **Client export:** `resolveContentAsset` (and related helpers) export from package subpath `vuepress-theme-synctrolling/client` by updating `src/client/index.ts`. Update `scripts/smoke-built-exports.mjs` in the same task. Do **not** add a `./client/assets` package export.
+11. **Node asset API** exports from `src/compiler/assets/index.ts` and is re-exported from the package root via `export * from './compiler/assets/index.js'`. Do **not** use `./node/...`. Prefer **not** widening Plan-02 `src/compiler/index.ts`; update `tests/public-exports.test.ts` only for the root surface change.
+12. **Adapter `toAssetPackageSource`** joins `CompiledContentPackage` + `RouteContentPackage` by matching `dir` / `identity` (assert equality). Declared paths come from the compiled package (book/manifest); locale Markdown bodies come from the routed package.
+13. **Task 10 (NEW) extends Plan 03 Task 12** `buildSite` + `theme.ts`: compile assets, write hashed files under `app.dir.dest()`, inject per-package map into `frontmatter.synctrol.contentAssets`, keep content/** filter + root-router `onGenerated`. Former Task 10 becomes Task 11.
+14. **Commands remain `npm test -- <path>`.**
 
 ## Global Constraints
 
@@ -16,147 +35,66 @@
 - Normal assets always use content hashes; there is no stable-URL option.
 - Nested asset paths are retained under their pipeline root.
 - Paths cannot escape their owning package (content) or `configDir`/`themeAssetsRoot` (global/theme).
-- Missing files and case mismatches fail the build.
-- VuePress `base` is applied to emitted public URLs.
-- Absolute asset URLs use required `siteUrl` plus their public URL; `siteUrl` has no trailing slash.
-- Markdown `![…](./assets/…)` and download links resolve relative to the locale Markdown file and enter the package asset pipeline.
+- Missing files and case mismatches fail the build (for refs that enter the hash pipeline).
+- VuePress `base` is applied to emitted public URLs via `joinPublicPath`.
+- Absolute asset URLs use required `siteUrl` (via `assertSiteUrl`) plus their public URL; `siteUrl` has no trailing slash.
+- Markdown `![…](./assets/…)` / `[…](./assets/…)` (and `assets/…` without `./`) resolve relative to the locale Markdown file and enter the package asset pipeline. Non-asset Markdown links are ignored.
 - Raw HTML relative asset attributes are rejected.
-- Social icons, `release.artworkPlaceholder`, `seo.defaultImage`, and `seo.organization.logo` resolve relative to the VuePress configuration file and enter the global hashed pipeline.
+- Social icons, `release.artworkPlaceholder`, `seo.defaultImage`, and `seo.organization.logo` enter the global hashed pipeline **only when config-relative**. Root-absolute and remote URLs are left unchanged for consumers.
 - Background TypeScript modules import resources with normal TypeScript imports; the VuePress bundler hashes those as theme assets (not copied by this compiler).
 - `.vuepress/public` is reserved for fixed-name files such as `CNAME` and `robots.txt` and is never hashed by this pipeline.
-- Plans 01–03 are assumed complete: shared types, options, Vitest, content compiler, diagnostics, four-layer URL conventions.
+- Injected per-package map field name is exactly **`frontmatter.synctrol.contentAssets`**: `Record<string, string>` mapping original package-relative refs → `publicPath`.
+- Plans 01–03 are assumed complete: shared types, options, Vitest, content compiler, diagnostics, four-layer URL conventions, Task 12 theme wiring.
 - Tests run with `npm test -- <path>`.
 
 ## File Structure
 
 | File | Responsibility |
 | --- | --- |
-| `src/shared/types/assets.ts` | `ResolvedAsset`, `AssetKind`, `AssetManifest`, compile input types |
+| `src/shared/asset-types.ts` | `ResolvedAsset`, `AssetKind`, `AssetManifest`, compile input types |
 | `src/compiler/assets/hash.ts` | Content hash from file bytes |
-| `src/compiler/assets/emit-url.ts` | Public path + absolute URL with VuePress `base` and `siteUrl` |
+| `src/compiler/assets/emit-url.ts` | Public path + absolute URL via Plan 03 helpers |
 | `src/compiler/assets/safe-path.ts` | Resolve relative refs inside a root; reject escapes; case-sensitive existence |
 | `src/compiler/assets/content-path.ts` | Build `/assets/content/{type}/[slug/]…name.[hash].ext` |
 | `src/compiler/assets/collect-package-refs.ts` | Gather cover/artwork/book covers/`audio_player.src` refs |
-| `src/compiler/assets/markdown-assets.ts` | Extract Markdown image/download refs; reject raw HTML relative attrs |
-| `src/compiler/assets/global-pipeline.ts` | Config-relative global refs → `/assets/global/…` |
+| `src/compiler/assets/markdown-assets.ts` | Extract `./assets/…` / `assets/…` Markdown refs; reject raw HTML relative attrs |
+| `src/compiler/assets/global-pipeline.ts` | Config-relative global refs → `/assets/global/…` (preserve absolute/remote) |
 | `src/compiler/assets/theme-pipeline.ts` | Explicit theme static files → `/assets/theme/…` |
 | `src/compiler/assets/registry.ts` | In-memory source→`ResolvedAsset` map + lookup helpers |
+| `src/compiler/assets/to-asset-package-source.ts` | Join compiled + routed packages into `AssetPackageSource` |
 | `src/compiler/assets/compile-assets.ts` | Orchestrate collect → resolve → hash → write → manifest |
 | `src/compiler/assets/index.ts` | Public Node asset exports |
 | `src/client/assets/resolve-content-asset.ts` | Client `resolveContentAsset('./assets/x')` against injected map |
-| `src/client/assets/index.ts` | Client asset exports |
+| `src/client/index.ts` | **Modify:** re-export client asset helpers (package `./client` surface) |
+| `src/compiler/build-site.ts` | **Modify:** retain `CompiledContentPackage[]` for the asset adapter |
+| `src/compiler/theme.ts` | **Modify:** compile/write assets; inject `synctrol.contentAssets`; keep Task 12 behavior |
+| `src/index.ts` | **Modify:** `export * from './compiler/assets/index.js'` |
+| `scripts/smoke-built-exports.mjs` | **Modify:** assert client exports include `resolveContentAsset` |
+| `tests/public-exports.test.ts` | **Modify:** assert root re-exports asset API symbols |
 | `tests/compiler/assets/*.test.ts` | Unit tests for each Node module |
 | `tests/client/assets/*.test.ts` | Client helper tests |
+| `tests/compiler/theme.integration.test.ts` | **Extend:** asset write + frontmatter map + root router still present |
 | `tests/helpers/asset-fixtures.ts` | Theme options + package builders for this plan |
 | `tests/fixtures/assets/**` | On-disk binary/text fixtures for hash/write/integration tests |
 
 **Prerequisite types from Plans 01–03 (do not redefine; import):**
 
 ```ts
-// Plan 01
+// Plan 01 — from src/shared/types.js / options.js / messages as shipped
 export type ContentType = 'home' | 'release' | 'news' | 'page'
 export type LocaleKey = string
 export type AssetPath = string
+// SynctrolThemeOptions, ResolvedSynctrolThemeOptions, SocialLink, ReleaseOptions, SeoOptions — from src/shared/options.js
 
-export interface SocialLink {
-  label: Multilanguage
-  icon: string
-  url: string
-}
-
-export interface SocialLinksOptions {
-  items: SocialLink[]
-}
-
-export interface ReleaseOptions {
-  urlSegment: string
-  index: {
-    enabled: boolean
-    pagination: number | false
-    mobileGridColumns: number
-    desktopGridColumns: number
-  }
-  artworkPlaceholder?: string
-}
-
-export interface SeoOptions {
-  name: Multilanguage
-  description: Multilanguage
-  defaultImage: string
-  organization: {
-    name: string
-    logo: string
-  }
-  collections: {
-    release: SeoCollectionCopy
-    news: SeoCollectionCopy
-  }
-}
-
-export interface SynctrolThemeOptions {
-  siteUrl: string
-  release?: ReleaseOptions
-  socialLinks?: SocialLinksOptions
-  seo: SeoOptions
-  // remaining fields unused by this plan
-}
-
-// Plan 02
+// Plan 02 — diagnostics + CompiledContentPackage / Book — from src/compiler/diagnostics.js + src/shared/types.js
 export type DiagnosticSeverity = 'error' | 'warning'
-
-export interface SynctrolDiagnostic {
-  severity: DiagnosticSeverity
-  code: string
-  message: string
-  path?: string
-  relatedPath?: string
-}
-
-export class SynctrolDiagnosticError extends Error {
-  readonly diagnostics: SynctrolDiagnostic[]
-}
-
+export interface SynctrolDiagnostic { severity: DiagnosticSeverity; code: string; message: string; path?: string; relatedPath?: string }
+export class SynctrolDiagnosticError extends Error { readonly diagnostics: SynctrolDiagnostic[] }
 export function fail(diagnostic: SynctrolDiagnostic): never
 export function isDiagnosticError(error: unknown): error is SynctrolDiagnosticError
+export interface CompiledContentPackage { dir: string; identity: string; manifest: ContentManifest; book?: Book }
 
-export interface ContentManifest {
-  type: ContentType
-  slug?: string
-  date?: string
-  draft: boolean
-  cover?: string
-  artwork?: string
-  path?: LocalePath
-  updated?: string
-  tags?: string[]
-}
-
-export interface AlbumBook {
-  type: 'album'
-  title: Multilanguage
-  album: {
-    covers?: AssetPath[]
-    links?: PlatformEntry[]
-    discs?: Disc[]
-  }
-}
-
-export interface GiftBook {
-  type: 'gift'
-  title: Multilanguage
-  gift: { items: GiftItem[] }
-}
-
-export type Book = AlbumBook | GiftBook
-
-export interface CompiledContentPackage {
-  dir: string
-  identity: string
-  manifest: ContentManifest
-  book?: Book
-}
-
-// Plan 03 locale markdown shape used for Markdown asset scanning
+// Plan 03 — LocaleMarkdown + RouteContentPackage — from src/shared/types.js
 export interface LocaleMarkdown {
   filePath: string
   title: string
@@ -164,16 +102,28 @@ export interface LocaleMarkdown {
   draft: boolean
   body: string
 }
+export interface RouteContentPackage {
+  dir: string
+  identity: string
+  type: ContentType
+  slug: string | null
+  // …flattened manifest fields…
+  locales: Partial<Record<LocaleKey, LocaleMarkdown>>
+}
+
+// Plan 03 URL helpers — reuse, do not copy
+// joinPublicPath, normalizeBase from src/shared/route-path.js
+// assertSiteUrl from src/compiler/site-url.js
 ```
 
-**Out of scope:** UI shell, Background runtime lifecycle, platform embed renderers, SEO meta tags/RSS/Sitemap emission, Release/News visual layouts, writing into `.vuepress/public`.
+**Out of scope:** UI shell, Background runtime lifecycle, platform embed renderers, SEO meta tags/RSS/Sitemap emission, Release/News visual layouts, writing into `.vuepress/public`, calling `setContentAssetMap` from Layout (Plan 05 wires page-data → map; Plan 04 only injects `frontmatter.synctrol.contentAssets` and exports the helper).
 
 ---
 
 ### Task 1: Asset types, content hashing, and public/absolute URL builders
 
 **Files:**
-- Create: `src/shared/types/assets.ts`
+- Create: `src/shared/asset-types.ts`
 - Create: `src/compiler/assets/hash.ts`
 - Create: `src/compiler/assets/emit-url.ts`
 - Create: `tests/compiler/assets/hash.test.ts`
@@ -181,8 +131,8 @@ export interface LocaleMarkdown {
 - Create: `tests/helpers/asset-fixtures.ts`
 
 **Interfaces:**
-- Consumes: Plan 03 `siteUrl` / VuePress `base` conventions
-- Produces: `AssetKind`, `ResolvedAsset`, `AssetManifest`, `hashFileContents(buffer: Buffer): string`, `insertContentHash(filename: string, hash: string): string`, `buildAssetPublicPath(assetPath: string, base: string): string`, `buildAssetAbsoluteUrl(publicPath: string, siteUrl: string): string`
+- Consumes: Plan 03 `joinPublicPath` / `assertSiteUrl`; Plan 01 `ResolvedSynctrolThemeOptions`
+- Produces: `AssetKind`, `ResolvedAsset`, `AssetManifest`, `AssetLocaleMarkdown`, `AssetPackageSource`, `CompileAssetsOptions`, `hashFileContents`, `insertContentHash`, `buildAssetPublicPath`, `buildAssetAbsoluteUrl`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -279,31 +229,34 @@ describe('buildAssetAbsoluteUrl', () => {
       ),
     ).toBe('https://example.com/docs/assets/global/logo.abcd1234.svg')
   })
+
+  it('normalizes a trailing slash on siteUrl via assertSiteUrl', () => {
+    expect(
+      buildAssetAbsoluteUrl(
+        '/assets/theme/grid.abcd1234.svg',
+        'https://synctrol.com/',
+      ),
+    ).toBe('https://synctrol.com/assets/theme/grid.abcd1234.svg')
+  })
 })
 ```
 
 ```ts
 // tests/helpers/asset-fixtures.ts
-import type { ContentType, SynctrolThemeOptions } from '../../src/shared/types'
-import type { AssetPackageSource } from '../../src/shared/types/assets'
+import type { ContentType } from '../../src/shared/types'
+import type { SynctrolThemeOptions } from '../../src/shared/options'
+import { resolveThemeOptions } from '../../src/shared/options'
+import type { AssetPackageSource } from '../../src/shared/asset-types'
 
 export function themeOptions(
   overrides: Partial<SynctrolThemeOptions> = {},
-): SynctrolThemeOptions {
-  return {
+) {
+  return resolveThemeOptions({
     siteUrl: 'https://synctrol.com',
     mainLocale: 'zh',
     locales: {
-      zh: {
-        lang: 'zh-CN',
-        label: '中文',
-        messages: {} as SynctrolThemeOptions['locales'][string]['messages'],
-      },
-      en: {
-        lang: 'en-US',
-        label: 'English',
-        messages: {} as SynctrolThemeOptions['locales'][string]['messages'],
-      },
+      zh: { lang: 'zh-CN', label: '中文' },
+      en: { lang: 'en-US', label: 'English' },
     },
     copyright: '© Synctrol',
     seo: {
@@ -331,7 +284,7 @@ export function themeOptions(
     socialLinks: {
       items: [
         {
-          label: 'GitHub',
+          label: { zh: 'GitHub', en: 'GitHub' },
           icon: './assets/github.svg',
           url: 'https://github.com/synctrol',
         },
@@ -348,7 +301,7 @@ export function themeOptions(
       artworkPlaceholder: './assets/artwork-placeholder.svg',
     },
     ...overrides,
-  }
+  })
 }
 
 export function packageSource(
@@ -380,8 +333,9 @@ Expected: FAIL because the modules do not exist yet.
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/shared/types/assets.ts
-import type { ContentType } from '../types'
+// src/shared/asset-types.ts
+import type { LocaleMarkdown, ContentType } from './types.js'
+import type { ResolvedSynctrolThemeOptions } from './options.js'
 
 export type AssetKind = 'content' | 'global' | 'theme'
 
@@ -408,14 +362,12 @@ export interface AssetManifest {
    * Identity uses Plan 02 rules: `home` or `{type}:{slug}`.
    */
   contentPublicPaths: Record<string, Record<string, string>>
-  /** Config-relative original ref → publicPath for global option assets */
+  /** Config-relative original ref → publicPath for hashed global option assets */
   globalPublicPaths: Record<string, string>
 }
 
-export interface AssetLocaleMarkdown {
-  filePath: string
-  body: string
-}
+/** Subset of Plan 03 LocaleMarkdown used for Markdown asset scanning. */
+export type AssetLocaleMarkdown = Pick<LocaleMarkdown, 'filePath' | 'body'>
 
 export interface AssetPackageSource {
   /** Absolute package directory (contains content.yml) */
@@ -428,17 +380,14 @@ export interface AssetPackageSource {
   localeMarkdown: AssetLocaleMarkdown[]
 }
 
+export type CompileAssetsThemeOptions = Pick<
+  ResolvedSynctrolThemeOptions,
+  'siteUrl' | 'socialLinks' | 'release' | 'seo'
+>
+
 export interface CompileAssetsOptions {
   packages: AssetPackageSource[]
-  themeOptions: {
-    siteUrl: string
-    socialLinks?: { items: Array<{ icon: string }> }
-    release?: { artworkPlaceholder?: string }
-    seo: {
-      defaultImage: string
-      organization: { logo: string }
-    }
-  }
+  themeOptions: CompileAssetsThemeOptions
   /** Absolute directory containing the VuePress config file */
   configDir: string
   /** Absolute directory of explicit theme static assets (package theme/assets) */
@@ -474,24 +423,19 @@ export function insertContentHash(filename: string, hash: string): string {
 
 ```ts
 // src/compiler/assets/emit-url.ts
-function normalizeBase(base: string): string {
-  if (!base || base === '/') return '/'
-  const withLead = base.startsWith('/') ? base : `/${base}`
-  return withLead.endsWith('/') ? withLead : `${withLead}/`
-}
+import { joinPublicPath } from '../../shared/route-path.js'
+import { assertSiteUrl } from '../site-url.js'
 
 export function buildAssetPublicPath(assetPath: string, base: string): string {
   const normalizedAsset = assetPath.startsWith('/') ? assetPath : `/${assetPath}`
-  const normalizedBase = normalizeBase(base)
-  if (normalizedBase === '/') return normalizedAsset
-  return `${normalizedBase.slice(0, -1)}${normalizedAsset}`
+  return joinPublicPath(base, normalizedAsset)
 }
 
 export function buildAssetAbsoluteUrl(
   publicPath: string,
   siteUrl: string,
 ): string {
-  const origin = siteUrl.replace(/\/$/, '')
+  const origin = assertSiteUrl(siteUrl)
   const path = publicPath.startsWith('/') ? publicPath : `/${publicPath}`
   return `${origin}${path}`
 }
@@ -506,7 +450,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/types/assets.ts src/compiler/assets/hash.ts src/compiler/assets/emit-url.ts tests/compiler/assets/hash.test.ts tests/compiler/assets/emit-url.test.ts tests/helpers/asset-fixtures.ts
+git add src/shared/asset-types.ts src/compiler/assets/hash.ts src/compiler/assets/emit-url.ts tests/compiler/assets/hash.test.ts tests/compiler/assets/emit-url.test.ts tests/helpers/asset-fixtures.ts
 git commit -m "feat(assets): add content hashing and base-aware asset URL builders"
 ```
 
@@ -622,7 +566,7 @@ Expected: FAIL because `resolveSafePath` is not defined.
 // src/compiler/assets/safe-path.ts
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { isAbsolute, join, normalize, relative, resolve, sep } from 'node:path'
-import { fail } from '../../compiler/diagnostics'
+import { fail } from '../diagnostics.js'
 
 function assertInsideRoot(rootDir: string, absolutePath: string): void {
   const root = resolve(rootDir)
@@ -707,7 +651,6 @@ export function resolveSafePath(rootDir: string, relativeRef: string): string {
   assertInsideRoot(rootDir, absolutePath)
 
   if (!existsSync(absolutePath)) {
-    // Still check case against the deepest existing parent when possible
     assertExactCasePath(absolutePath)
     fail({
       severity: 'error',
@@ -819,8 +762,8 @@ Expected: FAIL because `buildContentAssetPath` is not defined.
 
 ```ts
 // src/compiler/assets/content-path.ts
-import type { ContentType } from '../../shared/types'
-import { insertContentHash } from './hash'
+import type { ContentType } from '../../shared/types.js'
+import { insertContentHash } from './hash.js'
 
 export interface BuildContentAssetPathInput {
   type: ContentType
@@ -885,7 +828,7 @@ git commit -m "feat(assets): build hashed content asset paths for typed and home
 
 **Interfaces:**
 - Consumes: Plan 02 `CompiledContentPackage` / `Book` / platform entries with `src`
-- Produces: `collectPackageDeclaredPaths(pkg: CompiledContentPackage): string[]` — unique package-relative refs from `cover`, `artwork`, album/gift covers, and `audio_player.src` when relative
+- Produces: `collectPackageDeclaredPaths(pkg: CompiledContentPackage): string[]` — unique package-relative refs from `cover`, `artwork`, album/gift covers, and platform `src` when `src.startsWith('./')` (audio_player convention; tests use platform key `audio`)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -903,11 +846,11 @@ function releasePackage(): CompiledContentPackage {
       covers: ['./assets/front.webp', './assets/back.webp'],
       links: [
         {
-          platform: 'local-audio',
+          platform: 'audio',
           src: './assets/preview.mp3',
         },
         {
-          platform: 'remote-audio',
+          platform: 'audio',
           src: 'https://cdn.example.com/a.mp3',
         },
         {
@@ -934,7 +877,7 @@ function releasePackage(): CompiledContentPackage {
 }
 
 describe('collectPackageDeclaredPaths', () => {
-  it('collects cover, artwork, album covers, and relative audio_player src', () => {
+  it('collects cover, artwork, album covers, and ./ audio_player src', () => {
     const paths = collectPackageDeclaredPaths(releasePackage())
     expect(paths).toEqual([
       './assets/article-cover.webp',
@@ -943,6 +886,11 @@ describe('collectPackageDeclaredPaths', () => {
       './assets/back.webp',
       './assets/preview.mp3',
     ])
+  })
+
+  it('ignores https audio src and non-src platforms', () => {
+    const paths = collectPackageDeclaredPaths(releasePackage())
+    expect(paths).not.toContain('https://cdn.example.com/a.mp3')
   })
 
   it('collects gift item covers', () => {
@@ -999,9 +947,13 @@ Expected: FAIL because `collectPackageDeclaredPaths` is not defined.
 
 ```ts
 // src/compiler/assets/collect-package-refs.ts
-import type { Book, CompiledContentPackage } from '../../shared/types'
+import type { Book, CompiledContentPackage } from '../../shared/types.js'
 
-function isRelativeAssetRef(value: unknown): value is string {
+function isPackageRelativeSrc(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('./')
+}
+
+function isRelativeCoverRef(value: unknown): value is string {
   return typeof value === 'string' && !/^https?:\/\//i.test(value)
 }
 
@@ -1012,18 +964,19 @@ function pushUnique(target: string[], value: string): void {
 function collectFromBook(book: Book, target: string[]): void {
   if (book.type === 'album') {
     for (const cover of book.album.covers ?? []) {
-      if (isRelativeAssetRef(cover)) pushUnique(target, cover)
+      if (isRelativeCoverRef(cover)) pushUnique(target, cover)
     }
     for (const link of book.album.links ?? []) {
       const src = (link as { src?: unknown }).src
-      if (isRelativeAssetRef(src)) pushUnique(target, src)
+      // audio_player (and any platform with src): only package-relative ./ refs
+      if (isPackageRelativeSrc(src)) pushUnique(target, src)
     }
     return
   }
 
   for (const item of book.gift.items) {
     for (const cover of item.covers ?? []) {
-      if (isRelativeAssetRef(cover)) pushUnique(target, cover)
+      if (isRelativeCoverRef(cover)) pushUnique(target, cover)
     }
   }
 }
@@ -1032,10 +985,10 @@ export function collectPackageDeclaredPaths(
   pkg: CompiledContentPackage,
 ): string[] {
   const paths: string[] = []
-  if (isRelativeAssetRef(pkg.manifest.cover)) {
+  if (isRelativeCoverRef(pkg.manifest.cover)) {
     pushUnique(paths, pkg.manifest.cover)
   }
-  if (isRelativeAssetRef(pkg.manifest.artwork)) {
+  if (isRelativeCoverRef(pkg.manifest.artwork)) {
     pushUnique(paths, pkg.manifest.artwork)
   }
   if (pkg.book) {
@@ -1068,7 +1021,7 @@ git commit -m "feat(assets): collect package-relative refs from manifests and bo
 
 **Interfaces:**
 - Consumes: Plan 02 diagnostics; locale Markdown `filePath` + `body`
-- Produces: `extractMarkdownAssetRefs(body: string): string[]`, `assertNoRawHtmlRelativeAssets(body: string, markdownPath: string): void`
+- Produces: `extractMarkdownAssetRefs(body: string): string[]` — **only** `./assets/...` and `assets/...`; `assertNoRawHtmlRelativeAssets(body, markdownPath): void`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1082,21 +1035,24 @@ import {
 } from '../../../src/compiler/assets/markdown-assets'
 
 describe('extractMarkdownAssetRefs', () => {
-  it('extracts Markdown image refs', () => {
+  it('extracts Markdown image refs under ./assets/', () => {
     const body = 'Hello ![Alt](./assets/image.webp) and text'
     expect(extractMarkdownAssetRefs(body)).toEqual(['./assets/image.webp'])
   })
 
-  it('extracts Markdown download/link refs to relative assets', () => {
-    const body = 'Get the [sheet](./assets/notes.pdf) please'
-    expect(extractMarkdownAssetRefs(body)).toEqual(['./assets/notes.pdf'])
+  it('extracts Markdown download/link refs under assets/', () => {
+    const body = 'Get the [sheet](assets/notes.pdf) please'
+    expect(extractMarkdownAssetRefs(body)).toEqual(['assets/notes.pdf'])
   })
 
-  it('ignores absolute http(s) links and in-page anchors', () => {
+  it('ignores absolute http(s) links, in-page anchors, and ordinary route links', () => {
     const body = [
       '[site](https://synctrol.com)',
       '[top](#section)',
       '![remote](https://cdn.example.com/a.webp)',
+      '[News](../news/)',
+      '[Home](/zh/)',
+      '[Detail](./other-page/)',
     ].join('\n')
     expect(extractMarkdownAssetRefs(body)).toEqual([])
   })
@@ -1168,7 +1124,7 @@ Expected: FAIL because the Markdown asset helpers are not defined.
 
 ```ts
 // src/compiler/assets/markdown-assets.ts
-import { fail } from '../../compiler/diagnostics'
+import { fail } from '../diagnostics.js'
 
 const MARKDOWN_LINK_RE =
   /!?\[(?:[^\]]*)\]\((?<target><[^>]+>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'))?\)/g
@@ -1184,18 +1140,20 @@ function normalizeTarget(raw: string): string {
   return trimmed
 }
 
-function isRelativeAssetTarget(target: string): boolean {
+/** Only package asset paths enter the content pipeline. */
+function isPackageAssetTarget(target: string): boolean {
   if (!target) return false
-  if (target.startsWith('#')) return false
-  if (/^[a-z][a-z0-9+.-]*:/i.test(target)) return false
-  return true
+  const normalized = target.replace(/\\/g, '/')
+  return (
+    normalized.startsWith('./assets/') || normalized.startsWith('assets/')
+  )
 }
 
 export function extractMarkdownAssetRefs(body: string): string[] {
   const refs: string[] = []
   for (const match of body.matchAll(MARKDOWN_LINK_RE)) {
     const target = normalizeTarget(match.groups?.target ?? '')
-    if (!isRelativeAssetTarget(target)) continue
+    if (!isPackageAssetTarget(target)) continue
     if (!refs.includes(target)) refs.push(target)
   }
   return refs
@@ -1242,7 +1200,8 @@ git commit -m "feat(assets): extract Markdown asset refs and reject raw HTML rel
 
 **Interfaces:**
 - Consumes: `resolveSafePath`, `hashFileContents`, `insertContentHash`, `buildAssetPublicPath`, `buildAssetAbsoluteUrl`
-- Produces: `collectGlobalOptionRefs(options): string[]`, `buildGlobalAssetPath(relativeUnderAssets: string, hash: string): string`, `resolveGlobalAsset(…): ResolvedAsset`
+- Produces: `isConfigRelativeAssetRef`, `collectGlobalOptionRefs(options): string[]` (hashable refs only), `buildGlobalAssetPath`, `resolveGlobalAsset`
+- Policy: hash only config-relative refs (no leading `/`, no `http(s):`). Preserve root-absolute and remote URLs as-is (do not fail, do not hash).
 
 - [ ] **Step 1: Create fixtures and write the failing tests**
 
@@ -1268,6 +1227,7 @@ import { themeOptions } from '../../helpers/asset-fixtures'
 import {
   buildGlobalAssetPath,
   collectGlobalOptionRefs,
+  isConfigRelativeAssetRef,
   resolveGlobalAsset,
 } from '../../../src/compiler/assets/global-pipeline'
 import { hashFileContents } from '../../../src/compiler/assets/hash'
@@ -1277,14 +1237,66 @@ const configDir = join(
   '../../fixtures/assets/global/.vuepress',
 )
 
+describe('isConfigRelativeAssetRef', () => {
+  it('accepts config-relative refs', () => {
+    expect(isConfigRelativeAssetRef('./assets/logo.svg')).toBe(true)
+    expect(isConfigRelativeAssetRef('assets/logo.svg')).toBe(true)
+  })
+
+  it('rejects root-absolute and remote URLs', () => {
+    expect(isConfigRelativeAssetRef('/images/og.png')).toBe(false)
+    expect(isConfigRelativeAssetRef('/i.png')).toBe(false)
+    expect(isConfigRelativeAssetRef('https://cdn.example.com/a.webp')).toBe(false)
+    expect(isConfigRelativeAssetRef('http://cdn.example.com/a.webp')).toBe(false)
+  })
+})
+
 describe('collectGlobalOptionRefs', () => {
-  it('collects social icons, artworkPlaceholder, defaultImage, and organization logo', () => {
+  it('collects social icons, artworkPlaceholder, defaultImage, and organization logo when config-relative', () => {
     expect(collectGlobalOptionRefs(themeOptions())).toEqual([
       './assets/github.svg',
       './assets/artwork-placeholder.svg',
       './assets/social-default.webp',
       './assets/logo.svg',
     ])
+  })
+
+  it('skips root-absolute and remote option refs without failing', () => {
+    expect(
+      collectGlobalOptionRefs(
+        themeOptions({
+          seo: {
+            name: 'Synctrol',
+            description: 'd',
+            defaultImage: '/images/og.png',
+            organization: { name: 'Synctrol', logo: 'https://cdn.example.com/logo.svg' },
+            collections: {
+              release: { title: 'R', description: 'r' },
+              news: { title: 'N', description: 'n' },
+            },
+          },
+          socialLinks: {
+            items: [
+              {
+                label: { zh: 'X', en: 'X' },
+                icon: '/icons/x.svg',
+                url: 'https://example.com',
+              },
+            ],
+          },
+          release: {
+            urlSegment: 'releases',
+            index: {
+              enabled: true,
+              pagination: 12,
+              mobileGridColumns: 2,
+              desktopGridColumns: 3,
+            },
+            artworkPlaceholder: '/images/placeholder.svg',
+          },
+        }),
+      ),
+    ).toEqual([])
   })
 })
 
@@ -1353,31 +1365,38 @@ printf 'nested' > tests/fixtures/assets/global/.vuepress/assets/icons/nested.svg
 // src/compiler/assets/global-pipeline.ts
 import { readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
-import type { ResolvedAsset } from '../../shared/types/assets'
+import type { ResolvedAsset } from '../../shared/asset-types.js'
+import type { CompileAssetsThemeOptions } from '../../shared/asset-types.js'
 import {
   buildAssetAbsoluteUrl,
   buildAssetPublicPath,
-} from './emit-url'
-import { hashFileContents, insertContentHash } from './hash'
-import { resolveSafePath } from './safe-path'
+} from './emit-url.js'
+import { hashFileContents, insertContentHash } from './hash.js'
+import { resolveSafePath } from './safe-path.js'
 
-export function collectGlobalOptionRefs(options: {
-  socialLinks?: { items: Array<{ icon: string }> }
-  release?: { artworkPlaceholder?: string }
-  seo: {
-    defaultImage: string
-    organization: { logo: string }
-  }
-}): string[] {
+/** Config-relative = no leading `/` and not an http(s) URL. */
+export function isConfigRelativeAssetRef(value: string): boolean {
+  if (!value) return false
+  if (value.startsWith('/')) return false
+  if (/^https?:\/\//i.test(value)) return false
+  return true
+}
+
+export function collectGlobalOptionRefs(
+  options: CompileAssetsThemeOptions,
+): string[] {
   const refs: string[] = []
-  for (const item of options.socialLinks?.items ?? []) {
-    if (!refs.includes(item.icon)) refs.push(item.icon)
+  const push = (value: string | undefined): void => {
+    if (!value) return
+    if (!isConfigRelativeAssetRef(value)) return
+    if (!refs.includes(value)) refs.push(value)
   }
-  if (options.release?.artworkPlaceholder) {
-    refs.push(options.release.artworkPlaceholder)
+  for (const item of options.socialLinks.items) {
+    push(item.icon)
   }
-  refs.push(options.seo.defaultImage)
-  refs.push(options.seo.organization.logo)
+  push(options.release.artworkPlaceholder)
+  push(options.seo.defaultImage)
+  push(options.seo.organization.logo)
   return refs
 }
 
@@ -1388,7 +1407,6 @@ export function globalAssetKey(
   const assetsRoot = resolve(configDir, 'assets')
   const rel = relative(assetsRoot, absoluteSourcePath).replace(/\\/g, '/')
   if (rel.startsWith('..')) {
-    // Outside .vuepress/assets: use basename only
     const parts = absoluteSourcePath.replace(/\\/g, '/').split('/')
     return parts[parts.length - 1] ?? absoluteSourcePath
   }
@@ -1541,13 +1559,13 @@ printf 'noise' > tests/fixtures/assets/theme-assets/textures/noise.png
 // src/compiler/assets/theme-pipeline.ts
 import { readFileSync } from 'node:fs'
 import { relative } from 'node:path'
-import type { ResolvedAsset } from '../../shared/types/assets'
+import type { ResolvedAsset } from '../../shared/asset-types.js'
 import {
   buildAssetAbsoluteUrl,
   buildAssetPublicPath,
-} from './emit-url'
-import { hashFileContents, insertContentHash } from './hash'
-import { resolveSafePath } from './safe-path'
+} from './emit-url.js'
+import { hashFileContents, insertContentHash } from './hash.js'
+import { resolveSafePath } from './safe-path.js'
 
 /**
  * Explicit theme static files are hashed here.
@@ -1602,12 +1620,13 @@ git commit -m "feat(assets): hash explicit theme static files under /assets/them
 
 ---
 
-### Task 8: Asset registry and `resolveContentAsset` helper
+### Task 8: Asset registry, client `resolveContentAsset`, and public client exports
 
 **Files:**
 - Create: `src/compiler/assets/registry.ts`
 - Create: `src/client/assets/resolve-content-asset.ts`
-- Create: `src/client/assets/index.ts`
+- Modify: `src/client/index.ts` (re-export client helpers — package subpath `vuepress-theme-synctrolling/client`)
+- Modify: `scripts/smoke-built-exports.mjs`
 - Create: `tests/compiler/assets/registry.test.ts`
 - Create: `tests/client/assets/resolve-content-asset.test.ts`
 
@@ -1616,7 +1635,8 @@ git commit -m "feat(assets): hash explicit theme static files under /assets/them
 - Produces:
   - Node: `AssetRegistry` with `register`, `getBySource`, `getContentPublicPath(identity, relativeRef)`
   - Client: `resolveContentAsset(relativeRef: string): string` reading an injected `ContentAssetMap`
-  - Client: `createResolveContentAsset(map: Record<string, string>): (ref: string) => string` for tests and SSR-less unit use
+  - Client: `createResolveContentAsset(map)`, `setContentAssetMap(map)`, `normalizeContentAssetRef`
+  - Package: `vuepress-theme-synctrolling/client` exports the client helpers (no new `./client/assets` export)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1624,7 +1644,7 @@ git commit -m "feat(assets): hash explicit theme static files under /assets/them
 // tests/compiler/assets/registry.test.ts
 import { describe, expect, it } from 'vitest'
 import { AssetRegistry } from '../../../src/compiler/assets/registry'
-import type { ResolvedAsset } from '../../../src/shared/types/assets'
+import type { ResolvedAsset } from '../../../src/shared/asset-types'
 
 function asset(partial: Partial<ResolvedAsset> & Pick<ResolvedAsset, 'sourcePath' | 'publicPath'>): ResolvedAsset {
   return {
@@ -1705,11 +1725,11 @@ Run: `npm test -- tests/compiler/assets/registry.test.ts tests/client/assets/res
 
 Expected: FAIL because registry/client helpers are missing.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation + update client exports and smoke**
 
 ```ts
 // src/compiler/assets/registry.ts
-import type { ResolvedAsset } from '../../shared/types/assets'
+import type { ResolvedAsset } from '../../shared/asset-types.js'
 
 function normalizeRef(ref: string): string {
   return ref.replace(/^\.\//, '').replace(/\\/g, '/')
@@ -1799,10 +1819,13 @@ export function normalizeContentAssetRef(ref: string): string {
 
 /**
  * Factory used by unit tests and by the theme runtime when page data
- * provides the current package's public-path map.
+ * provides the current package's public-path map (`frontmatter.synctrol.contentAssets`).
  *
  * Vue components call:
  *   resolveContentAsset('./assets/name.ext')
+ *
+ * Plan 05 Layout/client enhance must call `setContentAssetMap` from page
+ * frontmatter; this plan only exports the helper and injects the map field.
  */
 export function createResolveContentAsset(
   map: ContentAssetMap,
@@ -1832,50 +1855,68 @@ export function resolveContentAsset(relativeRef: string): string {
 ```
 
 ```ts
-// src/client/assets/index.ts
+// src/client/index.ts — replace placeholder
 export {
   createResolveContentAsset,
   normalizeContentAssetRef,
   resolveContentAsset,
   setContentAssetMap,
   type ContentAssetMap,
-} from './resolve-content-asset'
+} from './assets/resolve-content-asset.js'
 ```
+
+```js
+// scripts/smoke-built-exports.mjs
+import assert from 'node:assert/strict'
+
+const root = await import('vuepress-theme-synctrolling')
+const client = await import('vuepress-theme-synctrolling/client')
+
+assert.equal(typeof root.synctrolTheme, 'function')
+assert.equal(typeof client.resolveContentAsset, 'function')
+assert.equal(typeof client.createResolveContentAsset, 'function')
+assert.equal(typeof client.setContentAssetMap, 'function')
+
+console.log('Built root and client exports imported successfully.')
+```
+
+Do **not** add `"./client/assets"` to `package.json` exports. Existing `"./client"` is sufficient.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npm test -- tests/compiler/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts`
 
-Expected: PASS
+Expected: PASS. (Full `npm run build` + smoke is asserted in Task 10/11; unit tests do not require the smoke script.)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/compiler/assets/registry.ts src/client/assets/resolve-content-asset.ts src/client/assets/index.ts tests/compiler/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts
-git commit -m "feat(assets): add asset registry and resolveContentAsset helper"
+git add src/compiler/assets/registry.ts src/client/assets/resolve-content-asset.ts src/client/index.ts scripts/smoke-built-exports.mjs tests/compiler/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts
+git commit -m "feat(assets): add asset registry and export resolveContentAsset from client"
 ```
 
 ---
 
-### Task 9: `compileAssets` orchestrator with write-out and public reservation rules
+### Task 9: `compileAssets` orchestrator, adapter, and Node public exports
 
 **Files:**
 - Create: `src/compiler/assets/compile-assets.ts`
+- Create: `src/compiler/assets/to-asset-package-source.ts`
 - Create: `src/compiler/assets/index.ts`
 - Create: `tests/compiler/assets/compile-assets.test.ts`
+- Create: `tests/compiler/assets/to-asset-package-source.test.ts`
 - Create fixtures under `tests/fixtures/assets/compile/`
-- Modify: `src/index.ts` (re-export Node asset API and client helper path note only — no shell)
+- Modify: `src/index.ts` — append `export * from './compiler/assets/index.js'`
+- Modify: `tests/public-exports.test.ts` — assert root exposes `compileAssets` (and related symbols as exported); do **not** widen `src/compiler/index.ts`
 
 **Interfaces:**
 - Consumes: Tasks 1–8
-- Produces: `compileAssets(options: CompileAssetsOptions): AssetManifest`
-  - Resolves content + Markdown refs per package
-  - Resolves global option refs relative to `configDir`
-  - Resolves explicit `themeAssetPaths`
-  - Writes hashed files under `destDir` mirroring `assetPath` (without leading slash)
-  - Never reads or writes `.vuepress/public`
-  - Deduplicates by absolute `sourcePath`
-  - Fails on escape / missing / case mismatch / raw HTML relatives
+- Produces:
+  - `compileAssets(options: CompileAssetsOptions): AssetManifest`
+  - `toAssetPackageSource(compiled, routed): AssetPackageSource` — joins by `dir`/`identity` (assert both match); declared paths from compiled (manifest/book); locale Markdown from routed locales
+  - Markdown refs resolve relative to `dirname(markdown.filePath)`; declared refs relative to `packageDir`
+  - Writes hashed files under `destDir`; never reads/writes `.vuepress/public`
+  - Root package re-exports Node asset API from `./compiler/assets/index.js`
 
 - [ ] **Step 1: Create fixtures and write the failing tests**
 
@@ -1942,9 +1983,89 @@ cover: ./assets/cover.webp
 ```
 
 ```ts
+// tests/compiler/assets/to-asset-package-source.test.ts
+import { describe, expect, it } from 'vitest'
+import { toAssetPackageSource } from '../../../src/compiler/assets/to-asset-package-source'
+import type {
+  CompiledContentPackage,
+  RouteContentPackage,
+} from '../../../src/shared/types'
+
+describe('toAssetPackageSource', () => {
+  it('joins compiled + routed packages by dir/identity', () => {
+    const compiled: CompiledContentPackage = {
+      dir: '/content/releases/first-release',
+      identity: 'release:first-release',
+      manifest: {
+        type: 'release',
+        slug: 'first-release',
+        date: '2026-08-11',
+        draft: false,
+        cover: './assets/cover.webp',
+      },
+      book: {
+        type: 'album',
+        title: 'A',
+        album: { covers: ['./assets/front.webp'] },
+      },
+    }
+    const routed: RouteContentPackage = {
+      dir: '/content/releases/first-release',
+      identity: 'release:first-release',
+      type: 'release',
+      slug: 'first-release',
+      date: '2026-08-11',
+      draft: false,
+      tags: [],
+      cover: './assets/cover.webp',
+      locales: {
+        zh: {
+          filePath: '/content/releases/first-release/zh.md',
+          title: 'First',
+          draft: false,
+          body: '![Art](./assets/nested/art.webp)',
+        },
+      },
+    }
+    const source = toAssetPackageSource(compiled, routed)
+    expect(source.packageDir).toBe(compiled.dir)
+    expect(source.type).toBe('release')
+    expect(source.slug).toBe('first-release')
+    expect(source.declaredPaths).toEqual([
+      './assets/cover.webp',
+      './assets/front.webp',
+    ])
+    expect(source.localeMarkdown).toEqual([
+      {
+        filePath: '/content/releases/first-release/zh.md',
+        body: '![Art](./assets/nested/art.webp)',
+      },
+    ])
+  })
+
+  it('throws when dir or identity do not match', () => {
+    const compiled: CompiledContentPackage = {
+      dir: '/a',
+      identity: 'home',
+      manifest: { type: 'home', draft: false },
+    }
+    const routed: RouteContentPackage = {
+      dir: '/b',
+      identity: 'home',
+      type: 'home',
+      slug: null,
+      draft: false,
+      tags: [],
+      locales: {},
+    }
+    expect(() => toAssetPackageSource(compiled, routed)).toThrow(/dir|identity/i)
+  })
+})
+```
+
+```ts
 // tests/compiler/assets/compile-assets.test.ts
-import { existsSync, readFileSync } from 'node:fs'
-import { mkdtempSync } from 'node:fs'
+import { existsSync, readFileSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -1952,7 +2073,7 @@ import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
 import { compileAssets } from '../../../src/compiler/assets/compile-assets'
 import { themeOptions } from '../../helpers/asset-fixtures'
-import type { AssetPackageSource } from '../../../src/shared/types/assets'
+import type { AssetPackageSource } from '../../../src/shared/asset-types'
 
 const fixtureRoot = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -2032,13 +2153,48 @@ describe('compileAssets', () => {
     )
     expect(themeGrid?.assetPath).toMatch(/^\/assets\/theme\/grid\.[0-9a-f]{8}\.svg$/)
 
-    // .vuepress/public fixed-name files are not hashed or copied by this pipeline
     expect(
       manifest.assets.some((asset) =>
         asset.sourcePath.includes(`${join('.vuepress', 'public')}`),
       ),
     ).toBe(false)
     expect(existsSync(join(destDir, 'CNAME'))).toBe(false)
+  })
+
+  it('does not hash root-absolute global option refs', () => {
+    const destDir = mkdtempSync(join(tmpdir(), 'synctrol-assets-abs-'))
+    const manifest = compileAssets({
+      packages: [],
+      themeOptions: themeOptions({
+        seo: {
+          name: 'Synctrol',
+          description: 'd',
+          defaultImage: '/images/og.png',
+          organization: { name: 'Synctrol', logo: '/images/logo.png' },
+          collections: {
+            release: { title: 'R', description: 'r' },
+            news: { title: 'N', description: 'n' },
+          },
+        },
+        socialLinks: { items: [] },
+        release: {
+          urlSegment: 'releases',
+          index: {
+            enabled: true,
+            pagination: 12,
+            mobileGridColumns: 2,
+            desktopGridColumns: 3,
+          },
+        },
+      }),
+      configDir: join(fixtureRoot, '.vuepress'),
+      themeAssetsRoot: join(fixtureRoot, 'theme-assets'),
+      themeAssetPaths: [],
+      base: '/',
+      destDir,
+    })
+    expect(Object.keys(manifest.globalPublicPaths)).toEqual([])
+    expect(manifest.assets.filter((a) => a.kind === 'global')).toEqual([])
   })
 
   it('fails when Markdown contains raw HTML relative assets', () => {
@@ -2080,11 +2236,48 @@ describe('compileAssets', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/compiler/assets/compile-assets.test.ts`
+Run: `npm test -- tests/compiler/assets/compile-assets.test.ts tests/compiler/assets/to-asset-package-source.test.ts`
 
-Expected: FAIL because `compileAssets` is not defined.
+Expected: FAIL because modules are not defined.
 
 - [ ] **Step 3: Write minimal implementation**
+
+```ts
+// src/compiler/assets/to-asset-package-source.ts
+import type {
+  CompiledContentPackage,
+  RouteContentPackage,
+} from '../../shared/types.js'
+import type { AssetPackageSource } from '../../shared/asset-types.js'
+import { collectPackageDeclaredPaths } from './collect-package-refs.js'
+
+/**
+ * Join Plan 02 compiled package data with Plan 03 routed locale Markdown.
+ * Caller must pair packages that share the same `dir` and `identity`.
+ */
+export function toAssetPackageSource(
+  compiled: CompiledContentPackage,
+  routed: RouteContentPackage,
+): AssetPackageSource {
+  if (compiled.dir !== routed.dir || compiled.identity !== routed.identity) {
+    throw new Error(
+      `toAssetPackageSource: dir/identity mismatch ` +
+        `(compiled ${compiled.identity}@${compiled.dir} vs ` +
+        `routed ${routed.identity}@${routed.dir})`,
+    )
+  }
+  return {
+    packageDir: compiled.dir,
+    type: routed.type,
+    slug: routed.slug,
+    declaredPaths: collectPackageDeclaredPaths(compiled),
+    localeMarkdown: Object.values(routed.locales).map((markdown) => ({
+      filePath: markdown.filePath,
+      body: markdown.body,
+    })),
+  }
+}
+```
 
 ```ts
 // src/compiler/assets/compile-assets.ts
@@ -2095,21 +2288,21 @@ import type {
   AssetPackageSource,
   CompileAssetsOptions,
   ResolvedAsset,
-} from '../../shared/types/assets'
-import { buildContentAssetPath, contentAssetKey } from './content-path'
+} from '../../shared/asset-types.js'
+import { buildContentAssetPath, contentAssetKey } from './content-path.js'
 import {
   buildAssetAbsoluteUrl,
   buildAssetPublicPath,
-} from './emit-url'
-import { resolveGlobalAsset, collectGlobalOptionRefs } from './global-pipeline'
-import { hashFileContents } from './hash'
+} from './emit-url.js'
+import { resolveGlobalAsset, collectGlobalOptionRefs } from './global-pipeline.js'
+import { hashFileContents } from './hash.js'
 import {
   assertNoRawHtmlRelativeAssets,
   extractMarkdownAssetRefs,
-} from './markdown-assets'
-import { AssetRegistry } from './registry'
-import { resolveSafePath } from './safe-path'
-import { resolveThemeAsset } from './theme-pipeline'
+} from './markdown-assets.js'
+import { AssetRegistry } from './registry.js'
+import { resolveSafePath } from './safe-path.js'
+import { resolveThemeAsset } from './theme-pipeline.js'
 
 function packageIdentity(pkg: AssetPackageSource): string {
   if (pkg.type === 'home') return 'home'
@@ -2120,24 +2313,24 @@ function packageIdentity(pkg: AssetPackageSource): string {
 }
 
 function resolveContentAssetFile(input: {
-  pkg: AssetPackageSource
+  resolveRoot: string
+  packageDir: string
+  type: AssetPackageSource['type']
+  slug: string | null
   relativeRef: string
   base: string
   siteUrl: string
 }): ResolvedAsset {
-  // Markdown refs are relative to the locale Markdown file; declared refs are
-  // package-relative. For Synctrol packages, locale Markdown lives in the
-  // package root, so both resolve against packageDir.
-  const sourcePath = resolveSafePath(input.pkg.packageDir, input.relativeRef)
+  const sourcePath = resolveSafePath(input.resolveRoot, input.relativeRef)
   const buffer = readFileSync(sourcePath)
   const contentHash = hashFileContents(buffer)
-  const packageRelativeAsset = relative(
-    input.pkg.packageDir,
-    sourcePath,
-  ).replace(/\\/g, '/')
+  const packageRelativeAsset = relative(input.packageDir, sourcePath).replace(
+    /\\/g,
+    '/',
+  )
   const assetPath = buildContentAssetPath({
-    type: input.pkg.type,
-    slug: input.pkg.slug,
+    type: input.type,
+    slug: input.slug,
     packageRelativeAsset,
     contentHash,
   })
@@ -2177,29 +2370,46 @@ export function compileAssets(
 
   for (const pkg of options.packages) {
     const identity = packageIdentity(pkg)
-    const refs = new Set<string>(pkg.declaredPaths)
+    const declared = new Set<string>(pkg.declaredPaths)
 
-    for (const markdown of pkg.localeMarkdown) {
-      assertNoRawHtmlRelativeAssets(markdown.body, markdown.filePath)
-      for (const ref of extractMarkdownAssetRefs(markdown.body)) {
-        refs.add(ref)
-      }
-    }
-
-    for (const ref of refs) {
+    for (const ref of declared) {
       const resolved = resolveContentAssetFile({
-        pkg,
+        resolveRoot: pkg.packageDir,
+        packageDir: pkg.packageDir,
+        type: pkg.type,
+        slug: pkg.slug,
         relativeRef: ref,
         base: options.base,
         siteUrl,
       })
       const unique = registerUnique(resolved)
       registry.registerContent(identity, ref, unique)
-      // Also index by package-relative key under assets/
       const key = contentAssetKey(
         relative(pkg.packageDir, unique.sourcePath).replace(/\\/g, '/'),
       )
       registry.registerContent(identity, `./assets/${key}`, unique)
+    }
+
+    for (const markdown of pkg.localeMarkdown) {
+      assertNoRawHtmlRelativeAssets(markdown.body, markdown.filePath)
+      const markdownRoot = dirname(markdown.filePath)
+      for (const ref of extractMarkdownAssetRefs(markdown.body)) {
+        const resolved = resolveContentAssetFile({
+          resolveRoot: markdownRoot,
+          packageDir: pkg.packageDir,
+          type: pkg.type,
+          slug: pkg.slug,
+          relativeRef: ref,
+          base: options.base,
+          siteUrl,
+        })
+        const unique = registerUnique(resolved)
+        registry.registerContent(identity, ref, unique)
+        const key = contentAssetKey(
+          relative(pkg.packageDir, unique.sourcePath).replace(/\\/g, '/'),
+        )
+        registry.registerContent(identity, `./assets/${key}`, unique)
+      }
     }
   }
 
@@ -2224,10 +2434,12 @@ export function compileAssets(
     registerUnique(resolved)
   }
 
-  // Explicit guarantee: never scan or copy options.configDir/public
   const publicDir = resolve(options.configDir, 'public')
   for (const asset of registry.toManifest().assets) {
-    if (asset.sourcePath === publicDir || asset.sourcePath.startsWith(`${publicDir}/`)) {
+    if (
+      asset.sourcePath === publicDir ||
+      asset.sourcePath.startsWith(`${publicDir}/`)
+    ) {
       throw new Error(
         '.vuepress/public files must not enter the hashed asset pipeline',
       )
@@ -2238,96 +2450,231 @@ export function compileAssets(
 }
 ```
 
-Update `CompileAssetsOptions` in `src/shared/types/assets.ts` so `themeOptions` includes required `siteUrl`:
-
-```ts
-export interface CompileAssetsOptions {
-  packages: AssetPackageSource[]
-  themeOptions: {
-    siteUrl: string
-    socialLinks?: { items: Array<{ icon: string }> }
-    release?: { artworkPlaceholder?: string }
-    seo: {
-      defaultImage: string
-      organization: { logo: string }
-    }
-  }
-  configDir: string
-  themeAssetsRoot: string
-  themeAssetPaths: string[]
-  base: string
-  destDir: string
-}
-```
-
 ```ts
 // src/compiler/assets/index.ts
-export { hashFileContents, insertContentHash } from './hash'
+export { hashFileContents, insertContentHash } from './hash.js'
 export {
   buildAssetAbsoluteUrl,
   buildAssetPublicPath,
-} from './emit-url'
-export { resolveSafePath } from './safe-path'
+} from './emit-url.js'
+export { resolveSafePath } from './safe-path.js'
 export {
   buildContentAssetPath,
   contentAssetKey,
-} from './content-path'
-export { collectPackageDeclaredPaths } from './collect-package-refs'
+} from './content-path.js'
+export { collectPackageDeclaredPaths } from './collect-package-refs.js'
 export {
   assertNoRawHtmlRelativeAssets,
   extractMarkdownAssetRefs,
-} from './markdown-assets'
+} from './markdown-assets.js'
 export {
   buildGlobalAssetPath,
   collectGlobalOptionRefs,
+  isConfigRelativeAssetRef,
   resolveGlobalAsset,
-} from './global-pipeline'
+} from './global-pipeline.js'
 export {
   buildThemeAssetPath,
   resolveThemeAsset,
-} from './theme-pipeline'
-export { AssetRegistry } from './registry'
-export { compileAssets } from './compile-assets'
+} from './theme-pipeline.js'
+export { AssetRegistry } from './registry.js'
+export { toAssetPackageSource } from './to-asset-package-source.js'
+export { compileAssets } from './compile-assets.js'
 ```
 
-In `src/index.ts`, append:
+In `src/index.ts`, append (do **not** widen `src/compiler/index.ts`):
 
 ```ts
-export * from './node/assets/index'
+export * from './compiler/assets/index.js'
 ```
+
+Update `tests/public-exports.test.ts` so the root export assertions include at least `compileAssets`, `toAssetPackageSource`, and `collectPackageDeclaredPaths` as functions. Keep the **compiler barrel** (`src/compiler/index.ts`) key list unchanged.
 
 Create fixture files with the tree above (small text payloads are fine for `webp`/`svg` names in tests).
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/compiler/assets/compile-assets.test.ts`
+Run: `npm test -- tests/compiler/assets/compile-assets.test.ts tests/compiler/assets/to-asset-package-source.test.ts tests/public-exports.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/types/assets.ts src/compiler/assets/compile-assets.ts src/compiler/assets/index.ts src/index.ts tests/compiler/assets/compile-assets.test.ts tests/fixtures/assets/compile
-git commit -m "feat(assets): compile and write hashed content, global, and theme assets"
+git add src/shared/asset-types.ts src/compiler/assets/compile-assets.ts src/compiler/assets/to-asset-package-source.ts src/compiler/assets/index.ts src/index.ts tests/compiler/assets/compile-assets.test.ts tests/compiler/assets/to-asset-package-source.test.ts tests/fixtures/assets/compile tests/public-exports.test.ts
+git commit -m "feat(assets): compile hashed assets and export Node asset API from package root"
 ```
 
 ---
 
-### Task 10: Integration coverage for base, failures, Home paths, and helper wiring
+### Task 10: Extend Plan 03 Task 12 — wire assets into `buildSite` + `theme.ts`
+
+**Files:**
+- Modify: `src/compiler/build-site.ts`
+- Modify: `src/compiler/theme.ts`
+- Modify: `tests/compiler/build-site.test.ts` (if present assertions on `BuiltSite` shape)
+- Modify: `tests/compiler/theme.integration.test.ts`
+
+**Interfaces:**
+- Extends (does **not** replace) Plan 03 Task 12 behavior:
+  - Keep content/** filter, `createPage` loop, `define.__SYNCTROL_THEME_OPTIONS__`, and root-router `onGenerated` write
+  - `buildSite` retains `CompiledContentPackage[]` long enough for the adapter (expose as `compiledPackages` on `BuiltSite`)
+  - Theme calls `toAssetPackageSource` per matching compiled+routed pair, then `compileAssets` with `destDir: app.dir.dest()`, `configDir: app.dir.source('.vuepress')`, `base: app.options.base`, `themeOptions: resolved`
+  - Inject per-package map into **`frontmatter.synctrol.contentAssets`** (`Record<string, string>` from `manifest.contentPublicPaths[identity]`, or `{}` when none)
+  - Collection/virtual pages without a content package get `contentAssets: {}`
+  - `themeAssetPaths` may be `[]` for this task unless a theme static root is already configured; document the option hook
+  - Hashed files must exist under `app.dir.dest('assets/...')` after generation
+  - Existing fixtures with `/i.png` / `/images/og.png` continue to pass (global absolute refs preserved)
+
+- [ ] **Step 1: Write / extend failing integration tests**
+
+Add assertions to `tests/compiler/theme.integration.test.ts` (extend existing `runBuild` fixture; add a content asset file under the temp site when needed):
+
+```ts
+// Additional cases (merge into the existing describe):
+
+it('injects frontmatter.synctrol.contentAssets and writes hashed content assets', async () => {
+  // Arrange: ensure content/home/assets/body.webp (or release cover) exists in the temp site
+  // Act: await runBuild()
+  // Assert:
+  // - a generated content page's frontmatter.synctrol.contentAssets is a Record
+  // - when the package declared ./assets/cover.webp (or markdown ./assets/...),
+  //   contentAssets['./assets/cover.webp'] matches /^\/assets\/content\/...[0-9a-f]{8}\./
+  // - existsSync(app.dir.dest(publicPathWithoutLeadingSlash)) === true for that asset
+})
+
+it('keeps Plan 03 Task 12 behaviors after asset wiring', async () => {
+  const app = await runBuild()
+  const paths = app.pages.map((page) => page.path)
+  expect(paths.some((path) => path.startsWith('/content/'))).toBe(false)
+  expect(existsSync(join(app.dir.dest(), 'index.html'))).toBe(true) // root router
+  // pages still carry synctrol.identity / locale / etc.
+})
+
+it('allows root-absolute seo.defaultImage without requiring a file', async () => {
+  // Existing themeOptions using defaultImage: '/i.png' must still build
+  await expect(runBuild()).resolves.toBeTruthy()
+})
+```
+
+Also extend `tests/compiler/build-site.test.ts` to assert `built.compiledPackages` is present and aligns with `built.packages` by `dir`/`identity`.
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `npm test -- tests/compiler/theme.integration.test.ts tests/compiler/build-site.test.ts`
+
+Expected: FAIL on missing `compiledPackages` / `contentAssets` / hashed dest files.
+
+- [ ] **Step 3: Extend `buildSite` and `theme.ts`**
+
+```ts
+// src/compiler/build-site.ts — shape change (illustrative)
+export interface BuiltSite {
+  site: CompiledSite
+  packages: RouteContentPackage[]
+  /** Plan 02 packages retained for Plan 04 asset adapter (book/manifest refs). */
+  compiledPackages: CompiledContentPackage[]
+  definitions: ContentDefinitions
+}
+
+export function buildSite(input: BuildSiteInput): BuiltSite {
+  // …existing compileContent + buildRoutePackages + compileSiteRoutes…
+  return {
+    site: { …, diagnostics: mergeSiteDiagnostics(…) },
+    packages,
+    compiledPackages: compiled.packages,
+    definitions: compiled.definitions,
+  }
+}
+```
+
+```ts
+// src/compiler/theme.ts — extend onInitialized (illustrative)
+built = buildSite({ … })
+
+const assetSources = built.compiledPackages.map((compiled) => {
+  const routed = built!.packages.find(
+    (pkg) => pkg.dir === compiled.dir && pkg.identity === compiled.identity,
+  )
+  if (!routed) {
+    throw new Error(`Missing routed package for ${compiled.identity}`)
+  }
+  return toAssetPackageSource(compiled, routed)
+})
+
+const assetManifest = compileAssets({
+  packages: assetSources,
+  themeOptions: resolved,
+  configDir: app.dir.source('.vuepress'),
+  themeAssetsRoot: /* theme package assets root or a documented empty stub dir */,
+  themeAssetPaths: [],
+  base: app.options.base,
+  destDir: app.dir.dest(),
+})
+
+// …keep content filter…
+
+for (const compiled of built.site.pages) {
+  const contentAssets =
+    assetManifest.contentPublicPaths[compiled.identity] ?? {}
+  const page = await createPage(app, {
+    path: decodeURI(compiled.url.routePath),
+    content: bodyFor(compiled, byDir),
+    frontmatter: {
+      lang: …,
+      title: compiled.title,
+      …,
+      synctrol: {
+        identity: compiled.identity,
+        locale: compiled.locale,
+        contentType: compiled.contentType,
+        isFallback: compiled.isFallback,
+        isDraft: compiled.isDraft,
+        noindex: compiled.noindex,
+        bodyLocale: compiled.bodyLocale,
+        canonicalLocale: compiled.canonicalLocale,
+        contentAssets, // <-- exact field name
+      },
+    },
+  })
+  app.pages.push(page)
+}
+
+// onGenerated: UNCHANGED root-router write (assets already written by compileAssets)
+```
+
+Exact `themeAssetsRoot` for an empty `themeAssetPaths: []` list: pass any existing absolute directory (e.g. `app.dir.source('.vuepress')`) — `resolveThemeAsset` is not called when the path list is empty.
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `npm test -- tests/compiler/theme.integration.test.ts tests/compiler/build-site.test.ts`
+
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/compiler/build-site.ts src/compiler/theme.ts tests/compiler/theme.integration.test.ts tests/compiler/build-site.test.ts
+git commit -m "feat(assets): wire compileAssets into buildSite and theme frontmatter"
+```
+
+---
+
+### Task 11: Integration coverage for base, failures, Home paths, and helper wiring
 
 **Files:**
 - Create: `tests/compiler/assets/asset-pipeline.integration.test.ts`
-- Modify: `tests/helpers/asset-fixtures.ts` (add `compiledPackageToAssetSource` helper if needed)
+- Modify: `tests/helpers/asset-fixtures.ts` (optional convenience re-exports)
 
 **Interfaces:**
-- Consumes: full Task 1–9 API
-- Produces: integration confidence that Plan 04 acceptance rules hold together
+- Consumes: full Task 1–10 API
+- Produces: integration confidence that Plan 04 acceptance rules hold together (pure compiler path; Task 10 covers VuePress lifecycle)
 
 - [ ] **Step 1: Write the failing integration tests**
 
 ```ts
 // tests/compiler/assets/asset-pipeline.integration.test.ts
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -2335,29 +2682,15 @@ import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
 import { collectPackageDeclaredPaths } from '../../../src/compiler/assets/collect-package-refs'
 import { compileAssets } from '../../../src/compiler/assets/compile-assets'
+import { toAssetPackageSource } from '../../../src/compiler/assets/to-asset-package-source'
 import { createResolveContentAsset } from '../../../src/client/assets/resolve-content-asset'
 import { themeOptions } from '../../helpers/asset-fixtures'
-import type { CompiledContentPackage } from '../../../src/shared/types'
-import type { AssetPackageSource } from '../../../src/shared/types/assets'
+import type { CompiledContentPackage, RouteContentPackage } from '../../../src/shared/types'
 
 const fixtureRoot = join(
   dirname(fileURLToPath(import.meta.url)),
   '../../fixtures/assets/compile',
 )
-
-function toAssetSource(
-  pkg: CompiledContentPackage,
-  localeBody: string,
-  localeFile: string,
-): AssetPackageSource {
-  return {
-    packageDir: pkg.dir,
-    type: pkg.manifest.type,
-    slug: pkg.manifest.type === 'home' ? null : (pkg.manifest.slug ?? null),
-    declaredPaths: collectPackageDeclaredPaths(pkg),
-    localeMarkdown: [{ filePath: localeFile, body: localeBody }],
-  }
-}
 
 describe('asset pipeline integration', () => {
   it('keeps assets locale-free while applying base and siteUrl', () => {
@@ -2365,12 +2698,28 @@ describe('asset pipeline integration', () => {
     const homeDir = join(fixtureRoot, 'content/home')
     const releaseDir = join(fixtureRoot, 'content/releases/first-release')
 
-    const homePkg: CompiledContentPackage = {
+    const homeCompiled: CompiledContentPackage = {
       dir: homeDir,
       identity: 'home',
       manifest: { type: 'home', draft: false },
     }
-    const releasePkg: CompiledContentPackage = {
+    const homeRouted: RouteContentPackage = {
+      dir: homeDir,
+      identity: 'home',
+      type: 'home',
+      slug: null,
+      draft: false,
+      tags: [],
+      locales: {
+        zh: {
+          filePath: join(homeDir, 'zh.md'),
+          title: 'Home',
+          draft: false,
+          body: readFileSync(join(homeDir, 'zh.md'), 'utf8'),
+        },
+      },
+    }
+    const releaseCompiled: CompiledContentPackage = {
       dir: releaseDir,
       identity: 'release:first-release',
       manifest: {
@@ -2381,19 +2730,29 @@ describe('asset pipeline integration', () => {
         cover: './assets/cover.webp',
       },
     }
+    const releaseRouted: RouteContentPackage = {
+      dir: releaseDir,
+      identity: 'release:first-release',
+      type: 'release',
+      slug: 'first-release',
+      date: '2026-08-11',
+      draft: false,
+      tags: [],
+      cover: './assets/cover.webp',
+      locales: {
+        zh: {
+          filePath: join(releaseDir, 'zh.md'),
+          title: 'First',
+          draft: false,
+          body: readFileSync(join(releaseDir, 'zh.md'), 'utf8'),
+        },
+      },
+    }
 
     const manifest = compileAssets({
       packages: [
-        toAssetSource(
-          homePkg,
-          readFileSync(join(homeDir, 'zh.md'), 'utf8'),
-          join(homeDir, 'zh.md'),
-        ),
-        toAssetSource(
-          releasePkg,
-          readFileSync(join(releaseDir, 'zh.md'), 'utf8'),
-          join(releaseDir, 'zh.md'),
-        ),
+        toAssetPackageSource(homeCompiled, homeRouted),
+        toAssetPackageSource(releaseCompiled, releaseRouted),
       ],
       themeOptions: themeOptions(),
       configDir: join(fixtureRoot, '.vuepress'),
@@ -2539,9 +2898,9 @@ Expected: PASS (depends on Tasks 1–9)
 
 - [ ] **Step 3: Run the full Plan 04 suite**
 
-Run: `npm test -- tests/compiler/assets tests/client/assets`
+Run: `npm test -- tests/compiler/assets tests/client/assets tests/compiler/theme.integration.test.ts tests/public-exports.test.ts`
 
-Expected: PASS for all Task 1–10 asset tests
+Expected: PASS for all Task 1–11 asset tests. Then `npm run build && node scripts/smoke-built-exports.mjs` Expected: PASS with client `resolveContentAsset` present.
 
 - [ ] **Step 4: Commit**
 
@@ -2552,34 +2911,49 @@ git commit -m "test(assets): add asset pipeline integration coverage for base an
 
 ---
 
+## Downstream Contract Notes (for Plans 05–11)
+
+| Contract | Value |
+| --- | --- |
+| Types module | `src/shared/asset-types.ts` (`ResolvedAsset.publicPath`, not `publicUrl`) |
+| Node API | `vuepress-theme-synctrolling` root via `./compiler/assets/index.js` |
+| Client API | `vuepress-theme-synctrolling/client` → `resolveContentAsset` / `setContentAssetMap` / `createResolveContentAsset` |
+| Page data field | `frontmatter.synctrol.contentAssets: Record<string, string>` |
+| Global option refs | config-relative hashed; `/…` and `http(s):` preserved |
+| Adapter | `toAssetPackageSource(compiled, routed)` joins by `dir`/`identity` |
+| Task 12 | Extended in place; Plan 05+ must keep extending `theme.ts`, not replace it |
+
+---
+
 ## Self-Review
 
 **Spec coverage (Plan 04 Asset Pipeline only):**
 
 | Spec area | Task |
 | --- | --- |
-| §12.1 content package → `/assets/content/{type}/{slug}/name.[hash].ext` | Tasks 3, 9, 10 |
-| §12.1 Home → `/assets/content/home/…` (no slug) | Tasks 3, 9, 10 |
-| §12.1 Markdown `![…](./assets/…)` relative to locale md | Tasks 5, 9, 10 |
-| §12.1 reject raw HTML relative asset attributes | Tasks 5, 9, 10 |
-| §12.1 `resolveContentAsset('./assets/x')` for Vue components | Tasks 8, 10 |
+| §12.1 content package → `/assets/content/{type}/{slug}/name.[hash].ext` | Tasks 3, 9, 11 |
+| §12.1 Home → `/assets/content/home/…` (no slug) | Tasks 3, 9, 11 |
+| §12.1 Markdown `![…](./assets/…)` relative to locale md | Tasks 5, 9, 11 |
+| §12.1 reject raw HTML relative asset attributes | Tasks 5, 9, 11 |
+| §12.1 `resolveContentAsset('./assets/x')` for Vue components | Tasks 8, 10, 11 |
 | §12.2 `.vuepress/assets` → `/assets/global/…` | Tasks 6, 9 |
 | §12.2 theme assets → `/assets/theme/…` | Tasks 7, 9 |
-| §12.2 social icons / `artworkPlaceholder` / `seo.defaultImage` / `seo.organization.logo` resolve relative to VuePress config into global hashed pipeline | Tasks 6, 9, 10 |
+| §12.2 social/SEO/placeholder config-relative → global hashed; absolute/remote preserved | Tasks 6, 9, 10 |
 | §12.2 Background module imports are bundler theme assets | Task 7 (documented + excluded from `compileAssets`) |
-| §12 rules: no locale prefix; always content hashes; no stable-URL option | Tasks 1, 9, 10 |
+| §12 rules: no locale prefix; always content hashes; no stable-URL option | Tasks 1, 9, 11 |
 | §12 nested paths retained | Tasks 3, 6, 7 |
-| §12 path escape prevention; missing/case-mismatch fail build | Tasks 2, 9, 10 |
-| §12 VuePress `base` on public URLs; absolute URLs use `siteUrl` | Tasks 1, 6, 7, 9, 10 |
+| §12 path escape prevention; missing/case-mismatch fail build | Tasks 2, 9, 11 |
+| §12 VuePress `base` on public URLs; absolute URLs use `siteUrl` | Tasks 1, 6, 7, 9, 11 |
 | §12 `.vuepress/public` only for fixed-name files | Task 9 |
-| §11 `audio_player.src` package-relative audio enters content pipeline | Task 4 |
+| §11 `audio_player.src` package-relative (`./`) enters content pipeline | Task 4 |
 | §21/§24 cover/artwork/book covers collected as package refs | Task 4 |
-| §31 missing referenced asset / path escaping build errors | Tasks 2, 10 |
+| §31 missing referenced asset / path escaping build errors | Tasks 2, 11 |
 | §32.1 asset path and emitted URL resolution unit tests | Tasks 1–8 |
-| §32.2 missing assets fail (integration) | Task 10 |
+| §32.2 missing assets fail (integration) | Task 11 |
+| VuePress lifecycle: write assets + inject `contentAssets` + keep Task 12 | Task 10 |
 
-**Explicitly out of scope (no tasks):** UI shell, Background `update`/`dispose` runtime, platform embed components/CSP JSON, SEO meta/`hreflang`/RSS/Sitemap writers, Release/News page components, root language router (Plan 03).
+**Explicitly out of scope (no tasks):** UI shell, Background `update`/`dispose` runtime, platform embed components/CSP JSON, SEO meta/`hreflang`/RSS/Sitemap writers, Release/News page components, Layout wiring of `setContentAssetMap` (Plan 05).
 
 **Placeholder scan:** no TBD/TODO; every task includes concrete test code, implementation code, commands, expected results, and commits.
 
-**Type consistency:** `ResolvedAsset`, `AssetManifest`, `AssetPackageSource`, `CompileAssetsOptions`, `AssetRegistry`, `compileAssets`, `resolveContentAsset` / `createResolveContentAsset`, and diagnostic codes `ASSET_PATH_ESCAPE` / `ASSET_MISSING` / `ASSET_CASE_MISMATCH` / `ASSET_RAW_HTML_RELATIVE` are shared across tasks without rename drift. Home identity is `home`; other packages use `{type}:{slug}` matching Plan 02.
+**Type consistency:** `ResolvedAsset` (`publicPath`), `AssetManifest`, `AssetPackageSource`, `CompileAssetsOptions`, `AssetRegistry`, `compileAssets`, `toAssetPackageSource`, `resolveContentAsset` / `createResolveContentAsset`, `frontmatter.synctrol.contentAssets`, and diagnostic codes `ASSET_PATH_ESCAPE` / `ASSET_MISSING` / `ASSET_CASE_MISMATCH` / `ASSET_RAW_HTML_RELATIVE` are shared across tasks without rename drift. Home identity is `home`; other packages use `{type}:{slug}` matching Plan 02.

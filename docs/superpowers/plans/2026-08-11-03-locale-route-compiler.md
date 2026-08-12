@@ -5383,8 +5383,8 @@ Plans 04–11 were written against the previous, uncompilable layout. They have 
 
 Semantic notes that a rename cannot express:
 
-- Plan 04 must not redeclare `LocaleMarkdown`; Task 1 owns it in `src/shared/types.ts`.
-- Plan 05 **must extend** the Task 12 `src/compiler/theme.ts` module — add `clientConfigFile`, color-mode boot script injection, and layout wiring inside the existing `onInitialized` / `onGenerated` / `define` surface. It must **not** create a replacement `synctrolTheme` that overwrites Task 12's page registration, content-tree filtering, or root-router `onGenerated` write. Keep the Plan 01 `define.__SYNCTROL_THEME_OPTIONS__` payload built by `toClientThemeOptions`.
+- Plan 04 must not redeclare `LocaleMarkdown`; Task 1 owns it in `src/shared/types.ts`. Plan 04 asset types live in `src/shared/asset-types.ts` and use `Pick<LocaleMarkdown, 'filePath' | 'body'>`. Plan 04 Task 10 **extends** (does not replace) this plan's Task 12 `buildSite` / `theme.ts`, injecting `frontmatter.synctrol.contentAssets` and writing hashed assets while keeping content-tree filtering and the root-router `onGenerated` write.
+- Plan 05 **must extend** the Task 12 `src/compiler/theme.ts` module — add `clientConfigFile`, color-mode boot script injection, and layout wiring inside the existing `onInitialized` / `onGenerated` / `define` surface. It must **not** create a replacement `synctrolTheme` that overwrites Task 12's page registration, content-tree filtering, root-router `onGenerated` write, or Plan 04's asset compile/inject behavior. Keep the Plan 01 `define.__SYNCTROL_THEME_OPTIONS__` payload built by `toClientThemeOptions`.
 - Plan 05's `LOCALE_STORAGE_KEY` must equal the root router's; import it from `src/compiler/root-router-html.js`. LanguageSwitcher hrefs for locale homes must use the same encoded `publicPath` convention as the root router (encode the locale key), not raw CJK keys.
 - Plan 10 still resolves the real collection titles; this plan deliberately leaves the identity string as the placeholder `title`.
 - Plan 11's root-router expectation is satisfied by Task 12's `onGenerated`, which writes `<dest>/index.html`.
