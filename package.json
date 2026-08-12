@@ -1,7 +1,8 @@
 {
   "name": "vuepress-theme-synctrolling",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Synctrol-specific VuePress 2 theme for releases, news, pages, SEO, feeds, and multilingual static sites.",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
@@ -11,19 +12,42 @@
     "./client": {
       "types": "./dist/client/index.d.ts",
       "default": "./dist/client/index.js"
-    }
+    },
+    "./styles.css": "./dist/client/styles/tokens.css"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-client-assets.mjs",
+    "build:assets": "node scripts/copy-client-assets.mjs",
     "test:typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test:build-smoke": "npm run build && node scripts/smoke-built-exports.mjs",
     "test": "npm run test:typecheck && vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "assert:build-artifacts": "node scripts/assert-build-artifacts.mjs",
+    "assert:pack": "node scripts/assert-pack-contents.mjs",
+    "assert:exports": "node scripts/assert-exports-resolve.mjs",
+    "test:consumer-smoke": "node scripts/run-consumer-smoke.mjs",
+    "prepublishOnly": "node scripts/prepublish-check.mjs"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Synctrol/vuepress-theme-synctrolling.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Synctrol/vuepress-theme-synctrolling/issues"
+  },
+  "homepage": "https://github.com/Synctrol/vuepress-theme-synctrolling#readme",
+  "keywords": [
+    "vuepress",
+    "vuepress-theme",
+    "synctrol",
+    "music"
+  ],
   "peerDependencies": {
     "vue": "^3.5.0",
     "vuepress": "^2.0.0-rc.24"
