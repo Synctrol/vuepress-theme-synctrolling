@@ -48,5 +48,6 @@ describe('ShellLayout', () => {
     expect(section.find('.syn-main-probe').exists()).toBe(true)
     const footer = wrapper.get('footer.syn-site-footer')
     expect(footer.find('.syn-language').exists()).toBe(true)
+    expect(wrapper.findAll('.syn-language')).toHaveLength(1)
   })
 })
