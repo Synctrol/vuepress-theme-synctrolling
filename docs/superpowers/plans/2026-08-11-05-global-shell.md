@@ -7,16 +7,25 @@
 Revised so an implementation worker can execute against shipped Plans 01–04 without breaking asset/page-data contracts. Binding decisions (do not re-litigate):
 
 1. **Nested page data:** Layout/client reads `page.frontmatter.synctrol.{identity,locale,contentAssets,alternates,…}` — never top-level `synctrolIdentity` / `synctrolLocale`. Call `setContentAssetMap(frontmatter.synctrol.contentAssets ?? {})` on page change.
-2. **Extend client exports:** `src/client/index.ts` **extends** Plan 04 asset helpers (`resolveContentAsset`, `setContentAssetMap`, `createResolveContentAsset`, `normalizeContentAssetRef`, `ContentAssetMap`); never replace with Layout-only exports. Smoke tests must keep asset helpers.
+2. **Extend client exports (JS-only subpath):** `src/client/index.ts` **extends** Plan 04 asset helpers (`resolveContentAsset`, `setContentAssetMap`, `createResolveContentAsset`, `normalizeContentAssetRef`, `ContentAssetMap`) plus pure TS composables/utilities/keys. Do **not** re-export `Layout.vue` (or any SFC) from this barrel — Node `import('vuepress-theme-synctrolling/client')` / `dist/client/index.js` must stay loadable without resolving `.vue`. Layout registers only via `defineClientConfig` in `src/client/config.ts`. Smoke tests keep asserting asset helpers; they must **not** require importing Layout from Node.
 3. **URL helpers:** Import `joinPublicPath` / `normalizeBase` from `../../shared/route-path.js` (not `url/normalize-path`).
 4. **Encoded locale hrefs:** Navigation locale prefixes and any synthesized locale-home fallbacks use `encodePathSegment` (Plan 03 RFC3986 encoder extracted to shared) / compiled `publicPath` — no raw CJK keys in hrefs. Prefer injected `frontmatter.synctrol.alternates[].publicPath`.
 5. **`LOCALE_STORAGE_KEY` client boundary:** Client must not import `src/compiler/**`. Task 1 prerequisite moves the constant to `src/shared/locale-storage.ts`; `root-router-html.ts` imports from shared (re-export optional). LanguageSwitcher imports from shared. Plan 03 Downstream note synced.
 6. **NodeNext imports:** Every `src/**` relative import ends in `.js` (including `<script setup>` in `.vue` files). Test imports stay extensionless.
-7. **Vue SFC typecheck:** Add `src/vue-shim.d.ts` (`declare module '*.vue'`) and include it in production `tsconfig.json`. Keep `tsc` (do not switch to `vue-tsc`). Do **not** add `src/**/*.vue` to `tsc` `include` — shim is enough for `.ts` importing `.vue`.
+7. **Vue SFC typecheck + dist copy:** Add `src/vue-shim.d.ts` (`declare module '*.vue'`) and include it in production `tsconfig.json`. Keep **`tsc`** as the package TypeScript compiler (do not switch to `vue-tsc`). Do **not** add `src/**/*.vue` to `tsc` `include` — shim lets `.ts` (e.g. `config.ts`) import `.vue` for typecheck without emitting SFCs; a post-`tsc` copy step supplies `*.vue` / `*.css` / client media under `dist/client`.
 8. **`theme.ts` is a PATCH:** Task 3/13 show additive diffs against current Plan 04 `theme.ts` (assets + `contentAssets` + filter + router). Full-file illustrative replacements are forbidden.
 9. **Alternates leftover fixed:** No raw `` `/${key}/` `` home synthesis; use encoded segment or compiled `publicPath`.
 10. **SocialLinks (Plan 05 scope):** Shell acceptance allows root-absolute, remote `http(s):`, and data-URI icon stubs. Hashed `globalPublicPaths` injection into client options is **out of scope** for this plan (later plans may wire it).
 11. **Deps:** Install Vue test tooling compatible with shipped `vite ^6.4.3` / `vitest ^4.1.10` / Node 20 — do not pin stale `happy-dom@^15` / `@vitejs/plugin-vue@^5.2.0` ranges unless `tests/package-contract.test.ts` is updated intentionally.
+
+### Round-2 packaging (closes GPT Criticals on Vue + `tsc`)
+
+12. **`tsc` + copy client assets:** Package build stays `tsc -p tsconfig.json`, then **`node scripts/copy-client-assets.mjs`** copies client static assets (`*.vue`, `*.css`, and any needed client media) from `src/client` → `dist/client`, preserving structure. Task 1 creates the script and updates `package.json` `"build"` accordingly (e.g. `tsc -p tsconfig.json && node scripts/copy-client-assets.mjs`). Plan 11 may extend the same script for fonts/pack asserts — do not invent a parallel copy pipeline in Plan 05.
+13. **`clientConfigFile` → emitted `.js`:** Theme resolves `path.resolve(__dirname, '../client/config.js')` (not `config.ts`). After `tsc`, the artifact is `dist/client/config.js`; VuePress’s bundler resolves `.vue` imports inside that config when the theme is consumed.
+14. **No SFC re-exports from `./client`:** Confirms item 2 — `export { default as Layout } from './layouts/Layout.vue'` is forbidden in `src/client/index.ts`.
+15. **`vue-shim.d.ts` stays** for `tsc` typecheck of `.ts` → `.vue` imports; copy step owns runtime presence under `dist/`.
+16. **Vitest Layout mock hoisting:** `Layout.test.ts` must use `vi.hoisted(() => …)` for any `ref` / state closed over by `vi.mock('vuepress/client', …)` so Vitest does not hit temporal-dead-zone / hoist-order failures.
+17. **Stdlib paths:** Prefer `node:path` / `node:url` (`dirname`, `resolve`, `fileURLToPath`) for `__dirname` + `clientConfigFile`. Do **not** add a direct `@vuepress/utils` dependency solely for `getDirname` / `path` unless it is already a package dependency (today it is only transitive via `vuepress`).
 
 **Goal:** Build the Synctrol VuePress theme global shell—Header, Main, Navigation, Footer, SocialLinks, LanguageSwitcher, ThemeMode, desktop golden-ratio CSS grid, mobile hamburger flow, dock clearance, and accessibility behavior—without Background runtime or Release/News content UI.
 
@@ -37,15 +46,19 @@ Revised so an implementation worker can execute against shipped Plans 01–04 wi
 - Desktop breakpoint boundary is `768px` (`max-width: 768px` = mobile).
 - Safe-area dock tokens from Plan 01 must be consumed, not redefined with different values.
 - Every relative import inside `src/` ends in `.js`; test imports are extensionless (Plan 03 convention).
+- Keep `tsc` for package emit; copy `src/client` static assets (`*.vue`, `*.css`, client media) into `dist/client` after compile. Never re-export SFCs from the Node-importable `./client` subpath.
+- `clientConfigFile` always resolves to the emitted `../client/config.js` (not `.ts`).
+- Prefer stdlib `node:path` / `node:url` over `@vuepress/utils` for theme path resolution unless `@vuepress/utils` is already a direct dependency.
 - All later tasks inherit these constraints.
 
 ## Downstream note (Plan 03/04 contracts)
 
-- Plan 04 exports `resolveContentAsset` / `setContentAssetMap` / `createResolveContentAsset` / `normalizeContentAssetRef` from `vuepress-theme-synctrolling/client` (via `src/client/index.ts`). This plan's Layout **extends** that file and must call `setContentAssetMap(frontmatter.synctrol.contentAssets ?? {})` on page change; do not invent a separate `./client/assets` package export; do not drop Plan 04 exports.
+- Plan 04 exports `resolveContentAsset` / `setContentAssetMap` / `createResolveContentAsset` / `normalizeContentAssetRef` from `vuepress-theme-synctrolling/client` (via `src/client/index.ts`). This plan **extends** that barrel with pure TS only (keys/composables/utilities). Layout calls `setContentAssetMap(frontmatter.synctrol.contentAssets ?? {})` on page change and is registered in `src/client/config.ts` via `defineClientConfig` — do **not** re-export `Layout.vue` from `src/client/index.ts`; do not invent a separate `./client/assets` package export; do not drop Plan 04 exports.
 - Page data lives under nested **`frontmatter.synctrol`**: `identity`, `locale`, `contentAssets`, plus Plan 05-injected **`alternates`** (`{ locale, publicPath }[]` from `built.site.pages` for the same identity; `publicPath` already encodeRouteSegment'd).
 - Social icon option refs that are root-absolute (`/…`) or remote `http(s):` are preserved by Plan 04 (not hashed). Config-relative icons are hashed into `/assets/global/…`. Plan 05 shell stubs (absolute/remote/data-URI) remain valid; wiring `globalPublicPaths` into client options is out of scope here.
-- Extend Plan 03/04 `theme.ts` in place — do not replace page registration, content-tree filtering, root-router write, or asset compile/inject.
+- Extend Plan 03/04 `theme.ts` in place — do not replace page registration, content-tree filtering, root-router write, or asset compile/inject. Set `clientConfigFile` to emitted `../client/config.js`.
 - `LOCALE_STORAGE_KEY` canonical home after Task 1 prerequisite: `src/shared/locale-storage.ts` (value remains `synctrol:locale`). Compiler root-router and client LanguageSwitcher both import from shared.
+- Build packaging: Task 1 adds `scripts/copy-client-assets.mjs` and updates `"build"` so `npm run test:build-smoke` / Node import of `dist/client/index.js` stays green while `dist/client/**/*.vue` exist for VuePress.
 
 ---
 
@@ -79,11 +92,12 @@ Revised so an implementation worker can execute against shipped Plans 01–04 wi
 | `src/client/components/ShellLayout.vue` | Grid shell composing all regions |
 | `src/client/layouts/Layout.vue` | VuePress layout entry wrapping `ShellLayout`; wires `setContentAssetMap` |
 | `src/client/styles/shell.css` | Grid, dock, mobile, overlay, focus-visible rules |
-| `src/client/config.ts` | VuePress client config: layouts + styles |
-| `src/client/index.ts` | **Extend** Plan 04 client exports; add Layout/keys |
-| `src/compiler/theme.ts` | **PATCH** Plan 04 theme — add clientConfigFile, boot script, `synctrol.alternates`; keep assets + filter + router |
+| `src/client/config.ts` | VuePress client config: layouts + styles (`defineClientConfig` registers `Layout`) |
+| `src/client/index.ts` | **Extend** Plan 04 client exports with pure TS only (keys/composables); **no** `.vue` re-exports |
+| `src/compiler/theme.ts` | **PATCH** Plan 04 theme — add `clientConfigFile` → `../client/config.js`, boot script, `synctrol.alternates`; keep assets + filter + router |
 | `src/compiler/root-router-html.ts` | Import `LOCALE_STORAGE_KEY` from shared after Task 1 prerequisite |
 | `src/compiler/path-suffix.ts` | Re-import `encodePathSegment` from shared after Task 5 prerequisite |
+| `scripts/copy-client-assets.mjs` | **Task 1:** copy `*.vue` / `*.css` / client media `src/client` → `dist/client` after `tsc` |
 | `tests/shared/format-message.test.ts` | Message interpolation |
 | `tests/client/color-mode/*.test.ts` | Cycle, storage, resolve, boot script |
 | `tests/client/navigation/*.test.ts` | Href resolution |
@@ -92,7 +106,7 @@ Revised so an implementation worker can execute against shipped Plans 01–04 wi
 | `tests/client/components/*.test.ts` | Component + a11y tests |
 | `tests/client/shell/shell-layout.test.ts` | Grid areas, mobile flow, dock clearance |
 | `vitest.config.ts` | Split node vs happy-dom environments |
-| `package.json` | Add `@vue/test-utils`, `happy-dom`, `@vitejs/plugin-vue` (Vite 6–compatible) |
+| `package.json` | Add Vue test deps; set `build` to `tsc && node scripts/copy-client-assets.mjs` |
 
 **Assumed from Plans 01–04 (do not redefine):**
 
@@ -109,13 +123,14 @@ Revised so an implementation worker can execute against shipped Plans 01–04 wi
 
 ---
 
-### Task 1: Vue client test harness
+### Task 1: Vue client test harness + client asset packaging
 
 **Files:**
-- Modify: `package.json`
+- Modify: `package.json` — Vue test deps **and** `"build": "tsc -p tsconfig.json && node scripts/copy-client-assets.mjs"`
 - Modify: `vitest.config.ts`
 - Modify: `tsconfig.json`
 - Create: `src/vue-shim.d.ts`
+- Create: `scripts/copy-client-assets.mjs`
 - Create: `src/shared/locale-storage.ts` (**prerequisite — client boundary**)
 - Modify: `src/compiler/root-router-html.ts` — import `LOCALE_STORAGE_KEY` from `../shared/locale-storage.js` (remove local `export const`; re-export from shared if other modules import from root-router today)
 - Create: `tests/client/harness/mount.ts`
@@ -123,8 +138,8 @@ Revised so an implementation worker can execute against shipped Plans 01–04 wi
 - Create: `tests/client/harness/smoke.test.ts`
 
 **Interfaces:**
-- Consumes: Plan 01 Vitest + Vue peer deps; Plan 03 `LOCALE_STORAGE_KEY` value `synctrol:locale`
-- Produces: happy-dom environment for `tests/client/**`; `mountShell(component, options)` helper; fixture theme options; `*.vue` module shim for `tsc`; shared `LOCALE_STORAGE_KEY`
+- Consumes: Plan 01 Vitest + Vue peer deps; Plan 03 `LOCALE_STORAGE_KEY` value `synctrol:locale`; existing `tsc` emit layout
+- Produces: happy-dom environment for `tests/client/**`; `mountShell(component, options)` helper; fixture theme options; `*.vue` module shim for `tsc`; shared `LOCALE_STORAGE_KEY`; post-`tsc` copy of client static assets into `dist/client` so VuePress can load SFCs while Node `./client` stays JS-only
 
 - [ ] **Step 0: Move `LOCALE_STORAGE_KEY` to shared (client-safe prerequisite)**
 
@@ -401,15 +416,91 @@ Run: `npm run test:typecheck`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Add `copy-client-assets` build step (packaging prerequisite)**
+
+`tsc` does not emit `.vue` / `.css`. Without a copy step, VuePress cannot load Layout from `dist/`, and any accidental SFC re-export from `dist/client/index.js` would break Node smoke. Create the copy script and wire `package.json` **before** Task 3/13 rely on `clientConfigFile` + Layout SFCs in `dist/`.
+
+```js
+// scripts/copy-client-assets.mjs
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const srcClient = join(root, 'src', 'client')
+const distClient = join(root, 'dist', 'client')
+
+const COPY_EXTENSIONS = new Set([
+  '.vue',
+  '.css',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.otf',
+  '.svg',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.gif',
+])
+
+function walk(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name)
+    const st = statSync(full)
+    if (st.isDirectory()) walk(full, out)
+    else out.push(full)
+  }
+  return out
+}
+
+if (!existsSync(srcClient)) {
+  throw new Error(`Missing src/client at ${srcClient}`)
+}
+mkdirSync(distClient, { recursive: true })
+
+let copied = 0
+for (const file of walk(srcClient)) {
+  const ext = file.slice(file.lastIndexOf('.')).toLowerCase()
+  if (!COPY_EXTENSIONS.has(ext)) continue
+  const rel = relative(srcClient, file)
+  const dest = join(distClient, rel)
+  mkdirSync(dirname(dest), { recursive: true })
+  cpSync(file, dest)
+  copied += 1
+}
+
+console.log(`copy-client-assets: copied ${copied} files into dist/client/`)
+```
+
+Update `package.json` scripts (keep existing test scripts; only change `build`):
+
+```json
+"build": "tsc -p tsconfig.json && node scripts/copy-client-assets.mjs"
+```
+
+Verify packaging still allows Node import of `./client` (asset helpers only; no `.vue` in the barrel). Until Layout SFCs exist, the copy may log `copied 0` if `src/client` has no matching static files yet — that is OK in Task 1. After Task 12/13 add `.vue`/`.css`, rebuild and confirm files appear under `dist/client`.
+
+Run:
+
+```bash
+npm run build
+node scripts/smoke-built-exports.mjs
+```
+
+Expected: PASS (Plan 04 asset helpers still importable from built `vuepress-theme-synctrolling/client`). If `src/client` already has CSS/assets from Plan 01/04, they appear under `dist/client`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add package.json package-lock.json vitest.config.ts tsconfig.json \
+  scripts/copy-client-assets.mjs \
   src/vue-shim.d.ts src/shared/locale-storage.ts src/compiler/root-router-html.ts \
   src/client/composables/keys.ts \
   tests/client/harness/mount.ts tests/client/harness/fixtures.ts \
   tests/client/harness/smoke.test.ts
-git commit -m "test: add Vue client component test harness"
+git commit -m "test: add Vue client harness and copy-client-assets build step"
 ```
 
 ---
@@ -705,8 +796,8 @@ export function buildColorModeBootScript(
 ```ts
 // src/compiler/theme.ts — ADDITIVE PATCH against Plan 04 HEAD
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
-import { getDirname, path } from '@vuepress/utils'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createPage } from 'vuepress/core'
 import type { App, Page, ThemeObject } from 'vuepress/core'
 import { buildColorModeBootScript } from '../client/color-mode/boot-script.js'
@@ -719,7 +810,7 @@ import { compileAssets } from './assets/compile-assets.js'
 import { selectAssetPackageSources } from './assets/select-asset-package-sources.js'
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 
-const __dirname = getDirname(import.meta.url)
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // ... keep isContentSourcePage + bodyFor unchanged ...
 
@@ -731,8 +822,8 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
 
   return {
     name: 'vuepress-theme-synctrolling',
-    // ADD — Task 13 also relies on this path existing
-    clientConfigFile: path.resolve(__dirname, '../client/config.ts'),
+    // ADD — must point at tsc-emitted artifact (VuePress bundler resolves .vue from here)
+    clientConfigFile: resolve(__dirname, '../client/config.js'),
     define: {
       __SYNCTROL_THEME_OPTIONS__: clientOptions,
     },
@@ -795,7 +886,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
 }
 ```
 
-Forbidden: deleting `compileAssets`, `contentAssets`, content-tree filtering, or root-router `onGenerated`. Forbidden: pasting a Plan-01-style stub factory.
+Forbidden: deleting `compileAssets`, `contentAssets`, content-tree filtering, or root-router `onGenerated`. Forbidden: pasting a Plan-01-style stub factory. Forbidden: `clientConfigFile: …/config.ts` (Node/`dist` consumers need the emitted `.js`). Prefer stdlib `node:path` / `node:url` over `@vuepress/utils` for `__dirname` resolution.
 
 ```ts
 // src/index.ts — already re-exports from ./compiler/theme.js after Plan 03/04;
@@ -2711,14 +2802,16 @@ git commit -m "feat: add golden-ratio ShellLayout and responsive dock CSS"
 **Files:**
 - Create: `src/client/layouts/Layout.vue`
 - Create: `src/client/config.ts`
-- Modify: `src/client/index.ts` — **extend** Plan 04 exports (do not replace)
-- Modify: `src/compiler/theme.ts` — ensure `clientConfigFile` + `synctrol.alternates` from Task 3 patch remain
+- Modify: `src/client/index.ts` — **extend** Plan 04 exports with pure TS only (do **not** re-export `Layout.vue`)
+- Modify: `src/compiler/theme.ts` — ensure `clientConfigFile` → `../client/config.js` + `synctrol.alternates` from Task 3 patch remain
 - Create: `tests/client/layouts/Layout.test.ts`
-- Create: `tests/client/index.exports.test.ts` (optional smoke that Plan 04 helpers remain exported)
+- Create: `tests/client/index.exports.test.ts` (smoke that Plan 04 helpers remain exported; **no** Layout Node import)
 
 **Interfaces:**
 - Consumes: `__SYNCTROL_THEME_OPTIONS__`; nested `frontmatter.synctrol`; Plan 04 `setContentAssetMap`
-- Produces: Layout provides shell context (locale, identity, alternates, base), syncs content asset map on page change, renders `ShellLayout` around `<Content />`; `./client` still exports asset helpers
+- Produces: Layout provides shell context (locale, identity, alternates, base), syncs content asset map on page change, renders `ShellLayout` around `<Content />`; Layout is registered only via `defineClientConfig` in `config.ts`; `./client` still exports asset helpers as Node-importable JS
+
+**Important — Vitest mock hoisting:** Any state closed over by `vi.mock('vuepress/client', …)` (e.g. `pageRef`) **must** be created with `vi.hoisted(() => …)`. Declaring `const pageRef = ref(…)` above `vi.mock` fails under Vitest hoist rules.
 
 - [ ] **Step 1: Write failing Layout + export tests**
 
@@ -2734,21 +2827,26 @@ import {
 } from '../../../src/client/composables/keys'
 import { resolveContentAsset, setContentAssetMap } from '../../../src/client'
 
-const pageRef = ref({
-  path: '/zh/',
-  frontmatter: {
-    synctrol: {
-      identity: 'home',
-      locale: 'zh',
-      contentAssets: {
-        './assets/cover.webp': '/assets/content/home/cover.abc123.webp',
+const { pageRef } = vi.hoisted(() => {
+  const { ref } = require('vue') as typeof import('vue')
+  return {
+    pageRef: ref({
+      path: '/zh/',
+      frontmatter: {
+        synctrol: {
+          identity: 'home',
+          locale: 'zh',
+          contentAssets: {
+            './assets/cover.webp': '/assets/content/home/cover.abc123.webp',
+          },
+          alternates: [
+            { locale: 'zh', publicPath: '/zh/' },
+            { locale: 'en', publicPath: '/en/' },
+          ],
+        },
       },
-      alternates: [
-        { locale: 'zh', publicPath: '/zh/' },
-        { locale: 'en', publicPath: '/en/' },
-      ],
-    },
-  },
+    }),
+  }
 })
 
 vi.mock('vuepress/client', () => {
@@ -2787,18 +2885,64 @@ describe('Layout', () => {
 })
 ```
 
+Prefer a pure ESM-friendly hoisted form if `require` is undesirable in the suite — e.g. hoist a plain mutable object and assign `ref(...)` inside the factory after importing Vue at module top is unavailable; the binding requirement is **`vi.hoisted`**, not the exact `require` shape:
+
+```ts
+const { pageRef } = vi.hoisted(() => {
+  // create the ref inside hoisted so vi.mock can close over it safely
+  return { pageRef: null as null | ReturnType<typeof ref> }
+})
+// after imports that Vitest does not hoist past the mock:
+import { ref as vueRef } from 'vue'
+pageRef = vueRef({ /* … */ }) // only if using a let binding from hoisted
+```
+
+Simplest accepted pattern: hoist with `vi.hoisted` + create the `ref` inside that callback (dynamic `import('vue')` is async — prefer sync factory that imports Vue via the already-bundled test environment). Workers may use:
+
+```ts
+import { ref } from 'vue'
+
+const { pageRef } = vi.hoisted(() => {
+  // NOTE: Vitest rewrites this so `ref` from the outer import is available
+  // when the hoisted factory runs; do not declare pageRef with `ref(...)`
+  // as a sibling above vi.mock without vi.hoisted.
+  return {
+    pageRef: ref({
+      path: '/zh/',
+      frontmatter: {
+        synctrol: {
+          identity: 'home',
+          locale: 'zh',
+          contentAssets: {
+            './assets/cover.webp': '/assets/content/home/cover.abc123.webp',
+          },
+          alternates: [
+            { locale: 'zh', publicPath: '/zh/' },
+            { locale: 'en', publicPath: '/en/' },
+          ],
+        },
+      },
+    }),
+  }
+})
+```
+
+If the first `require` form fails under the repo’s ESM Vitest config, switch to the second `vi.hoisted` + outer `import { ref }` form. Do **not** leave un-hoisted `const pageRef = ref(...)` above `vi.mock`.
+
 ```ts
 // tests/client/index.exports.test.ts
 import { describe, expect, it } from 'vitest'
 import * as client from '../../src/client'
 
 describe('client package exports', () => {
-  it('keeps Plan 04 asset helpers alongside Layout', () => {
+  it('keeps Plan 04 asset helpers (JS-only; no Layout SFC export)', () => {
     expect(typeof client.resolveContentAsset).toBe('function')
     expect(typeof client.createResolveContentAsset).toBe('function')
     expect(typeof client.setContentAssetMap).toBe('function')
     expect(typeof client.normalizeContentAssetRef).toBe('function')
-    expect(client.Layout).toBeTruthy()
+    expect(
+      Object.prototype.hasOwnProperty.call(client, 'Layout'),
+    ).toBe(false)
   })
 })
 ```
@@ -2809,7 +2953,7 @@ Run: `npm test -- tests/client/layouts/Layout.test.ts tests/client/index.exports
 
 Expected: FAIL because Layout / extended client exports are incomplete.
 
-- [ ] **Step 3: Implement Layout and EXTEND client wiring**
+- [ ] **Step 3: Implement Layout and EXTEND client wiring (no SFC barrel export)**
 
 ```vue
 <!-- src/client/layouts/Layout.vue -->
@@ -2935,7 +3079,7 @@ export default defineClientConfig({
 ```
 
 ```ts
-// src/client/index.ts — EXTEND Plan 04; never replace asset helpers
+// src/client/index.ts — EXTEND Plan 04; never replace asset helpers; NEVER re-export SFCs
 export {
   createResolveContentAsset,
   normalizeContentAssetRef,
@@ -2944,11 +3088,17 @@ export {
   type ContentAssetMap,
 } from './assets/resolve-content-asset.js'
 
-export { default as Layout } from './layouts/Layout.vue'
 export * from './composables/keys.js'
+// Forbidden: export { default as Layout } from './layouts/Layout.vue'
 ```
 
-`src/compiler/theme.ts` already sets `clientConfigFile` and injects `synctrol.alternates` from Task 3. Confirm `scripts/smoke-built-exports.mjs` still asserts Plan 04 asset helpers after build.
+Confirm `src/compiler/theme.ts` still has:
+
+```ts
+clientConfigFile: resolve(__dirname, '../client/config.js'),
+```
+
+Confirm `scripts/smoke-built-exports.mjs` still asserts Plan 04 asset helpers after build, and does **not** assert `client.Layout`. After `npm run build`, `dist/client/layouts/Layout.vue` and `dist/client/config.js` must exist (copy step + tsc). `dist/client/index.js` must not contain a `.vue` import.
 
 - [ ] **Step 4: Run Layout + export tests + build smoke**
 
@@ -2959,7 +3109,7 @@ npm test -- tests/client/layouts/Layout.test.ts tests/client/index.exports.test.
 npm run test:build-smoke
 ```
 
-Expected: PASS (asset helpers remain on `vuepress-theme-synctrolling/client`)
+Expected: PASS (asset helpers remain on `vuepress-theme-synctrolling/client`; Node can load `dist/client/index.js`; Layout SFCs present under `dist/client` via copy).
 
 - [ ] **Step 5: Commit**
 
@@ -2967,9 +3117,8 @@ Expected: PASS (asset helpers remain on `vuepress-theme-synctrolling/client`)
 git add src/client/layouts/Layout.vue src/client/config.ts src/client/index.ts \
   src/compiler/theme.ts tests/client/layouts/Layout.test.ts \
   tests/client/index.exports.test.ts
-git commit -m "feat: wire VuePress Layout to Synctrol ShellLayout"
+git commit -m "feat: wire VuePress Layout via client config (no SFC barrel export)"
 ```
-
 ---
 
 ### Task 14: Shell accessibility and responsive integration suite
