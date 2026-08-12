@@ -8,6 +8,9 @@ describe('buildColorModeBootScript', () => {
     expect(script).toContain(COLOR_MODE_STORAGE_KEY)
     expect(script).toContain("'auto'")
     expect(script).toContain('dataset.theme')
+    expect(script).toMatch(/dataset\.theme=dark\?'dark':'light'/)
+    // Storage failures must not force light: follow the OS preference instead.
+    expect(script).toMatch(/catch\(e\)\{document\.documentElement\.dataset\.theme=window\.matchMedia\('\(prefers-color-scheme: dark\)'\)\.matches\?'dark':'light';?\}/)
     expect(script).toContain('prefers-color-scheme')
   })
 
