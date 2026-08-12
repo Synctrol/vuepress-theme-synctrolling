@@ -86,6 +86,52 @@ describe('collectPackageDeclaredPaths', () => {
     ])
   })
 
+  it('collects ./ src from gift item links', () => {
+    const pkg: CompiledContentPackage = {
+      dir: '/content/releases/merch',
+      identity: 'release:merch',
+      manifest: {
+        type: 'release',
+        slug: 'merch',
+        date: '2026-08-11',
+        draft: false,
+      },
+      book: {
+        type: 'gift',
+        title: 'Merch',
+        gift: {
+          items: [
+            {
+              id: 'poster',
+              title: 'Poster',
+              covers: ['./assets/poster-front.webp'],
+              links: [
+                {
+                  platform: 'audio',
+                  src: './assets/gift-preview.mp3',
+                },
+                {
+                  platform: 'audio',
+                  src: 'https://cdn.example.com/gift.mp3',
+                },
+                {
+                  platform: 'bilibili',
+                  bvid: 'BV1xxxxxxxxx',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    }
+    const paths = collectPackageDeclaredPaths(pkg)
+    expect(paths).toEqual([
+      './assets/poster-front.webp',
+      './assets/gift-preview.mp3',
+    ])
+    expect(paths).not.toContain('https://cdn.example.com/gift.mp3')
+  })
+
   it('returns an empty list when no asset fields are present', () => {
     const pkg: CompiledContentPackage = {
       dir: '/content/pages/about',

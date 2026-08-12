@@ -29,6 +29,10 @@ function collectFromBook(book: Book, target: string[]): void {
     for (const cover of item.covers ?? []) {
       if (isRelativeCoverRef(cover)) pushUnique(target, cover)
     }
+    for (const link of item.links ?? []) {
+      const src = (link as { src?: unknown }).src
+      if (isPackageRelativeSrc(src)) pushUnique(target, src)
+    }
   }
 }
 
