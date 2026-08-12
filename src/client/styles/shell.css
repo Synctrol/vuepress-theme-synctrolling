@@ -139,6 +139,7 @@ body {
 }
 
 .syn-navigation__label {
+  margin-inline-start: auto;
   text-align: right;
 }
 
