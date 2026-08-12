@@ -55,10 +55,12 @@ body {
 
 .syn-topbar-text {
   margin: 0;
+  font-family: var(--syn-font-display);
 }
 
 .syn-footbar-text {
   margin: 0;
+  font-family: var(--syn-font-display);
 }
 
 .syn-header__controls {
@@ -144,6 +146,11 @@ body {
   margin-inline: auto;
 }
 
+/* Home page: symmetric 24px padding (other pages keep 24px 16px). */
+.syn-main:has(.syn-home-logo) {
+  padding: 24px;
+}
+
 .syn-main:has(.syn-home-logo) > .cell {
   max-width: none;
   display: flex;
@@ -189,6 +196,7 @@ body {
   padding: 20px 24px;
   color: var(--syn-deco-label-fg);
   text-decoration: none;
+  font-family: var(--syn-font-display);
   font-size: 13px;
   letter-spacing: 2px;
   transition: background-color 0.2s ease, color 0.2s ease;
@@ -244,6 +252,7 @@ body {
   /* Desktop: blend with the page background instead of the deco column. */
   background: var(--syn-bg);
   padding: 20px;
+  --syn-dock-control-size: 28px;
 }
 
 /* With a link cloud, split into equal 1fr halves around the divider so
@@ -254,6 +263,16 @@ body {
   grid-template-rows: 1fr auto 1fr;
   align-items: center;
   justify-items: center;
+}
+
+/* Pull the icons and links toward the centered divider (the divider
+   itself keeps its size and the 16px gaps). */
+.syn-navigation__side-panel:has(.syn-link-cloud) .syn-social-links {
+  align-self: end;
+}
+
+.syn-navigation__side-panel:has(.syn-link-cloud) .syn-link-cloud__list {
+  align-self: start;
 }
 
 /* Expose the divider and list as direct panel children. */
@@ -493,6 +512,7 @@ body {
 }
 
 .syn-home-logo .logo {
+  font-family: var(--syn-font-display);
   font-size: clamp(48px, 9vw, 96px);
   font-weight: 900;
   line-height: 0.9;
@@ -501,6 +521,7 @@ body {
 }
 
 .syn-home-logo .logo-sub {
+  font-family: var(--syn-font-display);
   font-size: 14px;
   letter-spacing: 4px;
   text-transform: uppercase;
