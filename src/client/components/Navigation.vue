@@ -31,6 +31,7 @@ const items = computed(() =>
       labelLang: label.fellBack ? label.locale : undefined,
       href: resolved.href,
       external: resolved.external,
+      icon: item.icon,
       target,
       rel,
     }
@@ -49,7 +50,20 @@ const items = computed(() =>
           :rel="item.rel"
           :lang="item.labelLang"
         >
-          {{ item.label }}
+          <span
+            v-if="item.icon !== undefined"
+            class="syn-navigation__mark"
+            aria-hidden="true"
+          >
+            <img
+              class="syn-navigation__mark-icon"
+              :src="item.icon"
+              alt=""
+              width="36"
+              height="36"
+            />
+          </span>
+          <span class="syn-navigation__label">{{ item.label }}</span>
         </a>
       </li>
     </ul>

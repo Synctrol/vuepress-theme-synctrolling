@@ -21,6 +21,8 @@ export type UrlSegment = string
 export interface NavigationItem {
   label: Multilanguage
   href: Multilanguage
+  /** SVG resource URL rendered as the panel mark (like reference link-panels). */
+  icon?: string
 }
 
 export interface NavigationOptions {
@@ -317,6 +319,7 @@ export function resolveThemeOptions(
       items: (input.navigation?.items ?? []).map((item) => ({
         label: copyMultilanguage(item.label),
         href: copyMultilanguage(item.href),
+        ...(item.icon === undefined ? {} : { icon: item.icon }),
       })),
     },
     socialLinks: {

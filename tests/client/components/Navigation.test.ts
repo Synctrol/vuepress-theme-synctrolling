@@ -13,6 +13,37 @@ describe('Navigation', () => {
     expect(links[1]!.attributes('href')).toBe('https://github.com/synctrol')
   })
 
+  it('renders the optional icon mark as an image from the configured URL', () => {
+    const wrapper = mountShell(Navigation, {
+      locale: 'zh',
+      themeOverrides: {
+        navigation: {
+          externalTarget: '_blank',
+          items: [
+            {
+              label: 'GitHub',
+              href: 'https://github.com/synctrol',
+              icon: '/assets/icons/github.svg',
+            },
+          ],
+        },
+      },
+    })
+    const link = wrapper.get('a')
+    const mark = link.get('.syn-navigation__mark')
+    expect(mark.attributes('aria-hidden')).toBe('true')
+    const img = mark.get('img.syn-navigation__mark-icon')
+    expect(img.attributes('src')).toBe('/assets/icons/github.svg')
+    expect(img.attributes('alt')).toBe('')
+    expect(link.get('.syn-navigation__label').text()).toBe('GitHub')
+  })
+
+  it('omits the mark when no icon is configured', () => {
+    const wrapper = mountShell(Navigation, { locale: 'zh' })
+    expect(wrapper.find('.syn-navigation__mark').exists()).toBe(false)
+    expect(wrapper.get('a .syn-navigation__label').text()).toBeTruthy()
+  })
+
   it('applies externalTarget and safe rel on external links', () => {
     const wrapper = mountShell(Navigation, {
       locale: 'zh',

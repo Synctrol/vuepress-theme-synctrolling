@@ -98,6 +98,8 @@ body {
 
 .syn-navigation {
   grid-area: navigation;
+  display: flex;
+  flex-direction: column;
   background: var(--syn-deco-bg);
   color: var(--syn-deco-label-fg);
   border-bottom: var(--syn-border-strong);
@@ -105,9 +107,17 @@ body {
 }
 
 .syn-navigation__list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.syn-navigation__item {
+  display: flex;
+  flex: 1;
 }
 
 .syn-navigation__item + .syn-navigation__item {
@@ -115,13 +125,46 @@ body {
 }
 
 .syn-navigation__link {
-  display: block;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 20px 24px;
   color: var(--syn-deco-label-fg);
   text-decoration: none;
   font-size: 13px;
   letter-spacing: 2px;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.syn-navigation__label {
+  text-align: right;
+}
+
+.syn-navigation__mark {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.syn-navigation__mark-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+:root[data-theme='dark'] .syn-navigation__mark-icon {
+  filter: invert(1);
+}
+
+.syn-navigation__link:hover .syn-navigation__mark-icon,
+.syn-navigation__link:focus-visible .syn-navigation__mark-icon {
+  filter: invert(1);
+}
+
+:root[data-theme='dark'] .syn-navigation__link:hover .syn-navigation__mark-icon,
+:root[data-theme='dark'] .syn-navigation__link:focus-visible .syn-navigation__mark-icon {
+  filter: invert(0);
 }
 
 .syn-navigation__link:hover,

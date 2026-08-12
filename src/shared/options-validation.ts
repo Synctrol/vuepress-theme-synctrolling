@@ -35,7 +35,7 @@ const LOCALE_FIELDS = ['lang', 'label', 'dateFormat', 'messages'] as const
 const MESSAGE_FIELDS = Object.keys(enMessages)
 const FEED_FIELDS = ['rss', 'sitemap'] as const
 const NAVIGATION_FIELDS = ['items', 'externalTarget'] as const
-const NAVIGATION_ITEM_FIELDS = ['label', 'href'] as const
+const NAVIGATION_ITEM_FIELDS = ['label', 'href', 'icon'] as const
 const SOCIAL_LINKS_FIELDS = ['items'] as const
 const SOCIAL_LINK_FIELDS = ['label', 'icon', 'url'] as const
 const RELEASE_FIELDS = ['urlSegment', 'index', 'artworkPlaceholder'] as const
@@ -291,6 +291,9 @@ function validateNavigationItem(
   assertKnownFields(value, NAVIGATION_ITEM_FIELDS, field)
   validateMultilanguage(value.label, `${field}.label`, mainLocale)
   validateMultilanguage(value.href, `${field}.href`, mainLocale)
+  if (value.icon !== undefined) {
+    assertNonEmptyString(value.icon, `${field}.icon`)
+  }
 }
 
 function validateNavigation(value: unknown, mainLocale: string): void {

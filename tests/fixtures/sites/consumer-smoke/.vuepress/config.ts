@@ -28,7 +28,11 @@ export default defineUserConfig({
     copyright: 'Copyright Synctrol',
     navigation: {
       items: [
-        { label: { zh: '作品', en: 'Releases' }, href: '/releases/' },
+        {
+          label: { zh: '作品', en: 'Releases' },
+          href: '/releases/',
+          icon: '/assets/icons/github.svg',
+        },
         { label: { zh: '新闻', en: 'News' }, href: '/news/' },
         { label: { zh: '关于', en: 'About' }, href: '/about/' },
       ],

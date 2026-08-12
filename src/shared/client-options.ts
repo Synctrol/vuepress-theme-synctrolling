@@ -59,6 +59,7 @@ function copyNavigation(
     items: navigation.items.map((item) => ({
       label: copyMultilanguage(item.label),
       href: copyMultilanguage(item.href),
+      ...(item.icon === undefined ? {} : { icon: item.icon }),
     })),
   }
 }
