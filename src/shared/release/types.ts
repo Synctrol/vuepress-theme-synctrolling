@@ -1,5 +1,6 @@
-import type { AssetPath, Book } from '../types.js'
+import type { AssetPath, Book, NormalizedPlatformEntry } from '../types.js'
 import type { ResolvedAsset } from '../asset-types.js'
+import type { NumberedDisc } from './numbering.js'
 
 export interface ReleaseManifestImages {
   cover?: AssetPath
@@ -54,3 +55,83 @@ export interface ReleaseIndexModel {
   tiles: ReleaseIndexTile[]
   empty: boolean
 }
+
+export interface ResolvedText {
+  text: string
+  lang?: string
+}
+
+export type ReleaseDetailSection =
+  | { kind: 'return-link'; href: string; label: string }
+  | {
+      kind: 'title-date'
+      title: string
+      date: string
+      dateLabel: string
+      titleLang?: string
+    }
+  | {
+      kind: 'artwork'
+      artworkKind: ReleaseArtworkKind
+      artwork?: ResolvedAsset
+      alt: string
+    }
+  | {
+      kind: 'book-identity'
+      bookType: 'album' | 'gift'
+      title: ResolvedText
+      desc?: ResolvedText
+      authors?: string[]
+      copyright?: string
+    }
+  | {
+      kind: 'album-body'
+      order: ['links', 'covers', 'discs']
+      links: NormalizedPlatformEntry[]
+      covers: ResolvedAsset[]
+      discs: NumberedDisc[]
+      labels: {
+        platformLinks: string
+        covers: string
+        tracklist: string
+        disc: string
+        track: string
+      }
+    }
+  | {
+      kind: 'gift-body'
+      items: Array<{
+        id: string
+        title: ResolvedText
+        desc?: ResolvedText
+        covers: ResolvedAsset[]
+        links: NormalizedPlatformEntry[]
+        copyright?: string
+        coverOrder: 'before-links'
+        linksHoisted: false
+      }>
+      labels: { giftItems: string; covers: string; platformLinks: string }
+    }
+  | { kind: 'markdown'; bodyLang: string }
+
+export interface ReleaseDetailModel {
+  sections: ReleaseDetailSection[]
+  showDraftBadge: boolean
+  draftLabel: string
+  includedInIndex: true
+}
+
+/** Injected into frontmatter.synctrol.release */
+export type SynctrolReleaseFrontmatter =
+  | {
+      kind: 'index'
+      model: ReleaseIndexModel
+      collectionTitle: string
+      prevHref: string | null
+      nextHref: string | null
+    }
+  | {
+      kind: 'detail'
+      model: ReleaseDetailModel
+      authorsLabel: string
+    }
