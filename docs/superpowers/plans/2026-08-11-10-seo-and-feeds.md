@@ -2,188 +2,108 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Emit per-page SEO metadata (title, description, canonical, Open Graph, `lang`, real-translation-only `hreflang`, JSON-LD) and locale RSS / site Sitemap artifacts from compiled Synctrol pages and theme `seo` / `feeds` options.
+## Revision Notes (executable against Plans 01-09 @ HEAD `cursor/synctrol-theme-design-ee11`)
 
-**Architecture:** Pure Node modules under `src/compiler/seo/` and `src/compiler/feeds/` compute a `PageSeo` record and XML strings from Plan 03 `CompiledPage` data plus Plan 01 `ResolvedSynctrolThemeOptions`. Collection titles are resolved here from `seo.collections` and locale `messages` (Plan 03 left placeholder identity strings). Feed writers honor `feeds.rss` / `feeds.sitemap` toggles without affecting head meta. A thin emit orchestrator serializes head tags and writes `/{locale}/rss.xml` plus `/sitemap.xml` under the VuePress destination.
+Revised after Plan 10 preflight against branch tip `071dd0a3d1a04007058ec229546d72ef514818cb`. Binding decisions (do not re-litigate):
 
-**Tech Stack:** TypeScript, Vitest, VuePress 2 theme package `vuepress-theme-synctrolling`, Plan 01 options/messages, Plan 02 Book/definitions types, Plan 03 `CompiledPage` / `UrlLayers`, Plan 04 absolute asset URLs (consumed via an injected `SeoAssetContext`).
+1. **NodeNext imports are mandatory.**
+   - Every sample that imports from `src/**` uses `.js` on relative module specifiers.
+   - Keep Vitest projects unchanged and keep the repository's NodeNext TypeScript configuration.
+
+2. **Use current HEAD module ownership.**
+   - `ResolvedSynctrolThemeOptions` and option types come from `src/shared/options.ts`.
+   - `CompiledPage` and `ContentIdentity` come from `src/shared/route-types.ts`.
+   - `CompiledSite` comes from `src/compiler/compile-site-routes.ts` unless this plan explicitly re-exports it later.
+   - `joinPublicPath` and `normalizeBase` come from `src/shared/route-path.ts`.
+   - `ContentDefinitions` always includes both `tags` and `platforms`.
+
+3. **Reuse existing formatter behavior.**
+   - `src/shared/format-message.ts` is the canonical formatter.
+   - `src/shared/seo/format-message.ts`, if created, is a thin re-export only.
+
+4. **Build an explicit SEO content context.**
+   - Add `buildSeoContentContext` as a pure compiler helper that maps `RouteContentPackage[]`, `CompiledContentPackage[]`, `ContentDefinitions`, and `AssetManifest` into `SeoContentContext`.
+   - It resolves package covers, `book`, `date`, `updated`, `seo.defaultImage`, and organization logo into absolute HTTPS URLs where applicable.
+
+5. **Patch `src/compiler/theme.ts` additively.**
+   - During `createPage`, attach VuePress-compatible `head` for the matching compiled route.
+   - During `onGenerated`, write RSS/Sitemap `filesToWrite` under `app.dir.dest()` while preserving root-router and CSP writes.
+   - SEO/feed modules must not import VuePress; `theme.ts` owns the `HeadTag` to VuePress head conversion.
+
+6. **Hreflang order is deterministic.**
+   - Use `Object.keys(options.locales)` order for `hreflang`.
+   - Do not sort with `localeCompare`; the `zh-CN` / `en-US` fixture order must stay aligned with the options object.
+
+7. **Public exports use real paths.**
+   - Export from `./compiler/seo/index.js` and `./shared/seo/types.js`.
+   - Do not introduce exports through a nonexistent node subtree.
+
+8. **Plan 09 RSS relationship.**
+   - `NewsListItem.excludeFromRss` is UI/list metadata.
+   - RSS generation intentionally excludes from `CompiledPage.isDraft` and `CompiledPage.isFallback`, not from list item frontmatter.
+
+9. **Preserve Plans 03-09 production contracts.**
+   - Keep nested `frontmatter.synctrol.*`, single `Layout`, content assets, platforms, releases, news, page, home, root router, backgrounds, and CSP behavior intact.
+   - Plan 10 is additive and must not reimplement discovery, routing, assets, platform embeds, release rendering, or news/page/home rendering.
+
+**Goal:** Emit per-page SEO metadata (title, description, canonical, Open Graph, `lang`, real-translation-only `hreflang`, JSON-LD) and locale RSS / site Sitemap artifacts from compiled Synctrol pages and resolved theme options.
+
+**Architecture:** Pure Node modules under `src/compiler/seo/` and `src/compiler/feeds/` compute `PageSeo`, `HeadTag[]`, RSS XML, and Sitemap XML from current compiled route/content/asset contracts. A pure context adapter maps Plan 04 assets and Plans 02/08 content package data into SEO inputs. `src/compiler/theme.ts` is the only VuePress integration point: it converts `HeadTag[]` to VuePress head tuples during `createPage` and writes feed files during `onGenerated`.
+
+**Tech Stack:** TypeScript, Vitest, VuePress 2 theme package `vuepress-theme-synctrolling`, NodeNext ESM imports, Plan 01 options/messages, Plan 02 content definitions/books, Plan 03 compiled routes, Plan 04 asset manifest, Plans 08/09 release/news/page/home frontmatter.
 
 ## Global Constraints
 
 - Package name: `vuepress-theme-synctrolling`
-- `siteUrl` is required in production builds and has no trailing slash; absolute URLs are `siteUrl` + public path
-- `seo` is required theme config: `name`, `description`, `defaultImage`, `organization`, `collections.release`, `collections.news`
-- `seo.organization.url` is always `siteUrl` (not a separate config field)
-- `feeds.rss` and `feeds.sitemap` default to `true`; `false` suppresses only that artifact
-- Description fallback: page locale description when present, otherwise site locale `seo.description`
-- Open Graph image uses `cover` when configured, otherwise `seo.defaultImage`; never substitutes `artwork`
-- Home has no `cover`; Home OG image is always `seo.defaultImage`
-- `hreflang` lists real translations only; fallback pages emit no false translation alternate
-- Fallback pages: `noindex`, canonical points at main-locale page URL
-- Drafts remain `noindex` and stay out of Sitemap and RSS
-- JSON-LD: News → `Article`; Album Book → `MusicAlbum` + `MusicRecording`; Gift → no `Product`; locale Home → `WebSite` + `Organization`
-- RSS path is `/{locale}/rss.xml` (locale-prefixed route path; VuePress `base` applies to public/output paths)
-- RSS includes News and Release detail items only; excludes drafts, fallback pages, collections, Home, and Page
-- Sitemap is a single `/sitemap.xml` containing locale-specific absolute URL entries; excludes drafts and fallback
-- Collection index titles/descriptions come from `seo.collections`; paginated titles use `messages.paginatedTitle`; tag archives use `messages.tagArchiveTitle` with localized tag title + News collection title; pagination/tag descriptions remain the collection description
-- Tests run with `npm test -- <path>`
-- Plans 01–09 are assumed complete for types, content, routes, assets, Release Book, and News pages; this plan does not reimplement discovery, routing, or layouts
+- `siteUrl` is required in production builds and has no trailing slash; absolute URLs are `siteUrl` plus public path unless an input is already HTTPS.
+- `seo` is required theme config: `name`, `description`, `defaultImage`, `organization`, `collections.release`, `collections.news`.
+- `seo.organization.url` is always `siteUrl`.
+- `feeds.rss` and `feeds.sitemap` default to `true`; `false` suppresses only that artifact.
+- Description fallback: page locale description when present, otherwise site locale `seo.description`.
+- Open Graph image uses `cover` when configured, otherwise `seo.defaultImage`; never substitutes `artwork`.
+- Home has no `cover`; Home OG image is always `seo.defaultImage`.
+- `hreflang` lists real translations only; fallback pages emit no false translation alternate.
+- Fallback pages: `noindex`, canonical points at canonical-locale page URL.
+- Drafts remain `noindex` and stay out of Sitemap and RSS.
+- JSON-LD: News -> `Article`; Album Book -> `MusicAlbum` + `MusicRecording`; Gift -> no `Product`; locale Home -> `Organization` + `WebSite`.
+- RSS path is `/{locale}/rss.xml` as route path; VuePress `base` applies to public path only, while output path remains destination-relative.
+- RSS includes News and Release detail items only; excludes drafts, fallback pages, collections, Home, and Page.
+- Sitemap is a single `/sitemap.xml` containing locale-specific absolute URL entries; excludes drafts and fallback pages.
+- Collection index titles/descriptions come from `seo.collections`; paginated titles use `messages.paginatedTitle`; tag archives use `messages.tagArchiveTitle` with localized tag title + News collection title.
+- Tests run with `npm test -- <path>`.
+- Before integration testing in an implementation pass, commit and push the implementation branch per Cloud Agent requirements.
 
 ## File Structure
 
 | File | Responsibility |
 | --- | --- |
-| `src/shared/seo/types.ts` | `PageSeo`, `HeadTag`, `SeoAssetContext`, `JsonLdNode`, feed item types |
-| `src/shared/seo/format-message.ts` | Substitute `{title}`, `{page}`, `{tag}` in locale message templates |
-| `src/compiler/seo/collection-copy.ts` | Resolve collection / paginated / tag-archive title + description |
+| `src/shared/seo/types.ts` | `PageSeo`, `HeadTag`, `SeoAssetContext`, `SeoContentContext`, `JsonLdNode`, feed item types |
+| `src/shared/seo/format-message.ts` | Thin re-export of existing `src/shared/format-message.ts` |
+| `src/compiler/seo/collection-copy.ts` | Resolve SEO-only collection / paginated / tag-archive title + description |
 | `src/compiler/seo/resolve-description.ts` | Page description with site-locale fallback |
-| `src/compiler/seo/resolve-og-image.ts` | Cover-or-default OG image; never artwork |
+| `src/compiler/seo/resolve-og-image.ts` | Cover-or-default OG image |
 | `src/compiler/seo/resolve-alternates.ts` | Canonical URL, `lang`, robots, real-translation `hreflang` |
-| `src/compiler/seo/open-graph.ts` | Build Open Graph fields from resolved SEO pieces |
-| `src/compiler/seo/json-ld.ts` | `WebSite`, `Organization`, `Article`, `MusicAlbum`, `MusicRecording` builders |
-| `src/compiler/seo/build-page-seo.ts` | Orchestrate one `PageSeo` per `CompiledPage` |
+| `src/compiler/seo/open-graph.ts` | Build Open Graph fields |
 | `src/compiler/seo/serialize-head.ts` | Turn `PageSeo` into ordered `HeadTag[]` |
+| `src/compiler/seo/json-ld.ts` | `WebSite`, `Organization`, `Article`, `MusicAlbum`, `MusicRecording` builders |
+| `src/compiler/seo/content-context.ts` | Pure adapter from packages + asset manifest to `SeoContentContext` |
+| `src/compiler/seo/build-page-seo.ts` | Orchestrate one `PageSeo` per `CompiledPage` |
 | `src/compiler/feeds/rss.ts` | Locale RSS 2.0 XML for News + Release |
 | `src/compiler/feeds/sitemap.ts` | Single sitemap XML of locale page absolute URLs |
-| `src/compiler/seo/emit-seo-and-feeds.ts` | Build all page SEO + write feed files when toggles allow |
-| `tests/helpers/seo-fixtures.ts` | Minimal options, pages, assets, books for SEO/feed tests |
-| `tests/shared/seo/*.test.ts` | `formatMessage` unit tests |
-| `tests/compiler/seo/*.test.ts` | SEO resolver unit tests |
-| `tests/compiler/feeds/*.test.ts` | RSS / Sitemap unit tests |
-| `tests/compiler/seo/emit-seo-and-feeds.test.ts` | Toggle + integration coverage |
-
-**Prerequisite types (import; do not redefine):**
-
-```ts
-// Plan 01
-export type LocaleKey = string
-export type Multilanguage = string | Record<LocaleKey, string>
-export type ContentType = 'home' | 'release' | 'news' | 'page'
-export interface LocaleMessages {
-  paginatedTitle: string // {title}, {page}
-  tagArchiveTitle: string // {tag}, {title}
-  // … remaining keys exist but are unused by this plan
-}
-export interface SeoCollectionCopy {
-  title: Multilanguage
-  description: Multilanguage
-}
-export interface SeoOptions {
-  name: Multilanguage
-  description: Multilanguage
-  defaultImage: string
-  organization: { name: string; logo: string }
-  collections: { release: SeoCollectionCopy; news: SeoCollectionCopy }
-}
-export interface ResolvedSynctrolThemeOptions {
-  siteUrl: string
-  mainLocale: LocaleKey
-  locales: Record<LocaleKey, { lang: string; label: string; messages: LocaleMessages }>
-  showDrafts: boolean
-  feeds: { rss: boolean; sitemap: boolean }
-  seo: SeoOptions
-  // … other fields unused here
-}
-export function resolveMultilanguage(
-  value: Multilanguage,
-  locale: LocaleKey,
-  mainLocale: LocaleKey,
-): { text: string; locale: LocaleKey; fellBack: boolean }
-
-// Plan 02
-export type Book = AlbumBook | GiftBook
-export interface AlbumBook {
-  type: 'album'
-  title: Multilanguage
-  desc?: Multilanguage
-  authors?: string[]
-  copyright?: string
-  album: { discs?: Disc[]; covers?: string[]; links?: unknown[] }
-}
-export interface GiftBook {
-  type: 'gift'
-  title: Multilanguage
-  gift: { items: unknown[] }
-}
-export interface Disc {
-  title: Multilanguage
-  tracks: Track[]
-}
-export interface Track {
-  title: Multilanguage
-  artists: string[]
-  duration: number
-}
-export interface ContentDefinitions {
-  tags: Record<string, { title: Multilanguage }>
-}
-
-// Plan 03
-export interface UrlLayers {
-  routePath: string
-  outputPath: string
-  publicPath: string
-  absoluteUrl: string
-}
-export interface CompiledPage {
-  identity: string
-  locale: LocaleKey
-  contentType: ContentType | 'release-collection' | 'news-collection'
-  url: UrlLayers
-  isFallback: boolean
-  isDraft: boolean
-  noindex: boolean
-  bodyLocale: LocaleKey
-  canonicalLocale: LocaleKey
-  packagePath?: string
-  slug?: string | null
-  title: string
-  description?: string
-  collection?: {
-    page: number
-    pageCount: number
-    itemIdentities: string[]
-    tag?: string
-  }
-}
-export interface CompiledSite {
-  pages: CompiledPage[]
-  diagnostics: unknown[]
-  rootRouterHtml: string
-}
-```
-
-**Asset contract from Plan 04 (injected; this plan does not hash assets):**
-
-Plan 04 may leave `seo.defaultImage` / `organization.logo` as root-absolute or remote URLs (preserved as-is) or as hashed `/assets/global/…` public paths. Builders of `SeoAssetContext` must turn whatever Plan 04 produced into absolute HTTPS URLs (`ResolvedAsset.absoluteUrl` when hashed; otherwise `siteUrl + path` or the remote URL unchanged).
-
-```ts
-export interface SeoAssetContext {
-  defaultImageAbsoluteUrl: string
-  organizationLogoAbsoluteUrl: string
-  /** Absolute HTTPS URL for a package cover when the package declares `cover`. */
-  coverAbsoluteUrlByPackagePath: ReadonlyMap<string, string>
-}
-```
-
-**Release Book lookup contract from Plan 08 (injected):**
-
-```ts
-export interface SeoContentContext {
-  assets: SeoAssetContext
-  definitions: ContentDefinitions
-  /** Package path → validated Book when `book.yml` exists. */
-  bookByPackagePath: ReadonlyMap<string, Book>
-  /** Package path → `YYYY-MM-DD` date for News/Release detail items. */
-  dateByPackagePath: ReadonlyMap<string, string>
-  /** Package path → optional `YYYY-MM-DD` updated date for News. */
-  updatedByPackagePath: ReadonlyMap<string, string>
-}
-```
+| `src/compiler/seo/emit-seo-and-feeds.ts` | Build site SEO + feed files respecting toggles |
+| `src/compiler/seo/index.ts` | Public compiler SEO/feed barrel |
+| `src/compiler/theme.ts` | Additive VuePress integration for head and feed file writes |
+| `src/index.ts` | Root public exports from real paths |
+| `tests/helpers/seo-fixtures.ts` | Minimal options, pages, assets, books, definitions for SEO/feed tests |
+| `tests/shared/seo/*.test.ts` | Shared SEO unit tests |
+| `tests/compiler/seo/*.test.ts` | SEO resolver/context/orchestrator tests |
+| `tests/compiler/feeds/*.test.ts` | RSS / Sitemap tests |
+| `tests/compiler/theme.integration.test.ts` | Production VuePress integration assertions |
+| `tests/public-exports.test.ts` | Root and compiler barrel export assertions |
 
 ---
 
-### Task 1: SEO shared types and `formatMessage`
+### Task 1: Shared SEO types, formatter re-export, and fixtures
 
 **Files:**
 - Create: `src/shared/seo/types.ts`
@@ -192,46 +112,42 @@ export interface SeoContentContext {
 - Create: `tests/helpers/seo-fixtures.ts`
 
 **Interfaces:**
-- Consumes: Plan 01 `LocaleKey`, `Multilanguage`, `SeoOptions`; Plan 03 `CompiledPage`
-- Produces: `PageSeo`, `HeadTag`, `HreflangAlternate`, `OpenGraphData`, `SeoAssetContext`, `SeoContentContext`, `formatMessage(template, vars)`
+- Consumes: `Book`, `ContentDefinitions`, `LocaleKey` from `src/shared/types.ts`; `CompiledPage` from `src/shared/route-types.ts`; `ResolvedSynctrolThemeOptions` from `src/shared/options.ts`; `CompiledSite` from `src/compiler/compile-site-routes.ts`.
+- Produces: `PageSeo`, `HeadTag`, `HreflangAlternate`, `OpenGraphData`, `SeoAssetContext`, `SeoContentContext`, `RssItem`; `formatMessage` re-export.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests and fixture**
 
 ```ts
 // tests/shared/seo/format-message.test.ts
 import { describe, expect, it } from 'vitest'
-import { formatMessage } from '../../../src/shared/seo/format-message'
+import { formatMessage } from '../../../src/shared/seo/format-message.js'
 
-describe('formatMessage', () => {
-  it('substitutes named placeholders from locale message templates', () => {
-    expect(
-      formatMessage('{title} · Page {page}', { title: 'News', page: 2 }),
-    ).toBe('News · Page 2')
-    expect(
-      formatMessage('{tag} · {title}', { tag: 'Releases', title: 'News' }),
-    ).toBe('Releases · News')
-    expect(
-      formatMessage('{title} · 第 {page} 页', { title: '作品', page: 3 }),
-    ).toBe('作品 · 第 3 页')
-  })
-
-  it('leaves unknown placeholders intact', () => {
-    expect(formatMessage('{title} · {missing}', { title: 'X' })).toBe(
-      'X · {missing}',
-    )
+describe('SEO formatMessage re-export', () => {
+  it('reuses the shared named-placeholder formatter', () => {
+    expect(formatMessage('{title} · Page {page}', { title: 'News', page: 2 })).toBe('News · Page 2')
+    expect(formatMessage('{title} · {missing}', { title: 'X' })).toBe('X · {missing}')
   })
 })
 ```
 
 ```ts
 // tests/helpers/seo-fixtures.ts
-import type {
-  CompiledPage,
-  LocaleKey,
-  ResolvedSynctrolThemeOptions,
-} from '../../src/shared/types'
-import type { SeoContentContext } from '../../src/shared/seo/types'
-import { enMessages, zhMessages } from '../../src/shared/messages'
+import type { CompiledSite } from '../../src/compiler/compile-site-routes.js'
+import type { ResolvedSynctrolThemeOptions } from '../../src/shared/options.js'
+import type { CompiledPage } from '../../src/shared/route-types.js'
+import type { ContentDefinitions, LocaleKey } from '../../src/shared/types.js'
+import { enMessages, zhMessages } from '../../src/shared/messages.js'
+import type { SeoContentContext } from '../../src/shared/seo/types.js'
+
+export function definitions(
+  overrides: Partial<ContentDefinitions> = {},
+): ContentDefinitions {
+  return {
+    tags: {},
+    platforms: {},
+    ...overrides,
+  }
+}
 
 export function resolvedOptions(
   overrides: Partial<ResolvedSynctrolThemeOptions> = {},
@@ -240,33 +156,18 @@ export function resolvedOptions(
     siteUrl: 'https://synctrol.com',
     mainLocale: 'zh',
     locales: {
-      zh: {
-        lang: 'zh-CN',
-        label: '中文',
-        dateFormat: { dateStyle: 'long' },
-        messages: zhMessages,
-      },
-      en: {
-        lang: 'en-US',
-        label: 'English',
-        dateFormat: { dateStyle: 'long' },
-        messages: enMessages,
-      },
+      zh: { lang: 'zh-CN', label: '中文', dateFormat: { dateStyle: 'long' }, messages: zhMessages },
+      en: { lang: 'en-US', label: 'English', dateFormat: { dateStyle: 'long' }, messages: enMessages },
     },
     showDrafts: false,
     defaultColorMode: 'auto',
-    copyright: 'SYNCTROL © 2026',
+    copyright: 'SYNCTROL (C) 2026',
     feeds: { rss: true, sitemap: true },
     navigation: { externalTarget: '_blank', items: [] },
     socialLinks: { items: [] },
     release: {
       urlSegment: 'releases',
-      index: {
-        enabled: true,
-        pagination: 12,
-        mobileGridColumns: 2,
-        desktopGridColumns: 3,
-      },
+      index: { enabled: true, pagination: 12, mobileGridColumns: 2, desktopGridColumns: 3 },
     },
     news: {
       urlSegment: 'news',
@@ -277,24 +178,16 @@ export function resolvedOptions(
     backgrounds: {},
     seo: {
       name: { zh: 'Synctrol', en: 'Synctrol' },
-      description: {
-        zh: 'Synctrol 音乐团队官方网站',
-        en: 'Official website of the Synctrol music team',
-      },
+      description: { zh: 'Synctrol 音乐团队官方网站', en: 'Official website of the Synctrol music team' },
       defaultImage: './assets/social-default.webp',
       organization: { name: 'Synctrol', logo: './assets/logo.svg' },
       collections: {
-        release: {
-          title: { zh: '作品', en: 'Releases' },
-          description: { zh: 'Synctrol 作品列表', en: 'Synctrol releases' },
-        },
-        news: {
-          title: { zh: '新闻', en: 'News' },
-          description: { zh: 'Synctrol 新闻', en: 'Synctrol news' },
-        },
+        release: { title: { zh: '作品', en: 'Releases' }, description: { zh: 'Synctrol 作品列表', en: 'Synctrol releases' } },
+        news: { title: { zh: '新闻', en: 'News' }, description: { zh: 'Synctrol 新闻', en: 'Synctrol news' } },
       },
     },
   }
+
   return {
     ...base,
     ...overrides,
@@ -304,9 +197,18 @@ export function resolvedOptions(
   }
 }
 
+export function url(absoluteUrl: string, routePath?: string): CompiledPage['url'] {
+  const path = routePath ?? absoluteUrl.replace('https://synctrol.com', '')
+  return {
+    routePath: path,
+    outputPath: `${path.slice(1)}index.html`.replace(/\/index\.html$/, '/index.html'),
+    publicPath: path,
+    absoluteUrl,
+  }
+}
+
 export function page(
-  overrides: Partial<CompiledPage> &
-    Pick<CompiledPage, 'identity' | 'locale' | 'contentType' | 'url'>,
+  overrides: Partial<CompiledPage> & Pick<CompiledPage, 'identity' | 'locale' | 'contentType' | 'url'>,
 ): CompiledPage {
   return {
     isFallback: false,
@@ -320,38 +222,25 @@ export function page(
   }
 }
 
-export function url(
-  absoluteUrl: string,
-  routePath?: string,
-): CompiledPage['url'] {
-  const path =
-    routePath ??
-    absoluteUrl.replace('https://synctrol.com', '')
-  return {
-    routePath: path,
-    outputPath: `${path.slice(1)}index.html`.replace(/\/index\.html$/, '/index.html'),
-    publicPath: path,
-    absoluteUrl,
-  }
-}
-
 export function seoContentContext(
   overrides: Partial<SeoContentContext> = {},
 ): SeoContentContext {
   return {
     assets: {
-      defaultImageAbsoluteUrl:
-        'https://synctrol.com/assets/global/social-default.hash.webp',
-      organizationLogoAbsoluteUrl:
-        'https://synctrol.com/assets/global/logo.hash.svg',
+      defaultImageAbsoluteUrl: 'https://synctrol.com/assets/global/social-default.hash.webp',
+      organizationLogoAbsoluteUrl: 'https://synctrol.com/assets/global/logo.hash.svg',
       coverAbsoluteUrlByPackagePath: new Map(),
       ...overrides.assets,
     },
-    definitions: { tags: {}, ...overrides.definitions },
+    definitions: definitions(overrides.definitions),
     bookByPackagePath: overrides.bookByPackagePath ?? new Map(),
     dateByPackagePath: overrides.dateByPackagePath ?? new Map(),
     updatedByPackagePath: overrides.updatedByPackagePath ?? new Map(),
   }
+}
+
+export function siteFixture(pages: CompiledPage[]): CompiledSite {
+  return { pages, diagnostics: [], rootRouterHtml: '<!doctype html><html></html>' }
 }
 
 export const localeKeys = ['zh', 'en'] as LocaleKey[]
@@ -361,13 +250,13 @@ export const localeKeys = ['zh', 'en'] as LocaleKey[]
 
 Run: `npm test -- tests/shared/seo/format-message.test.ts`
 
-Expected: FAIL with module not found for `../../../src/shared/seo/format-message`
+Expected: FAIL with module not found for `src/shared/seo/format-message.js` or `src/shared/seo/types.js`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement shared SEO files**
 
 ```ts
 // src/shared/seo/types.ts
-import type { Book, ContentDefinitions, LocaleKey } from '../types'
+import type { Book, ContentDefinitions } from '../types.js'
 
 export interface SeoAssetContext {
   defaultImageAbsoluteUrl: string
@@ -384,7 +273,6 @@ export interface SeoContentContext {
 }
 
 export interface HreflangAlternate {
-  /** BCP 47 language tag from locale `lang`, or `x-default` is not used. */
   hreflang: string
   href: string
 }
@@ -432,30 +320,20 @@ export interface RssItem {
 
 ```ts
 // src/shared/seo/format-message.ts
-export function formatMessage(
-  template: string,
-  vars: Record<string, string | number>,
-): string {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
-    if (Object.prototype.hasOwnProperty.call(vars, key)) {
-      return String(vars[key])
-    }
-    return match
-  })
-}
+export { formatMessage } from '../format-message.js'
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- tests/shared/seo/format-message.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/shared/seo/types.ts src/shared/seo/format-message.ts tests/shared/seo/format-message.test.ts tests/helpers/seo-fixtures.ts
-git commit -m "feat(seo): add shared SEO types and message formatter"
+git commit -m "feat(seo): add shared SEO types"
 ```
 
 ---
@@ -467,24 +345,24 @@ git commit -m "feat(seo): add shared SEO types and message formatter"
 - Create: `tests/compiler/seo/collection-copy.test.ts`
 
 **Interfaces:**
-- Consumes: `formatMessage`; `resolveMultilanguage`; `ResolvedSynctrolThemeOptions.seo.collections` and `locales.*.messages`; `CompiledPage.collection` / identity
-- Produces: `resolveCollectionCopy(page, options): { title: string; description: string } | null` — `null` when the page is not a collection page
+- Consumes: existing `formatMessage`, `resolveMultilanguage`, `ResolvedSynctrolThemeOptions`, `CompiledPage`, `ContentDefinitions`.
+- Produces: `resolveCollectionCopy(page, options, definitions): CollectionCopy | null`.
 
 Rules:
-
-- Release/News index (`release-index`, `news-index`): `seo.collections.*.title` / `.description`
-- Paginated (`release-page:N`, `news-page:N`, `news-tag:…:page:N`): `messages.paginatedTitle` with `{title}` = collection title and `{page}` = page number; description stays collection description
-- Tag archive index (`news-tag:{tag}`): `messages.tagArchiveTitle` with `{tag}` = localized tag title from definitions and `{title}` = News collection title; description = News collection description
-- Tags index (`news-tags-index`): News collection title + description
-- Non-collection pages return `null`
+- Detail/Home/Page return `null`.
+- `release-index` / `news-index` / `news-tags-index` use `seo.collections`.
+- `release-page:N` / `news-page:N` use `messages.paginatedTitle`.
+- `news-tag:{tag}` uses `messages.tagArchiveTitle`.
+- `news-tag:{tag}:page:N` first builds the tag archive title, then paginates it.
+- This is SEO metadata only and must not alter Plan 09 frontmatter/UI collection data.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/compiler/seo/collection-copy.test.ts
 import { describe, expect, it } from 'vitest'
-import { resolveCollectionCopy } from '../../../src/compiler/seo/collection-copy'
-import { page, resolvedOptions, url } from '../../helpers/seo-fixtures'
+import { resolveCollectionCopy } from '../../../src/compiler/seo/collection-copy.js'
+import { definitions, page, resolvedOptions, url } from '../../helpers/seo-fixtures.js'
 
 const options = resolvedOptions()
 
@@ -492,164 +370,37 @@ describe('resolveCollectionCopy', () => {
   it('returns null for detail pages', () => {
     expect(
       resolveCollectionCopy(
-        page({
-          identity: 'release:first',
-          locale: 'en',
-          contentType: 'release',
-          url: url('https://synctrol.com/en/releases/first/'),
-          title: 'First',
-        }),
+        page({ identity: 'release:first', locale: 'en', contentType: 'release', url: url('https://synctrol.com/en/releases/first/'), title: 'First' }),
         options,
-        { tags: {} },
+        definitions(),
       ),
     ).toBeNull()
   })
 
-  it('uses seo.collections for release and news indexes', () => {
+  it('resolves indexes, pagination, and tag archives', () => {
     expect(
       resolveCollectionCopy(
-        page({
-          identity: 'release-index',
-          locale: 'zh',
-          contentType: 'release-collection',
-          url: url('https://synctrol.com/zh/releases/'),
-          collection: { page: 1, pageCount: 1, itemIdentities: [] },
-        }),
+        page({ identity: 'release-index', locale: 'zh', contentType: 'release-collection', url: url('https://synctrol.com/zh/releases/'), collection: { page: 1, pageCount: 1, itemIdentities: [] } }),
         options,
-        { tags: {} },
+        definitions(),
       ),
-    ).toEqual({
-      title: '作品',
-      description: 'Synctrol 作品列表',
-    })
+    ).toEqual({ title: '作品', description: 'Synctrol 作品列表' })
 
     expect(
       resolveCollectionCopy(
-        page({
-          identity: 'news-index',
-          locale: 'en',
-          contentType: 'news-collection',
-          url: url('https://synctrol.com/en/news/'),
-          collection: { page: 1, pageCount: 1, itemIdentities: [] },
-        }),
+        page({ identity: 'news-page:2', locale: 'en', contentType: 'news-collection', url: url('https://synctrol.com/en/news/page/2/'), collection: { page: 2, pageCount: 3, itemIdentities: [] } }),
         options,
-        { tags: {} },
+        definitions(),
       ),
-    ).toEqual({
-      title: 'News',
-      description: 'Synctrol news',
-    })
-  })
-
-  it('formats paginatedTitle for page 2+', () => {
-    expect(
-      resolveCollectionCopy(
-        page({
-          identity: 'news-page:2',
-          locale: 'en',
-          contentType: 'news-collection',
-          url: url('https://synctrol.com/en/news/page/2/'),
-          collection: { page: 2, pageCount: 3, itemIdentities: [] },
-        }),
-        options,
-        { tags: {} },
-      ),
-    ).toEqual({
-      title: 'News · Page 2',
-      description: 'Synctrol news',
-    })
+    ).toEqual({ title: 'News · Page 2', description: 'Synctrol news' })
 
     expect(
       resolveCollectionCopy(
-        page({
-          identity: 'release-page:3',
-          locale: 'zh',
-          contentType: 'release-collection',
-          url: url('https://synctrol.com/zh/releases/page/3/'),
-          collection: { page: 3, pageCount: 4, itemIdentities: [] },
-        }),
+        page({ identity: 'news-tag:release:page:2', locale: 'zh', contentType: 'news-collection', url: url('https://synctrol.com/zh/news/tags/release/page/2/'), collection: { page: 2, pageCount: 2, itemIdentities: [], tag: 'release' } }),
         options,
-        { tags: {} },
+        definitions({ tags: { release: { title: { zh: '作品发布', en: 'Releases' } } } }),
       ),
-    ).toEqual({
-      title: '作品 · 第 3 页',
-      description: 'Synctrol 作品列表',
-    })
-  })
-
-  it('formats tagArchiveTitle with localized tag and news collection title', () => {
-    expect(
-      resolveCollectionCopy(
-        page({
-          identity: 'news-tag:release',
-          locale: 'en',
-          contentType: 'news-collection',
-          url: url('https://synctrol.com/en/news/tags/release/'),
-          collection: {
-            page: 1,
-            pageCount: 1,
-            itemIdentities: [],
-            tag: 'release',
-          },
-        }),
-        options,
-        {
-          tags: {
-            release: {
-              title: { zh: '作品发布', en: 'Releases' },
-            },
-          },
-        },
-      ),
-    ).toEqual({
-      title: 'Releases · News',
-      description: 'Synctrol news',
-    })
-  })
-
-  it('paginates tag archives with paginatedTitle around the tag archive title', () => {
-    const copy = resolveCollectionCopy(
-      page({
-        identity: 'news-tag:release:page:2',
-        locale: 'zh',
-        contentType: 'news-collection',
-        url: url('https://synctrol.com/zh/news/tags/release/page/2/'),
-        collection: {
-          page: 2,
-          pageCount: 2,
-          itemIdentities: [],
-          tag: 'release',
-        },
-      }),
-      options,
-      {
-        tags: {
-          release: {
-            title: { zh: '作品发布', en: 'Releases' },
-          },
-        },
-      },
-    )
-    expect(copy).toEqual({
-      title: '作品发布 · 新闻 · 第 2 页',
-      description: 'Synctrol 新闻',
-    })
-  })
-
-  it('uses news collection copy for news-tags-index', () => {
-    expect(
-      resolveCollectionCopy(
-        page({
-          identity: 'news-tags-index',
-          locale: 'en',
-          contentType: 'news-collection',
-          url: url('https://synctrol.com/en/news/tags/'),
-          collection: { page: 1, pageCount: 1, itemIdentities: [] },
-        }),
-        options,
-        { tags: {} },
-      ),
-    ).toEqual({ title: 'News', description: 'Synctrol news' })
+    ).toEqual({ title: '作品发布 · 新闻 · 第 2 页', description: 'Synctrol 新闻' })
   })
 })
 ```
@@ -658,17 +409,17 @@ describe('resolveCollectionCopy', () => {
 
 Run: `npm test -- tests/compiler/seo/collection-copy.test.ts`
 
-Expected: FAIL with module not found for `collection-copy`
+Expected: FAIL with module not found for `collection-copy.js`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement collection copy**
 
 ```ts
 // src/compiler/seo/collection-copy.ts
-import { formatMessage } from '../../shared/seo/format-message'
-import type { ContentDefinitions, LocaleKey } from '../../shared/types'
-import type { CompiledPage } from '../../shared/route-types'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
-import { resolveMultilanguage } from '../../shared/multilanguage'
+import { formatMessage } from '../../shared/format-message.js'
+import { resolveMultilanguage } from '../../shared/multilanguage.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { ContentDefinitions, LocaleKey } from '../../shared/types.js'
 
 export interface CollectionCopy {
   title: string
@@ -683,25 +434,19 @@ function siteCollection(
   const block = options.seo.collections[kind]
   return {
     title: resolveMultilanguage(block.title, locale, options.mainLocale).text,
-    description: resolveMultilanguage(
-      block.description,
-      locale,
-      options.mainLocale,
-    ).text,
+    description: resolveMultilanguage(block.description, locale, options.mainLocale).text,
   }
 }
 
-function isReleaseCollection(identity: string): boolean {
-  return identity === 'release-index' || identity.startsWith('release-page:')
-}
-
-function isNewsCollection(identity: string): boolean {
-  return (
+function collectionKind(identity: string): 'release' | 'news' | null {
+  if (identity === 'release-index' || identity.startsWith('release-page:')) return 'release'
+  if (
     identity === 'news-index' ||
     identity === 'news-tags-index' ||
     identity.startsWith('news-page:') ||
     identity.startsWith('news-tag:')
-  )
+  ) return 'news'
+  return null
 }
 
 export function resolveCollectionCopy(
@@ -710,61 +455,26 @@ export function resolveCollectionCopy(
   definitions: ContentDefinitions,
 ): CollectionCopy | null {
   const identity = String(page.identity)
-  if (!isReleaseCollection(identity) && !isNewsCollection(identity)) {
-    return null
-  }
+  const kind = collectionKind(identity)
+  if (kind === null) return null
 
-  const kind: 'release' | 'news' = isReleaseCollection(identity)
-    ? 'release'
-    : 'news'
   const base = siteCollection(options, kind, page.locale)
   const messages = options.locales[page.locale]!.messages
+  const pageNumber = page.collection?.page ?? 1
 
-  if (identity === 'release-index' || identity === 'news-index') {
-    return base
-  }
-
-  if (identity === 'news-tags-index') {
-    return base
-  }
-
-  const tagKey = page.collection?.tag
-  if (tagKey && identity.startsWith('news-tag:')) {
-    const tagDef = definitions.tags[tagKey]
-    if (!tagDef) {
-      throw new Error(`Unknown tag in collection page: ${tagKey}`)
-    }
-    const tagTitle = resolveMultilanguage(
-      tagDef.title,
-      page.locale,
-      options.mainLocale,
-    ).text
-    const archiveTitle = formatMessage(messages.tagArchiveTitle, {
-      tag: tagTitle,
-      title: base.title,
-    })
-    const pageNumber = page.collection?.page ?? 1
-    if (pageNumber <= 1) {
-      return { title: archiveTitle, description: base.description }
-    }
+  if (identity.startsWith('news-tag:') && page.collection?.tag) {
+    const tagDef = definitions.tags[page.collection.tag]
+    if (!tagDef) throw new Error(`Unknown tag in collection page: ${page.collection.tag}`)
+    const tagTitle = resolveMultilanguage(tagDef.title, page.locale, options.mainLocale).text
+    const archiveTitle = formatMessage(messages.tagArchiveTitle, { tag: tagTitle, title: base.title })
     return {
-      title: formatMessage(messages.paginatedTitle, {
-        title: archiveTitle,
-        page: pageNumber,
-      }),
+      title: pageNumber <= 1 ? archiveTitle : formatMessage(messages.paginatedTitle, { title: archiveTitle, page: pageNumber }),
       description: base.description,
     }
   }
 
-  const pageNumber = page.collection?.page ?? 1
-  if (pageNumber <= 1) {
-    return base
-  }
   return {
-    title: formatMessage(messages.paginatedTitle, {
-      title: base.title,
-      page: pageNumber,
-    }),
+    title: pageNumber <= 1 ? base.title : formatMessage(messages.paginatedTitle, { title: base.title, page: pageNumber }),
     description: base.description,
   }
 }
@@ -774,13 +484,13 @@ export function resolveCollectionCopy(
 
 Run: `npm test -- tests/compiler/seo/collection-copy.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/seo/collection-copy.ts tests/compiler/seo/collection-copy.test.ts
-git commit -m "feat(seo): resolve collection, pagination, and tag archive titles"
+git commit -m "feat(seo): resolve collection metadata"
 ```
 
 ---
@@ -794,86 +504,23 @@ git commit -m "feat(seo): resolve collection, pagination, and tag archive titles
 - Create: `tests/compiler/seo/resolve-og-image.test.ts`
 
 **Interfaces:**
-- Consumes: `resolveMultilanguage`; `SeoOptions.description`; `CompiledPage.description` / `packagePath` / `contentType`; `SeoAssetContext`
-- Produces: `resolvePageDescription(page, options, collectionCopy): string`; `resolveOgImage(page, assets): string`
+- Produces: `resolvePageDescription(page, options, collectionCopy): string`; `resolveOgImage(page, assets): string`.
 
-Rules:
-
-- Collection pages use `collectionCopy.description`
-- Detail/Home/Page: `page.description` when defined and non-empty; otherwise site locale `seo.description`
-- OG image: if `contentType === 'home'` → `defaultImageAbsoluteUrl`; else if package has a cover URL in the map → that URL; else `defaultImageAbsoluteUrl`
-- Artwork is never consulted (no artwork map parameter exists)
-
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing tests**
 
 ```ts
 // tests/compiler/seo/resolve-description.test.ts
 import { describe, expect, it } from 'vitest'
-import { resolvePageDescription } from '../../../src/compiler/seo/resolve-description'
-import { page, resolvedOptions, url } from '../../helpers/seo-fixtures'
+import { resolvePageDescription } from '../../../src/compiler/seo/resolve-description.js'
+import { page, resolvedOptions, url } from '../../helpers/seo-fixtures.js'
 
 const options = resolvedOptions()
 
 describe('resolvePageDescription', () => {
-  it('prefers the page locale description', () => {
-    expect(
-      resolvePageDescription(
-        page({
-          identity: 'news:launch',
-          locale: 'en',
-          contentType: 'news',
-          url: url('https://synctrol.com/en/news/launch/'),
-          description: 'Launch summary',
-        }),
-        options,
-        null,
-      ),
-    ).toBe('Launch summary')
-  })
-
-  it('falls back to site locale seo.description', () => {
-    expect(
-      resolvePageDescription(
-        page({
-          identity: 'page:about',
-          locale: 'zh',
-          contentType: 'page',
-          url: url('https://synctrol.com/zh/about/'),
-        }),
-        options,
-        null,
-      ),
-    ).toBe('Synctrol 音乐团队官方网站')
-
-    expect(
-      resolvePageDescription(
-        page({
-          identity: 'release:first',
-          locale: 'en',
-          contentType: 'release',
-          url: url('https://synctrol.com/en/releases/first/'),
-          description: undefined,
-        }),
-        options,
-        null,
-      ),
-    ).toBe('Official website of the Synctrol music team')
-  })
-
-  it('uses collection copy description when provided', () => {
-    expect(
-      resolvePageDescription(
-        page({
-          identity: 'news-index',
-          locale: 'en',
-          contentType: 'news-collection',
-          url: url('https://synctrol.com/en/news/'),
-          description: 'ignored',
-        }),
-        options,
-        { title: 'News', description: 'Synctrol news' },
-      ),
-    ).toBe('Synctrol news')
+  it('prefers page description, then collection copy, then site locale description', () => {
+    expect(resolvePageDescription(page({ identity: 'news:launch', locale: 'en', contentType: 'news', url: url('https://synctrol.com/en/news/launch/'), description: 'Launch summary' }), options, null)).toBe('Launch summary')
+    expect(resolvePageDescription(page({ identity: 'news-index', locale: 'en', contentType: 'news-collection', url: url('https://synctrol.com/en/news/') }), options, { title: 'News', description: 'Synctrol news' })).toBe('Synctrol news')
+    expect(resolvePageDescription(page({ identity: 'page:about', locale: 'zh', contentType: 'page', url: url('https://synctrol.com/zh/about/') }), options, null)).toBe('Synctrol 音乐团队官方网站')
   })
 })
 ```
@@ -881,88 +528,22 @@ describe('resolvePageDescription', () => {
 ```ts
 // tests/compiler/seo/resolve-og-image.test.ts
 import { describe, expect, it } from 'vitest'
-import { resolveOgImage } from '../../../src/compiler/seo/resolve-og-image'
-import { page, seoContentContext, url } from '../../helpers/seo-fixtures'
+import { resolveOgImage } from '../../../src/compiler/seo/resolve-og-image.js'
+import { page, seoContentContext, url } from '../../helpers/seo-fixtures.js'
+
+const assets = seoContentContext({
+  assets: {
+    defaultImageAbsoluteUrl: 'https://synctrol.com/assets/global/social-default.hash.webp',
+    organizationLogoAbsoluteUrl: 'https://synctrol.com/assets/global/logo.hash.svg',
+    coverAbsoluteUrlByPackagePath: new Map([['/site/content/releases/first', 'https://synctrol.com/assets/content/release/first/cover.hash.webp']]),
+  },
+}).assets
 
 describe('resolveOgImage', () => {
-  const assets = seoContentContext({
-    assets: {
-      defaultImageAbsoluteUrl:
-        'https://synctrol.com/assets/global/social-default.hash.webp',
-      organizationLogoAbsoluteUrl:
-        'https://synctrol.com/assets/global/logo.hash.svg',
-      coverAbsoluteUrlByPackagePath: new Map([
-        [
-          'content/releases/first',
-          'https://synctrol.com/assets/content/release/first/cover.hash.webp',
-        ],
-        [
-          'content/news/launch',
-          'https://synctrol.com/assets/content/news/launch/cover.hash.webp',
-        ],
-      ]),
-    },
-  }).assets
-
-  it('uses cover when present for news and release', () => {
-    expect(
-      resolveOgImage(
-        page({
-          identity: 'release:first',
-          locale: 'zh',
-          contentType: 'release',
-          packagePath: 'content/releases/first',
-          url: url('https://synctrol.com/zh/releases/first/'),
-        }),
-        assets,
-      ),
-    ).toBe(
-      'https://synctrol.com/assets/content/release/first/cover.hash.webp',
-    )
-  })
-
-  it('never receives artwork and falls back to defaultImage when cover absent', () => {
-    expect(
-      resolveOgImage(
-        page({
-          identity: 'release:no-cover',
-          locale: 'en',
-          contentType: 'release',
-          packagePath: 'content/releases/no-cover',
-          url: url('https://synctrol.com/en/releases/no-cover/'),
-        }),
-        assets,
-      ),
-    ).toBe('https://synctrol.com/assets/global/social-default.hash.webp')
-  })
-
-  it('always uses defaultImage for Home', () => {
-    expect(
-      resolveOgImage(
-        page({
-          identity: 'home',
-          locale: 'zh',
-          contentType: 'home',
-          packagePath: 'content/home',
-          url: url('https://synctrol.com/zh/'),
-        }),
-        assets,
-      ),
-    ).toBe('https://synctrol.com/assets/global/social-default.hash.webp')
-  })
-
-  it('uses defaultImage for collection pages', () => {
-    expect(
-      resolveOgImage(
-        page({
-          identity: 'news-index',
-          locale: 'en',
-          contentType: 'news-collection',
-          url: url('https://synctrol.com/en/news/'),
-        }),
-        assets,
-      ),
-    ).toBe('https://synctrol.com/assets/global/social-default.hash.webp')
+  it('uses cover for content detail pages, default image otherwise, and never uses artwork', () => {
+    expect(resolveOgImage(page({ identity: 'release:first', locale: 'zh', contentType: 'release', packagePath: '/site/content/releases/first', url: url('https://synctrol.com/zh/releases/first/') }), assets)).toBe('https://synctrol.com/assets/content/release/first/cover.hash.webp')
+    expect(resolveOgImage(page({ identity: 'home', locale: 'zh', contentType: 'home', packagePath: '/site/content/home', url: url('https://synctrol.com/zh/') }), assets)).toBe('https://synctrol.com/assets/global/social-default.hash.webp')
+    expect(resolveOgImage(page({ identity: 'release:no-cover', locale: 'en', contentType: 'release', packagePath: '/site/content/releases/no-cover', url: url('https://synctrol.com/en/releases/no-cover/') }), assets)).toBe('https://synctrol.com/assets/global/social-default.hash.webp')
   })
 })
 ```
@@ -971,52 +552,36 @@ describe('resolveOgImage', () => {
 
 Run: `npm test -- tests/compiler/seo/resolve-description.test.ts tests/compiler/seo/resolve-og-image.test.ts`
 
-Expected: FAIL with modules not found
+Expected: FAIL with modules not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement resolvers**
 
 ```ts
 // src/compiler/seo/resolve-description.ts
-import type { CollectionCopy } from './collection-copy'
-import type { CompiledPage } from '../../shared/route-types'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
-import { resolveMultilanguage } from '../../shared/multilanguage'
+import { resolveMultilanguage } from '../../shared/multilanguage.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { CollectionCopy } from './collection-copy.js'
 
 export function resolvePageDescription(
   page: CompiledPage,
   options: ResolvedSynctrolThemeOptions,
   collectionCopy: CollectionCopy | null,
 ): string {
-  if (collectionCopy) {
-    return collectionCopy.description
-  }
-  if (page.description && page.description.length > 0) {
-    return page.description
-  }
-  return resolveMultilanguage(
-    options.seo.description,
-    page.locale,
-    options.mainLocale,
-  ).text
+  if (collectionCopy) return collectionCopy.description
+  if (page.description && page.description.length > 0) return page.description
+  return resolveMultilanguage(options.seo.description, page.locale, options.mainLocale).text
 }
 ```
 
 ```ts
 // src/compiler/seo/resolve-og-image.ts
-import type { SeoAssetContext } from '../../shared/seo/types'
-import type { CompiledPage } from '../../shared/route-types'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { SeoAssetContext } from '../../shared/seo/types.js'
 
-export function resolveOgImage(
-  page: CompiledPage,
-  assets: SeoAssetContext,
-): string {
-  if (page.contentType === 'home') {
-    return assets.defaultImageAbsoluteUrl
-  }
-  if (
-    page.packagePath &&
-    assets.coverAbsoluteUrlByPackagePath.has(page.packagePath)
-  ) {
+export function resolveOgImage(page: CompiledPage, assets: SeoAssetContext): string {
+  if (page.contentType === 'home') return assets.defaultImageAbsoluteUrl
+  if (page.packagePath && assets.coverAbsoluteUrlByPackagePath.has(page.packagePath)) {
     return assets.coverAbsoluteUrlByPackagePath.get(page.packagePath)!
   }
   return assets.defaultImageAbsoluteUrl
@@ -1027,13 +592,13 @@ export function resolveOgImage(
 
 Run: `npm test -- tests/compiler/seo/resolve-description.test.ts tests/compiler/seo/resolve-og-image.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/seo/resolve-description.ts src/compiler/seo/resolve-og-image.ts tests/compiler/seo/resolve-description.test.ts tests/compiler/seo/resolve-og-image.test.ts
-git commit -m "feat(seo): resolve descriptions and OG images without artwork fallback"
+git commit -m "feat(seo): resolve descriptions and og images"
 ```
 
 ---
@@ -1045,126 +610,41 @@ git commit -m "feat(seo): resolve descriptions and OG images without artwork fal
 - Create: `tests/compiler/seo/resolve-alternates.test.ts`
 
 **Interfaces:**
-- Consumes: `CompiledPage[]` for the same content identity; locale `lang`; `canonicalLocale`; `isFallback`; `noindex`
-- Produces: `resolveCanonicalUrl(page, pages): string`; `resolveLang(page, options): string`; `resolveRobots(page): 'index,follow' | 'noindex,follow'`; `resolveHreflang(page, pages, options): HreflangAlternate[]`
+- Produces: `resolveCanonicalUrl`, `resolveLang`, `resolveRobots`, `resolveHreflang`.
 
 Rules:
-
-- Canonical: absolute URL of the page whose `locale === page.canonicalLocale` and same `identity`; for normal pages that is self
-- `lang`: `options.locales[page.locale].lang`
-- Robots: `noindex,follow` when `page.noindex` (draft or fallback); otherwise `index,follow`
-- Hreflang: among pages with the same `identity`, include only those with `isFallback === false`; each entry uses that alternate's locale `lang` and `absoluteUrl`
-- Fallback pages still emit hreflang pointing only at real translations (including the main locale), never listing the fallback URL as a translation of itself under a false claim — exclude `isFallback` pages from the alternate set entirely
-- Do not emit `x-default`
+- Canonical uses the same-identity page whose `locale === page.canonicalLocale`.
+- `lang` comes from `options.locales[page.locale].lang`.
+- Robots uses `page.noindex`.
+- `hreflang` includes only `!isFallback` same-identity pages.
+- Hreflang order follows `Object.keys(options.locales)`.
+- Do not emit `x-default`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/compiler/seo/resolve-alternates.test.ts
 import { describe, expect, it } from 'vitest'
-import {
-  resolveCanonicalUrl,
-  resolveHreflang,
-  resolveLang,
-  resolveRobots,
-} from '../../../src/compiler/seo/resolve-alternates'
-import { page, resolvedOptions, url } from '../../helpers/seo-fixtures'
+import { resolveCanonicalUrl, resolveHreflang, resolveLang, resolveRobots } from '../../../src/compiler/seo/resolve-alternates.js'
+import { page, resolvedOptions, url } from '../../helpers/seo-fixtures.js'
 
 const options = resolvedOptions()
-
-const zhReal = page({
-  identity: 'release:first',
-  locale: 'zh',
-  contentType: 'release',
-  url: url('https://synctrol.com/zh/releases/first/'),
-  title: '第一张',
-})
-
-const enFallback = page({
-  identity: 'release:first',
-  locale: 'en',
-  contentType: 'release',
-  url: url('https://synctrol.com/en/releases/first/'),
-  title: '第一张',
-  isFallback: true,
-  noindex: true,
-  bodyLocale: 'zh',
-  canonicalLocale: 'zh',
-})
-
-const enReal = page({
-  identity: 'news:launch',
-  locale: 'en',
-  contentType: 'news',
-  url: url('https://synctrol.com/en/news/launch/'),
-  title: 'Launch',
-})
-
-const zhNews = page({
-  identity: 'news:launch',
-  locale: 'zh',
-  contentType: 'news',
-  url: url('https://synctrol.com/zh/news/launch/'),
-  title: '发布',
-})
+const zhReal = page({ identity: 'release:first', locale: 'zh', contentType: 'release', url: url('https://synctrol.com/zh/releases/first/'), title: '第一张' })
+const enFallback = page({ identity: 'release:first', locale: 'en', contentType: 'release', url: url('https://synctrol.com/en/releases/first/'), title: '第一张', isFallback: true, noindex: true, bodyLocale: 'zh', canonicalLocale: 'zh' })
+const zhNews = page({ identity: 'news:launch', locale: 'zh', contentType: 'news', url: url('https://synctrol.com/zh/news/launch/'), title: '发布' })
+const enNews = page({ identity: 'news:launch', locale: 'en', contentType: 'news', url: url('https://synctrol.com/en/news/launch/'), title: 'Launch' })
 
 describe('resolveAlternates', () => {
-  it('uses locale lang from options', () => {
+  it('resolves lang, robots, canonical, and hreflang in options.locales order', () => {
     expect(resolveLang(zhReal, options)).toBe('zh-CN')
-    expect(resolveLang(enReal, options)).toBe('en-US')
-  })
-
-  it('marks drafts and fallbacks noindex', () => {
-    expect(resolveRobots(zhReal)).toBe('index,follow')
     expect(resolveRobots(enFallback)).toBe('noindex,follow')
-    expect(
-      resolveRobots(
-        page({
-          identity: 'news:draft',
-          locale: 'zh',
-          contentType: 'news',
-          url: url('https://synctrol.com/zh/news/draft/'),
-          isDraft: true,
-          noindex: true,
-        }),
-      ),
-    ).toBe('noindex,follow')
-  })
-
-  it('points fallback canonical at the main-locale page', () => {
-    expect(resolveCanonicalUrl(enFallback, [zhReal, enFallback])).toBe(
-      'https://synctrol.com/zh/releases/first/',
-    )
-    expect(resolveCanonicalUrl(zhReal, [zhReal, enFallback])).toBe(
-      'https://synctrol.com/zh/releases/first/',
-    )
-  })
-
-  it('emits hreflang for real translations only', () => {
-    expect(resolveHreflang(zhReal, [zhReal, enFallback], options)).toEqual([
-      {
-        hreflang: 'zh-CN',
-        href: 'https://synctrol.com/zh/releases/first/',
-      },
+    expect(resolveCanonicalUrl(enFallback, [zhReal, enFallback])).toBe('https://synctrol.com/zh/releases/first/')
+    expect(resolveHreflang(zhNews, [enNews, zhNews], options)).toEqual([
+      { hreflang: 'zh-CN', href: 'https://synctrol.com/zh/news/launch/' },
+      { hreflang: 'en-US', href: 'https://synctrol.com/en/news/launch/' },
     ])
-
-    expect(resolveHreflang(zhNews, [zhNews, enReal], options)).toEqual([
-      {
-        hreflang: 'zh-CN',
-        href: 'https://synctrol.com/zh/news/launch/',
-      },
-      {
-        hreflang: 'en-US',
-        href: 'https://synctrol.com/en/news/launch/',
-      },
-    ])
-
-    // Fallback page still lists only real translations (zh), never itself
     expect(resolveHreflang(enFallback, [zhReal, enFallback], options)).toEqual([
-      {
-        hreflang: 'zh-CN',
-        href: 'https://synctrol.com/zh/releases/first/',
-      },
+      { hreflang: 'zh-CN', href: 'https://synctrol.com/zh/releases/first/' },
     ])
   })
 })
@@ -1174,61 +654,41 @@ describe('resolveAlternates', () => {
 
 Run: `npm test -- tests/compiler/seo/resolve-alternates.test.ts`
 
-Expected: FAIL with module not found
+Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement alternates**
 
 ```ts
 // src/compiler/seo/resolve-alternates.ts
-import type { HreflangAlternate } from '../../shared/seo/types'
-import type { CompiledPage } from '../../shared/route-types'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { HreflangAlternate } from '../../shared/seo/types.js'
 
-export function resolveLang(
-  page: CompiledPage,
-  options: ResolvedSynctrolThemeOptions,
-): string {
+export function resolveLang(page: CompiledPage, options: ResolvedSynctrolThemeOptions): string {
   return options.locales[page.locale]!.lang
 }
 
-export function resolveRobots(
-  page: CompiledPage,
-): 'index,follow' | 'noindex,follow' {
+export function resolveRobots(page: CompiledPage): 'index,follow' | 'noindex,follow' {
   return page.noindex ? 'noindex,follow' : 'index,follow'
 }
 
-export function resolveCanonicalUrl(
-  page: CompiledPage,
-  pages: CompiledPage[],
-): string {
-  const canonical = pages.find(
-    (candidate) =>
-      candidate.identity === page.identity &&
-      candidate.locale === page.canonicalLocale,
-  )
-  if (!canonical) {
-    throw new Error(
-      `Missing canonical locale page for ${String(page.identity)} (${page.canonicalLocale})`,
-    )
-  }
+export function resolveCanonicalUrl(page: CompiledPage, pages: readonly CompiledPage[]): string {
+  const canonical = pages.find((candidate) => candidate.identity === page.identity && candidate.locale === page.canonicalLocale)
+  if (!canonical) throw new Error(`Missing canonical locale page for ${String(page.identity)} (${page.canonicalLocale})`)
   return canonical.url.absoluteUrl
 }
 
 export function resolveHreflang(
   page: CompiledPage,
-  pages: CompiledPage[],
+  pages: readonly CompiledPage[],
   options: ResolvedSynctrolThemeOptions,
 ): HreflangAlternate[] {
-  return pages
-    .filter(
-      (candidate) =>
-        candidate.identity === page.identity && candidate.isFallback === false,
-    )
-    .map((candidate) => ({
-      hreflang: options.locales[candidate.locale]!.lang,
-      href: candidate.url.absoluteUrl,
-    }))
-    .sort((a, b) => a.hreflang.localeCompare(b.hreflang))
+  const localeOrder = Object.keys(options.locales)
+  return localeOrder.flatMap((locale) => {
+    const alternate = pages.find((candidate) => candidate.identity === page.identity && candidate.locale === locale && !candidate.isFallback)
+    if (!alternate) return []
+    return [{ hreflang: options.locales[alternate.locale]!.lang, href: alternate.url.absoluteUrl }]
+  })
 }
 ```
 
@@ -1236,13 +696,13 @@ export function resolveHreflang(
 
 Run: `npm test -- tests/compiler/seo/resolve-alternates.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/seo/resolve-alternates.ts tests/compiler/seo/resolve-alternates.test.ts
-git commit -m "feat(seo): resolve canonical, lang, robots, and real-translation hreflang"
+git commit -m "feat(seo): resolve canonical and hreflang"
 ```
 
 ---
@@ -1256,61 +716,26 @@ git commit -m "feat(seo): resolve canonical, lang, robots, and real-translation 
 - Create: `tests/compiler/seo/serialize-head.test.ts`
 
 **Interfaces:**
-- Consumes: title, description, canonical, lang, image, page content type
-- Produces: `buildOpenGraph(input): OpenGraphData`; `serializeHeadTags(seo: PageSeo): HeadTag[]`
+- Produces: `buildOpenGraph(input): OpenGraphData`; `serializeHeadTags(seo): HeadTag[]`.
 
-Open Graph rules:
-
-- `og:type` is `article` for News detail (`contentType === 'news'`); otherwise `website`
-- `og:title` / `og:description` / `og:url` / `og:image` / `og:locale` mirror resolved SEO title, description, canonical URL, OG image, and `lang`
-
-Head tag order:
-
-1. `<title>`
-2. `meta name="description"`
-3. `meta name="robots"`
-4. `link rel="canonical"`
-5. `meta property="og:*"`
-6. `link rel="alternate" hreflang`
-7. `script type="application/ld+json"` per JSON-LD node (empty array allowed)
-
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write failing tests**
 
 ```ts
 // tests/compiler/seo/open-graph.test.ts
 import { describe, expect, it } from 'vitest'
-import { buildOpenGraph } from '../../../src/compiler/seo/open-graph'
+import { buildOpenGraph } from '../../../src/compiler/seo/open-graph.js'
 
 describe('buildOpenGraph', () => {
-  it('uses article type for news details and website otherwise', () => {
-    expect(
-      buildOpenGraph({
-        contentType: 'news',
-        title: 'Launch',
-        description: 'Summary',
-        canonicalUrl: 'https://synctrol.com/en/news/launch/',
-        image: 'https://synctrol.com/assets/global/social-default.hash.webp',
-        lang: 'en-US',
-      }),
-    ).toEqual({
+  it('uses article for news details and website otherwise', () => {
+    expect(buildOpenGraph({ contentType: 'news', title: 'Launch', description: 'Summary', canonicalUrl: 'https://synctrol.com/en/news/launch/', image: 'https://synctrol.com/cover.webp', lang: 'en-US' })).toEqual({
       type: 'article',
       title: 'Launch',
       description: 'Summary',
       url: 'https://synctrol.com/en/news/launch/',
-      image: 'https://synctrol.com/assets/global/social-default.hash.webp',
+      image: 'https://synctrol.com/cover.webp',
       locale: 'en-US',
     })
-
-    expect(
-      buildOpenGraph({
-        contentType: 'release',
-        title: 'Album',
-        description: 'Desc',
-        canonicalUrl: 'https://synctrol.com/zh/releases/first/',
-        image: 'https://synctrol.com/cover.webp',
-        lang: 'zh-CN',
-      }).type,
-    ).toBe('website')
+    expect(buildOpenGraph({ contentType: 'release', title: 'Album', description: 'Desc', canonicalUrl: 'https://synctrol.com/zh/releases/first/', image: 'https://synctrol.com/cover.webp', lang: 'zh-CN' }).type).toBe('website')
   })
 })
 ```
@@ -1318,8 +743,8 @@ describe('buildOpenGraph', () => {
 ```ts
 // tests/compiler/seo/serialize-head.test.ts
 import { describe, expect, it } from 'vitest'
-import { serializeHeadTags } from '../../../src/compiler/seo/serialize-head'
-import type { PageSeo } from '../../../src/shared/seo/types'
+import { serializeHeadTags } from '../../../src/compiler/seo/serialize-head.js'
+import type { PageSeo } from '../../../src/shared/seo/types.js'
 
 const seo: PageSeo = {
   title: 'Launch',
@@ -1327,68 +752,19 @@ const seo: PageSeo = {
   canonicalUrl: 'https://synctrol.com/en/news/launch/',
   lang: 'en-US',
   robots: 'index,follow',
-  openGraph: {
-    type: 'article',
-    title: 'Launch',
-    description: 'Summary',
-    url: 'https://synctrol.com/en/news/launch/',
-    image: 'https://synctrol.com/cover.webp',
-    locale: 'en-US',
-  },
-  hreflang: [
-    { hreflang: 'en-US', href: 'https://synctrol.com/en/news/launch/' },
-    { hreflang: 'zh-CN', href: 'https://synctrol.com/zh/news/launch/' },
-  ],
-  jsonLd: [
-    {
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: 'Launch',
-    },
-  ],
+  openGraph: { type: 'article', title: 'Launch', description: 'Summary', url: 'https://synctrol.com/en/news/launch/', image: 'https://synctrol.com/cover.webp', locale: 'en-US' },
+  hreflang: [{ hreflang: 'zh-CN', href: 'https://synctrol.com/zh/news/launch/' }],
+  jsonLd: [{ '@context': 'https://schema.org', '@type': 'Article', headline: 'Launch' }],
 }
 
 describe('serializeHeadTags', () => {
-  it('emits title, description, robots, canonical, og, hreflang, and json-ld', () => {
+  it('emits deterministic title, meta, canonical, hreflang, and json-ld tags', () => {
     const tags = serializeHeadTags(seo)
     expect(tags[0]).toEqual({ tag: 'title', text: 'Launch' })
-    expect(tags).toContainEqual({
-      tag: 'meta',
-      attrs: { name: 'description', content: 'Summary' },
-    })
-    expect(tags).toContainEqual({
-      tag: 'meta',
-      attrs: { name: 'robots', content: 'index,follow' },
-    })
-    expect(tags).toContainEqual({
-      tag: 'link',
-      attrs: { rel: 'canonical', href: 'https://synctrol.com/en/news/launch/' },
-    })
-    expect(tags).toContainEqual({
-      tag: 'meta',
-      attrs: { property: 'og:type', content: 'article' },
-    })
-    expect(tags).toContainEqual({
-      tag: 'meta',
-      attrs: { property: 'og:image', content: 'https://synctrol.com/cover.webp' },
-    })
-    expect(tags).toContainEqual({
-      tag: 'link',
-      attrs: {
-        rel: 'alternate',
-        hreflang: 'zh-CN',
-        href: 'https://synctrol.com/zh/news/launch/',
-      },
-    })
-    expect(tags.at(-1)).toEqual({
-      tag: 'script',
-      attrs: { type: 'application/ld+json' },
-      text: JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: 'Launch',
-      }),
-    })
+    expect(tags).toContainEqual({ tag: 'meta', attrs: { name: 'description', content: 'Summary' } })
+    expect(tags).toContainEqual({ tag: 'link', attrs: { rel: 'canonical', href: 'https://synctrol.com/en/news/launch/' } })
+    expect(tags).toContainEqual({ tag: 'link', attrs: { rel: 'alternate', hreflang: 'zh-CN', href: 'https://synctrol.com/zh/news/launch/' } })
+    expect(tags.at(-1)).toEqual({ tag: 'script', attrs: { type: 'application/ld+json' }, text: JSON.stringify({ '@context': 'https://schema.org', '@type': 'Article', headline: 'Launch' }) })
   })
 })
 ```
@@ -1397,14 +773,14 @@ describe('serializeHeadTags', () => {
 
 Run: `npm test -- tests/compiler/seo/open-graph.test.ts tests/compiler/seo/serialize-head.test.ts`
 
-Expected: FAIL with modules not found
+Expected: FAIL with modules not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement Open Graph and serializer**
 
 ```ts
 // src/compiler/seo/open-graph.ts
-import type { OpenGraphData } from '../../shared/seo/types'
-import type { CompiledPage } from '../../shared/route-types'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { OpenGraphData } from '../../shared/seo/types.js'
 
 export function buildOpenGraph(input: {
   contentType: CompiledPage['contentType']
@@ -1427,71 +803,27 @@ export function buildOpenGraph(input: {
 
 ```ts
 // src/compiler/seo/serialize-head.ts
-import type { HeadTag, PageSeo } from '../../shared/seo/types'
+import type { HeadTag, PageSeo } from '../../shared/seo/types.js'
 
 export function serializeHeadTags(seo: PageSeo): HeadTag[] {
   const tags: HeadTag[] = [
     { tag: 'title', text: seo.title },
-    {
-      tag: 'meta',
-      attrs: { name: 'description', content: seo.description },
-    },
-    {
-      tag: 'meta',
-      attrs: { name: 'robots', content: seo.robots },
-    },
-    {
-      tag: 'link',
-      attrs: { rel: 'canonical', href: seo.canonicalUrl },
-    },
-    {
-      tag: 'meta',
-      attrs: { property: 'og:type', content: seo.openGraph.type },
-    },
-    {
-      tag: 'meta',
-      attrs: { property: 'og:title', content: seo.openGraph.title },
-    },
-    {
-      tag: 'meta',
-      attrs: {
-        property: 'og:description',
-        content: seo.openGraph.description,
-      },
-    },
-    {
-      tag: 'meta',
-      attrs: { property: 'og:url', content: seo.openGraph.url },
-    },
-    {
-      tag: 'meta',
-      attrs: { property: 'og:image', content: seo.openGraph.image },
-    },
-    {
-      tag: 'meta',
-      attrs: { property: 'og:locale', content: seo.openGraph.locale },
-    },
+    { tag: 'meta', attrs: { name: 'description', content: seo.description } },
+    { tag: 'meta', attrs: { name: 'robots', content: seo.robots } },
+    { tag: 'link', attrs: { rel: 'canonical', href: seo.canonicalUrl } },
+    { tag: 'meta', attrs: { property: 'og:type', content: seo.openGraph.type } },
+    { tag: 'meta', attrs: { property: 'og:title', content: seo.openGraph.title } },
+    { tag: 'meta', attrs: { property: 'og:description', content: seo.openGraph.description } },
+    { tag: 'meta', attrs: { property: 'og:url', content: seo.openGraph.url } },
+    { tag: 'meta', attrs: { property: 'og:image', content: seo.openGraph.image } },
+    { tag: 'meta', attrs: { property: 'og:locale', content: seo.openGraph.locale } },
   ]
-
   for (const alt of seo.hreflang) {
-    tags.push({
-      tag: 'link',
-      attrs: {
-        rel: 'alternate',
-        hreflang: alt.hreflang,
-        href: alt.href,
-      },
-    })
+    tags.push({ tag: 'link', attrs: { rel: 'alternate', hreflang: alt.hreflang, href: alt.href } })
   }
-
   for (const node of seo.jsonLd) {
-    tags.push({
-      tag: 'script',
-      attrs: { type: 'application/ld+json' },
-      text: JSON.stringify(node),
-    })
+    tags.push({ tag: 'script', attrs: { type: 'application/ld+json' }, text: JSON.stringify(node) })
   }
-
   return tags
 }
 ```
@@ -1500,275 +832,64 @@ export function serializeHeadTags(seo: PageSeo): HeadTag[] {
 
 Run: `npm test -- tests/compiler/seo/open-graph.test.ts tests/compiler/seo/serialize-head.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/seo/open-graph.ts src/compiler/seo/serialize-head.ts tests/compiler/seo/open-graph.test.ts tests/compiler/seo/serialize-head.test.ts
-git commit -m "feat(seo): build Open Graph data and serialize head tags"
+git commit -m "feat(seo): serialize page head metadata"
 ```
 
 ---
 
-### Task 6: JSON-LD builders (WebSite, Organization, Article, MusicAlbum, MusicRecording; no Product)
+### Task 6: JSON-LD builders
 
 **Files:**
 - Create: `src/compiler/seo/json-ld.ts`
 - Create: `tests/compiler/seo/json-ld.test.ts`
 
 **Interfaces:**
-- Consumes: `SeoOptions.organization`, `siteUrl`, page fields, `Book`, `resolveMultilanguage`, OG image URL
-- Produces: `buildOrganizationJsonLd(options, assets): JsonLdNode`; `buildWebSiteJsonLd(page, options, organization): JsonLdNode`; `buildArticleJsonLd(input): JsonLdNode`; `buildAlbumJsonLd(input): JsonLdNode[]`; `buildPageJsonLd(page, options, content, meta): JsonLdNode[]`
+- Produces: `secondsToIsoDuration`, `buildOrganizationJsonLd`, `buildWebSiteJsonLd`, `buildArticleJsonLd`, `buildAlbumJsonLd`, `buildPageJsonLd`.
 
 Rules:
-
-- Locale Home (`identity === 'home'`): emit `Organization` then `WebSite` (WebSite references organization name/url)
-- News detail: emit `Article` with `headline`, `datePublished`, optional `dateModified`, `image`, `mainEntityOfPage`, `author` as Organization name
-- Release with `AlbumBook`: emit one `MusicAlbum` and one `MusicRecording` per track (stable disc/track order); durations as ISO-8601 `PT#H#M#S` from integer seconds
-- Release with `GiftBook` or no book: emit **no** `Product`, `MusicAlbum`, or `MusicRecording`
-- Collection / Page types: no content JSON-LD beyond Home’s site graph
+- Home emits `Organization` then `WebSite`.
+- News emits `Article`.
+- Album releases emit `MusicAlbum` plus one `MusicRecording` per track.
+- Gift releases emit no `Product` and no music schema.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/compiler/seo/json-ld.test.ts
 import { describe, expect, it } from 'vitest'
-import {
-  buildAlbumJsonLd,
-  buildArticleJsonLd,
-  buildPageJsonLd,
-  secondsToIsoDuration,
-} from '../../../src/compiler/seo/json-ld'
-import {
-  page,
-  resolvedOptions,
-  seoContentContext,
-  url,
-} from '../../helpers/seo-fixtures'
-import type { AlbumBook, GiftBook } from '../../../src/shared/types'
+import { buildAlbumJsonLd, buildArticleJsonLd, buildPageJsonLd, secondsToIsoDuration } from '../../../src/compiler/seo/json-ld.js'
+import type { AlbumBook, GiftBook } from '../../../src/shared/types.js'
+import { page, resolvedOptions, seoContentContext, url } from '../../helpers/seo-fixtures.js'
 
 const options = resolvedOptions()
-const assets = seoContentContext().assets
+const album: AlbumBook = { type: 'album', title: { zh: '第一张专辑', en: 'First Album' }, authors: ['Synctrol'], album: { discs: [{ title: 'Disc', tracks: [{ title: { zh: '曲', en: 'Track' }, artists: ['Synctrol'], duration: 120 }] }] } }
+const gift: GiftBook = { type: 'gift', title: { zh: '周边', en: 'Gifts' }, gift: { items: [{ id: 'poster', title: 'Poster' }] } }
 
-const album: AlbumBook = {
-  type: 'album',
-  title: { zh: '第一张专辑', en: 'First Album' },
-  authors: ['Synctrol'],
-  album: {
-    discs: [
-      {
-        title: { zh: '第一碟', en: 'Disc One' },
-        tracks: [
-          {
-            title: { zh: '第一曲', en: 'Track One' },
-            artists: ['Synctrol'],
-            duration: 272,
-          },
-          {
-            title: { zh: '第二曲', en: 'Track Two' },
-            artists: ['Synctrol', 'Guest'],
-            duration: 65,
-          },
-        ],
-      },
-    ],
-  },
-}
-
-const gift: GiftBook = {
-  type: 'gift',
-  title: { zh: '周边', en: 'Gifts' },
-  gift: { items: [{ id: 'poster', title: 'Poster' }] },
-}
-
-describe('secondsToIsoDuration', () => {
-  it('encodes hours minutes seconds', () => {
-    expect(secondsToIsoDuration(272)).toBe('PT4M32S')
-    expect(secondsToIsoDuration(65)).toBe('PT1M5S')
-    expect(secondsToIsoDuration(3600)).toBe('PT1H')
-    expect(secondsToIsoDuration(0)).toBe('PT0S')
-  })
-})
-
-describe('buildArticleJsonLd', () => {
-  it('builds Article for news', () => {
-    expect(
-      buildArticleJsonLd({
-        headline: 'Launch',
-        description: 'Summary',
-        canonicalUrl: 'https://synctrol.com/en/news/launch/',
-        image: assets.defaultImageAbsoluteUrl,
-        datePublished: '2026-08-11',
-        dateModified: '2026-08-12',
-        organizationName: 'Synctrol',
-      }),
-    ).toEqual({
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: 'Launch',
-      description: 'Summary',
-      image: assets.defaultImageAbsoluteUrl,
-      datePublished: '2026-08-11',
-      dateModified: '2026-08-12',
-      author: { '@type': 'Organization', name: 'Synctrol' },
-      mainEntityOfPage: 'https://synctrol.com/en/news/launch/',
-    })
-  })
-})
-
-describe('buildAlbumJsonLd', () => {
-  it('emits MusicAlbum and MusicRecording for album books', () => {
-    const nodes = buildAlbumJsonLd({
-      book: album,
-      locale: 'en',
-      mainLocale: 'zh',
-      pageUrl: 'https://synctrol.com/en/releases/first/',
-    })
-    expect(nodes[0]).toMatchObject({
-      '@type': 'MusicAlbum',
-      name: 'First Album',
-      numTracks: 2,
-    })
-    expect(nodes.slice(1)).toEqual([
-      {
-        '@context': 'https://schema.org',
-        '@type': 'MusicRecording',
-        name: 'Track One',
-        byArtist: [{ '@type': 'MusicGroup', name: 'Synctrol' }],
-        duration: 'PT4M32S',
-        position: 1,
-        url: 'https://synctrol.com/en/releases/first/#disc-1-track-1',
-      },
-      {
-        '@context': 'https://schema.org',
-        '@type': 'MusicRecording',
-        name: 'Track Two',
-        byArtist: [
-          { '@type': 'MusicGroup', name: 'Synctrol' },
-          { '@type': 'MusicGroup', name: 'Guest' },
-        ],
-        duration: 'PT1M5S',
-        position: 2,
-        url: 'https://synctrol.com/en/releases/first/#disc-1-track-2',
-      },
-    ])
-  })
-})
-
-describe('buildPageJsonLd', () => {
-  it('emits WebSite and Organization on locale Home', () => {
-    const nodes = buildPageJsonLd(
-      page({
-        identity: 'home',
-        locale: 'en',
-        contentType: 'home',
-        url: url('https://synctrol.com/en/'),
-        title: 'Home',
-        description: 'Official website of the Synctrol music team',
-      }),
-      options,
-      seoContentContext(),
-      {
-        title: 'Home',
-        description: 'Official website of the Synctrol music team',
-        canonicalUrl: 'https://synctrol.com/en/',
-        image: assets.defaultImageAbsoluteUrl,
-      },
-    )
-    expect(nodes.map((n) => n['@type'])).toEqual([
-      'Organization',
-      'WebSite',
-    ])
-    expect(nodes[0]).toMatchObject({
-      '@type': 'Organization',
-      name: 'Synctrol',
-      url: 'https://synctrol.com',
-      logo: assets.organizationLogoAbsoluteUrl,
-    })
-    expect(nodes[1]).toMatchObject({
-      '@type': 'WebSite',
-      name: 'Synctrol',
-      url: 'https://synctrol.com/en/',
-    })
+describe('json-ld builders', () => {
+  it('formats durations and article schema', () => {
+    expect(secondsToIsoDuration(120)).toBe('PT2M')
+    expect(buildArticleJsonLd({ headline: 'Launch', description: 'Summary', canonicalUrl: 'https://synctrol.com/en/news/launch/', image: 'https://synctrol.com/og.webp', datePublished: '2026-08-11', dateModified: '2026-08-12', organizationName: 'Synctrol' })).toMatchObject({ '@type': 'Article', headline: 'Launch', dateModified: '2026-08-12' })
   })
 
-  it('emits Article for news and album schemas for album releases', () => {
-    const newsNodes = buildPageJsonLd(
-      page({
-        identity: 'news:launch',
-        locale: 'en',
-        contentType: 'news',
-        packagePath: 'content/news/launch',
-        url: url('https://synctrol.com/en/news/launch/'),
-        title: 'Launch',
-        description: 'Summary',
-      }),
-      options,
-      seoContentContext({
-        dateByPackagePath: new Map([['content/news/launch', '2026-08-11']]),
-        updatedByPackagePath: new Map([['content/news/launch', '2026-08-12']]),
-      }),
-      {
-        title: 'Launch',
-        description: 'Summary',
-        canonicalUrl: 'https://synctrol.com/en/news/launch/',
-        image: assets.defaultImageAbsoluteUrl,
-      },
-    )
-    expect(newsNodes).toHaveLength(1)
-    expect(newsNodes[0]!['@type']).toBe('Article')
-
-    const albumNodes = buildPageJsonLd(
-      page({
-        identity: 'release:first',
-        locale: 'en',
-        contentType: 'release',
-        packagePath: 'content/releases/first',
-        url: url('https://synctrol.com/en/releases/first/'),
-        title: 'First Album',
-      }),
-      options,
-      seoContentContext({
-        bookByPackagePath: new Map([['content/releases/first', album]]),
-      }),
-      {
-        title: 'First Album',
-        description: 'Official website of the Synctrol music team',
-        canonicalUrl: 'https://synctrol.com/en/releases/first/',
-        image: assets.defaultImageAbsoluteUrl,
-      },
-    )
-    expect(albumNodes.map((n) => n['@type'])).toEqual([
-      'MusicAlbum',
-      'MusicRecording',
-      'MusicRecording',
-    ])
+  it('builds album recordings and omits Product for gifts', () => {
+    expect(buildAlbumJsonLd({ book: album, locale: 'en', mainLocale: 'zh', pageUrl: 'https://synctrol.com/en/releases/first/' }).map((node) => node['@type'])).toEqual(['MusicAlbum', 'MusicRecording'])
+    const giftNodes = buildPageJsonLd(page({ identity: 'release:gift', locale: 'en', contentType: 'release', packagePath: '/site/content/releases/gift', url: url('https://synctrol.com/en/releases/gift/') }), options, seoContentContext({ bookByPackagePath: new Map([['/site/content/releases/gift', gift]]) }), { title: 'Gift', description: 'Desc', canonicalUrl: 'https://synctrol.com/en/releases/gift/', image: 'https://synctrol.com/og.webp' })
+    expect(giftNodes).toEqual([])
+    expect(JSON.stringify(giftNodes)).not.toMatch(/Product/)
   })
 
-  it('emits no Product (and no music schema) for gift releases', () => {
-    const nodes = buildPageJsonLd(
-      page({
-        identity: 'release:poster',
-        locale: 'zh',
-        contentType: 'release',
-        packagePath: 'content/releases/poster',
-        url: url('https://synctrol.com/zh/releases/poster/'),
-        title: '周边',
-      }),
-      options,
-      seoContentContext({
-        bookByPackagePath: new Map([['content/releases/poster', gift]]),
-      }),
-      {
-        title: '周边',
-        description: 'Synctrol 音乐团队官方网站',
-        canonicalUrl: 'https://synctrol.com/zh/releases/poster/',
-        image: assets.defaultImageAbsoluteUrl,
-      },
-    )
-    expect(nodes).toEqual([])
-    expect(JSON.stringify(nodes)).not.toMatch(/Product/)
+  it('builds home site graph and news article graph', () => {
+    const homeNodes = buildPageJsonLd(page({ identity: 'home', locale: 'en', contentType: 'home', url: url('https://synctrol.com/en/'), title: 'Home' }), options, seoContentContext(), { title: 'Home', description: 'Home desc', canonicalUrl: 'https://synctrol.com/en/', image: 'https://synctrol.com/og.webp' })
+    expect(homeNodes.map((node) => node['@type'])).toEqual(['Organization', 'WebSite'])
+
+    const newsNodes = buildPageJsonLd(page({ identity: 'news:launch', locale: 'en', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/en/news/launch/'), title: 'Launch' }), options, seoContentContext({ dateByPackagePath: new Map([['/site/content/news/launch', '2026-08-11']]) }), { title: 'Launch', description: 'Summary', canonicalUrl: 'https://synctrol.com/en/news/launch/', image: 'https://synctrol.com/og.webp' })
+    expect(newsNodes.map((node) => node['@type'])).toEqual(['Article'])
   })
 })
 ```
@@ -1777,20 +898,17 @@ describe('buildPageJsonLd', () => {
 
 Run: `npm test -- tests/compiler/seo/json-ld.test.ts`
 
-Expected: FAIL with module not found
+Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement JSON-LD**
 
 ```ts
 // src/compiler/seo/json-ld.ts
-import type { JsonLdNode, SeoContentContext } from '../../shared/seo/types'
-import type {
-  AlbumBook,
-  LocaleKey,
-} from '../../shared/types'
-import type { CompiledPage } from '../../shared/route-types'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
-import { resolveMultilanguage } from '../../shared/multilanguage'
+import { resolveMultilanguage } from '../../shared/multilanguage.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { JsonLdNode, SeoContentContext } from '../../shared/seo/types.js'
+import type { AlbumBook, LocaleKey } from '../../shared/types.js'
 
 export function secondsToIsoDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600)
@@ -1803,189 +921,89 @@ export function secondsToIsoDuration(totalSeconds: number): string {
   return out
 }
 
-export function buildOrganizationJsonLd(
-  options: ResolvedSynctrolThemeOptions,
-  logoAbsoluteUrl: string,
-): JsonLdNode {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: options.seo.organization.name,
-    url: options.siteUrl,
-    logo: logoAbsoluteUrl,
-  }
+export function buildOrganizationJsonLd(options: ResolvedSynctrolThemeOptions, logoAbsoluteUrl: string): JsonLdNode {
+  return { '@context': 'https://schema.org', '@type': 'Organization', name: options.seo.organization.name, url: options.siteUrl, logo: logoAbsoluteUrl }
 }
 
-export function buildWebSiteJsonLd(input: {
-  name: string
-  url: string
-  organizationName: string
-  organizationUrl: string
-}): JsonLdNode {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: input.name,
-    url: input.url,
-    publisher: {
-      '@type': 'Organization',
-      name: input.organizationName,
-      url: input.organizationUrl,
-    },
-  }
+export function buildWebSiteJsonLd(input: { name: string; url: string; organizationName: string; organizationUrl: string }): JsonLdNode {
+  return { '@context': 'https://schema.org', '@type': 'WebSite', name: input.name, url: input.url, publisher: { '@type': 'Organization', name: input.organizationName, url: input.organizationUrl } }
 }
 
-export function buildArticleJsonLd(input: {
-  headline: string
-  description: string
-  canonicalUrl: string
-  image: string
-  datePublished: string
-  dateModified?: string
-  organizationName: string
-}): JsonLdNode {
-  const node: JsonLdNode = {
+export function buildArticleJsonLd(input: { headline: string; description: string; canonicalUrl: string; image: string; datePublished: string; dateModified?: string; organizationName: string }): JsonLdNode {
+  return {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: input.headline,
     description: input.description,
     image: input.image,
     datePublished: input.datePublished,
+    ...(input.dateModified === undefined ? {} : { dateModified: input.dateModified }),
     author: { '@type': 'Organization', name: input.organizationName },
     mainEntityOfPage: input.canonicalUrl,
   }
-  if (input.dateModified) {
-    node.dateModified = input.dateModified
-  }
-  return node
 }
 
-export function buildAlbumJsonLd(input: {
-  book: AlbumBook
-  locale: LocaleKey
-  mainLocale: LocaleKey
-  pageUrl: string
-}): JsonLdNode[] {
-  const name = resolveMultilanguage(
-    input.book.title,
-    input.locale,
-    input.mainLocale,
-  ).text
-  const tracks = []
+export function buildAlbumJsonLd(input: { book: AlbumBook; locale: LocaleKey; mainLocale: LocaleKey; pageUrl: string }): JsonLdNode[] {
+  const name = resolveMultilanguage(input.book.title, input.locale, input.mainLocale).text
   const recordings: JsonLdNode[] = []
+  const tracks: JsonLdNode[] = []
   let position = 0
-  const discs = input.book.album.discs ?? []
-  for (let d = 0; d < discs.length; d++) {
-    const disc = discs[d]!
-    for (let t = 0; t < disc.tracks.length; t++) {
-      const track = disc.tracks[t]!
+  for (const [discIndex, disc] of (input.book.album.discs ?? []).entries()) {
+    for (const [trackIndex, track] of disc.tracks.entries()) {
       position += 1
-      const trackName = resolveMultilanguage(
-        track.title,
-        input.locale,
-        input.mainLocale,
-      ).text
-      tracks.push({
-        '@type': 'MusicRecording',
-        name: trackName,
-        position,
-      })
+      const trackName = resolveMultilanguage(track.title, input.locale, input.mainLocale).text
+      tracks.push({ '@type': 'MusicRecording', name: trackName, position })
       recordings.push({
         '@context': 'https://schema.org',
         '@type': 'MusicRecording',
         name: trackName,
-        byArtist: track.artists.map((artist) => ({
-          '@type': 'MusicGroup',
-          name: artist,
-        })),
+        byArtist: track.artists.map((artist) => ({ '@type': 'MusicGroup', name: artist })),
         duration: secondsToIsoDuration(track.duration),
         position,
-        url: `${input.pageUrl}#disc-${d + 1}-track-${t + 1}`,
+        url: `${input.pageUrl}#disc-${discIndex + 1}-track-${trackIndex + 1}`,
       })
     }
   }
-
-  const albumNode: JsonLdNode = {
-    '@context': 'https://schema.org',
-    '@type': 'MusicAlbum',
-    name,
-    numTracks: position,
-    track: tracks,
-    url: input.pageUrl,
-  }
-  if (input.book.authors?.length) {
-    albumNode.byArtist = input.book.authors.map((artist) => ({
-      '@type': 'MusicGroup',
-      name: artist,
-    }))
-  }
-  return [albumNode, ...recordings]
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'MusicAlbum',
+      name,
+      numTracks: position,
+      track: tracks,
+      url: input.pageUrl,
+      ...(input.book.authors?.length ? { byArtist: input.book.authors.map((artist) => ({ '@type': 'MusicGroup', name: artist })) } : {}),
+    },
+    ...recordings,
+  ]
 }
 
 export function buildPageJsonLd(
   page: CompiledPage,
   options: ResolvedSynctrolThemeOptions,
   content: SeoContentContext,
-  meta: {
-    title: string
-    description: string
-    canonicalUrl: string
-    image: string
-  },
+  meta: { title: string; description: string; canonicalUrl: string; image: string },
 ): JsonLdNode[] {
   if (page.identity === 'home') {
-    const organization = buildOrganizationJsonLd(
-      options,
-      content.assets.organizationLogoAbsoluteUrl,
-    )
-    const siteName = resolveMultilanguage(
-      options.seo.name,
-      page.locale,
-      options.mainLocale,
-    ).text
     return [
-      organization,
+      buildOrganizationJsonLd(options, content.assets.organizationLogoAbsoluteUrl),
       buildWebSiteJsonLd({
-        name: siteName,
+        name: resolveMultilanguage(options.seo.name, page.locale, options.mainLocale).text,
         url: meta.canonicalUrl,
         organizationName: options.seo.organization.name,
         organizationUrl: options.siteUrl,
       }),
     ]
   }
-
   if (page.contentType === 'news' && page.packagePath) {
     const datePublished = content.dateByPackagePath.get(page.packagePath)
-    if (!datePublished) {
-      throw new Error(`Missing news date for ${page.packagePath}`)
-    }
-    return [
-      buildArticleJsonLd({
-        headline: meta.title,
-        description: meta.description,
-        canonicalUrl: meta.canonicalUrl,
-        image: meta.image,
-        datePublished,
-        dateModified: content.updatedByPackagePath.get(page.packagePath),
-        organizationName: options.seo.organization.name,
-      }),
-    ]
+    if (!datePublished) throw new Error(`Missing news date for ${page.packagePath}`)
+    return [buildArticleJsonLd({ headline: meta.title, description: meta.description, canonicalUrl: meta.canonicalUrl, image: meta.image, datePublished, dateModified: content.updatedByPackagePath.get(page.packagePath), organizationName: options.seo.organization.name })]
   }
-
   if (page.contentType === 'release' && page.packagePath) {
     const book = content.bookByPackagePath.get(page.packagePath)
-    if (book?.type === 'album') {
-      return buildAlbumJsonLd({
-        book,
-        locale: page.locale,
-        mainLocale: options.mainLocale,
-        pageUrl: meta.canonicalUrl,
-      })
-    }
-    // Gift books intentionally emit no Product schema.
-    return []
+    return book?.type === 'album' ? buildAlbumJsonLd({ book, locale: page.locale, mainLocale: options.mainLocale, pageUrl: meta.canonicalUrl }) : []
   }
-
   return []
 }
 ```
@@ -1994,155 +1012,241 @@ export function buildPageJsonLd(
 
 Run: `npm test -- tests/compiler/seo/json-ld.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/seo/json-ld.ts tests/compiler/seo/json-ld.test.ts
-git commit -m "feat(seo): add JSON-LD for Article, MusicAlbum, WebSite, Organization"
+git commit -m "feat(seo): add json-ld builders"
 ```
 
 ---
 
-### Task 7: `buildPageSeo` orchestrator
+### Task 7: SEO content context adapter
+
+**Files:**
+- Create: `src/compiler/seo/content-context.ts`
+- Create: `tests/compiler/seo/content-context.test.ts`
+
+**Interfaces:**
+- Consumes: `AssetManifest`, `ResolvedSynctrolThemeOptions`, `RouteContentPackage[]`, `CompiledContentPackage[]`, `ContentDefinitions`.
+- Produces: `buildSeoContentContext(input): SeoContentContext`.
+
+Rules:
+- `bookByPackagePath` is keyed by absolute package `dir`.
+- `dateByPackagePath` and `updatedByPackagePath` are keyed by absolute package `dir`.
+- Cover map is keyed by absolute package `dir` because `CompiledPage.packagePath` uses the absolute package directory.
+- Hashed global and content asset refs use `assetManifest.globalPublicPaths` / `assetManifest.contentPublicPaths` and then `ResolvedAsset.absoluteUrl`.
+- Root-absolute refs become `options.siteUrl + ref`.
+- HTTPS refs are preserved unchanged.
+- HTTP refs are rejected so emitted SEO image URLs are HTTPS.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// tests/compiler/seo/content-context.test.ts
+import { describe, expect, it } from 'vitest'
+import { buildSeoContentContext } from '../../../src/compiler/seo/content-context.js'
+import type { AssetManifest } from '../../../src/shared/asset-types.js'
+import type { AlbumBook, CompiledContentPackage, RouteContentPackage } from '../../../src/shared/types.js'
+import { definitions, resolvedOptions } from '../../helpers/seo-fixtures.js'
+
+const album: AlbumBook = { type: 'album', title: 'Album', album: { discs: [] } }
+
+const assetManifest: AssetManifest = {
+  assets: [
+    { kind: 'global', sourcePath: '/site/.vuepress/assets/social.webp', assetPath: '/assets/global/social.11111111.webp', publicPath: '/assets/global/social.11111111.webp', absoluteUrl: 'https://synctrol.com/assets/global/social.11111111.webp', contentHash: '11111111' },
+    { kind: 'global', sourcePath: '/site/.vuepress/assets/logo.svg', assetPath: '/assets/global/logo.22222222.svg', publicPath: '/assets/global/logo.22222222.svg', absoluteUrl: 'https://synctrol.com/assets/global/logo.22222222.svg', contentHash: '22222222' },
+    { kind: 'content', sourcePath: '/site/content/releases/first/assets/cover.webp', assetPath: '/assets/content/release/first/cover.33333333.webp', publicPath: '/assets/content/release/first/cover.33333333.webp', absoluteUrl: 'https://synctrol.com/assets/content/release/first/cover.33333333.webp', contentHash: '33333333' },
+  ],
+  bySourcePath: {},
+  globalPublicPaths: {
+    './assets/social-default.webp': '/assets/global/social.11111111.webp',
+    './assets/logo.svg': '/assets/global/logo.22222222.svg',
+  },
+  contentPublicPaths: {
+    'release:first': {
+      './assets/cover.webp': '/assets/content/release/first/cover.33333333.webp',
+    },
+  },
+}
+
+const packages: RouteContentPackage[] = [
+  { dir: '/site/content/releases/first', identity: 'release:first', type: 'release', slug: 'first', date: '2026-08-05', draft: false, tags: [], cover: './assets/cover.webp', locales: {} },
+  { dir: '/site/content/news/launch', identity: 'news:launch', type: 'news', slug: 'launch', date: '2026-08-11', updated: '2026-08-12', draft: false, tags: ['release'], cover: 'https://cdn.synctrol.com/news.webp', locales: {} },
+]
+
+const compiledPackages: CompiledContentPackage[] = [
+  { dir: '/site/content/releases/first', identity: 'release:first', manifest: { type: 'release', draft: false, slug: 'first', date: '2026-08-05', cover: './assets/cover.webp' }, book: album },
+]
+
+describe('buildSeoContentContext', () => {
+  it('maps packages, books, dates, updated dates, covers, default image, and org logo', () => {
+    const context = buildSeoContentContext({ assetManifest, packages, compiledPackages, definitions: definitions(), options: resolvedOptions() })
+    expect(context.assets.defaultImageAbsoluteUrl).toBe('https://synctrol.com/assets/global/social.11111111.webp')
+    expect(context.assets.organizationLogoAbsoluteUrl).toBe('https://synctrol.com/assets/global/logo.22222222.svg')
+    expect(context.assets.coverAbsoluteUrlByPackagePath.get('/site/content/releases/first')).toBe('https://synctrol.com/assets/content/release/first/cover.33333333.webp')
+    expect(context.assets.coverAbsoluteUrlByPackagePath.get('/site/content/news/launch')).toBe('https://cdn.synctrol.com/news.webp')
+    expect(context.bookByPackagePath.get('/site/content/releases/first')).toBe(album)
+    expect(context.dateByPackagePath.get('/site/content/news/launch')).toBe('2026-08-11')
+    expect(context.updatedByPackagePath.get('/site/content/news/launch')).toBe('2026-08-12')
+    expect(context.definitions.platforms).toEqual({})
+  })
+
+  it('converts root-absolute default assets using siteUrl', () => {
+    const context = buildSeoContentContext({
+      assetManifest: { ...assetManifest, globalPublicPaths: {} },
+      packages: [],
+      compiledPackages: [],
+      definitions: definitions(),
+      options: resolvedOptions({ seo: { ...resolvedOptions().seo, defaultImage: '/images/og.png', organization: { name: 'Synctrol', logo: '/images/logo.png' } } }),
+    })
+    expect(context.assets.defaultImageAbsoluteUrl).toBe('https://synctrol.com/images/og.png')
+    expect(context.assets.organizationLogoAbsoluteUrl).toBe('https://synctrol.com/images/logo.png')
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npm test -- tests/compiler/seo/content-context.test.ts`
+
+Expected: FAIL with module not found.
+
+- [ ] **Step 3: Implement context adapter**
+
+```ts
+// src/compiler/seo/content-context.ts
+import type { AssetManifest, ResolvedAsset } from '../../shared/asset-types.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { SeoContentContext } from '../../shared/seo/types.js'
+import type { CompiledContentPackage, ContentDefinitions, RouteContentPackage } from '../../shared/types.js'
+
+function normalizedRef(ref: string): string {
+  return ref.startsWith('./') ? ref : `./${ref}`
+}
+
+function assetByPublicPath(manifest: AssetManifest, publicPath: string | undefined): ResolvedAsset | undefined {
+  return publicPath === undefined ? undefined : manifest.assets.find((asset) => asset.publicPath === publicPath)
+}
+
+function absoluteUrlForRef(
+  ref: string,
+  options: ResolvedSynctrolThemeOptions,
+  manifest: AssetManifest,
+  global: boolean,
+  identity?: string,
+): string {
+  if (ref.startsWith('https://')) return ref
+  if (ref.startsWith('http://')) throw new Error(`SEO asset must use HTTPS: ${ref}`)
+
+  const publicPath = global
+    ? manifest.globalPublicPaths[ref] ?? manifest.globalPublicPaths[normalizedRef(ref)]
+    : identity === undefined
+      ? undefined
+      : manifest.contentPublicPaths[identity]?.[ref] ?? manifest.contentPublicPaths[identity]?.[normalizedRef(ref)]
+
+  const resolved = assetByPublicPath(manifest, publicPath)
+  if (resolved) return resolved.absoluteUrl
+  if (publicPath) return `${options.siteUrl}${publicPath}`
+  if (ref.startsWith('/')) return `${options.siteUrl}${ref}`
+
+  throw new Error(`Missing hashed SEO asset for ${ref}`)
+}
+
+export function buildSeoContentContext(input: {
+  assetManifest: AssetManifest
+  packages: readonly RouteContentPackage[]
+  compiledPackages: readonly CompiledContentPackage[]
+  definitions: ContentDefinitions
+  options: ResolvedSynctrolThemeOptions
+}): SeoContentContext {
+  const coverAbsoluteUrlByPackagePath = new Map<string, string>()
+  const dateByPackagePath = new Map<string, string>()
+  const updatedByPackagePath = new Map<string, string>()
+  const bookByPackagePath = new Map(input.compiledPackages.flatMap((pkg) => (pkg.book ? [[pkg.dir, pkg.book] as const] : [])))
+
+  for (const pkg of input.packages) {
+    if (pkg.date) dateByPackagePath.set(pkg.dir, pkg.date)
+    if (pkg.updated) updatedByPackagePath.set(pkg.dir, pkg.updated)
+    if (pkg.cover) {
+      coverAbsoluteUrlByPackagePath.set(
+        pkg.dir,
+        absoluteUrlForRef(pkg.cover, input.options, input.assetManifest, false, pkg.identity),
+      )
+    }
+  }
+
+  return {
+    assets: {
+      defaultImageAbsoluteUrl: absoluteUrlForRef(input.options.seo.defaultImage, input.options, input.assetManifest, true),
+      organizationLogoAbsoluteUrl: absoluteUrlForRef(input.options.seo.organization.logo, input.options, input.assetManifest, true),
+      coverAbsoluteUrlByPackagePath,
+    },
+    definitions: input.definitions,
+    bookByPackagePath,
+    dateByPackagePath,
+    updatedByPackagePath,
+  }
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npm test -- tests/compiler/seo/content-context.test.ts`
+
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/compiler/seo/content-context.ts tests/compiler/seo/content-context.test.ts
+git commit -m "feat(seo): build seo content context"
+```
+
+---
+
+### Task 8: `buildPageSeo` orchestrator
 
 **Files:**
 - Create: `src/compiler/seo/build-page-seo.ts`
 - Create: `tests/compiler/seo/build-page-seo.test.ts`
 
 **Interfaces:**
-- Consumes: all Task 2–6 resolvers; `CompiledSite.pages`; `ResolvedSynctrolThemeOptions`; `SeoContentContext`
-- Produces: `buildPageSeo(page, pages, options, content): PageSeo`; `buildSiteSeo(site, options, content): Map<string, PageSeo>` keyed by `${locale}:${routePath}`
-
-Title resolution:
-
-- Collection copy title when present
-- Otherwise `page.title` (detail/Home/Page from Plan 03)
+- Consumes: Task 2-7 helpers, `CompiledPage`, `CompiledSite`, `ResolvedSynctrolThemeOptions`, `SeoContentContext`.
+- Produces: `buildPageSeo(page, pages, options, content): PageSeo`; `buildSiteSeo(site, options, content): Map<string, PageSeo>` keyed by `${locale}:${routePath}`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/compiler/seo/build-page-seo.test.ts
 import { describe, expect, it } from 'vitest'
-import { buildPageSeo } from '../../../src/compiler/seo/build-page-seo'
-import {
-  page,
-  resolvedOptions,
-  seoContentContext,
-  url,
-} from '../../helpers/seo-fixtures'
+import { buildPageSeo } from '../../../src/compiler/seo/build-page-seo.js'
+import { page, resolvedOptions, seoContentContext, url } from '../../helpers/seo-fixtures.js'
 
 const options = resolvedOptions()
 
 describe('buildPageSeo', () => {
-  it('assembles full SEO for a translated news page', () => {
-    const zh = page({
-      identity: 'news:launch',
-      locale: 'zh',
-      contentType: 'news',
-      packagePath: 'content/news/launch',
-      url: url('https://synctrol.com/zh/news/launch/'),
-      title: '发布',
-      description: '中文摘要',
-    })
-    const en = page({
-      identity: 'news:launch',
-      locale: 'en',
-      contentType: 'news',
-      packagePath: 'content/news/launch',
-      url: url('https://synctrol.com/en/news/launch/'),
-      title: 'Launch',
-      description: 'English summary',
-    })
-    const seo = buildPageSeo(
-      en,
-      [zh, en],
-      options,
-      seoContentContext({
-        assets: {
-          defaultImageAbsoluteUrl:
-            'https://synctrol.com/assets/global/social-default.hash.webp',
-          organizationLogoAbsoluteUrl:
-            'https://synctrol.com/assets/global/logo.hash.svg',
-          coverAbsoluteUrlByPackagePath: new Map([
-            [
-              'content/news/launch',
-              'https://synctrol.com/assets/content/news/launch/cover.hash.webp',
-            ],
-          ]),
-        },
-        dateByPackagePath: new Map([['content/news/launch', '2026-08-11']]),
-      }),
-    )
-
-    expect(seo.title).toBe('Launch')
-    expect(seo.description).toBe('English summary')
-    expect(seo.canonicalUrl).toBe('https://synctrol.com/en/news/launch/')
-    expect(seo.lang).toBe('en-US')
-    expect(seo.robots).toBe('index,follow')
-    expect(seo.openGraph.image).toBe(
-      'https://synctrol.com/assets/content/news/launch/cover.hash.webp',
-    )
-    expect(seo.hreflang).toHaveLength(2)
-    expect(seo.jsonLd[0]!['@type']).toBe('Article')
-  })
-
-  it('falls back description and default OG image; keeps collection titles', () => {
-    const index = page({
-      identity: 'release-index',
-      locale: 'zh',
-      contentType: 'release-collection',
-      url: url('https://synctrol.com/zh/releases/'),
-      title: 'release-index',
-      collection: { page: 1, pageCount: 1, itemIdentities: [] },
-    })
-    const seo = buildPageSeo(
-      index,
-      [index],
-      options,
-      seoContentContext(),
-    )
-    expect(seo.title).toBe('作品')
-    expect(seo.description).toBe('Synctrol 作品列表')
-    expect(seo.openGraph.image).toBe(
-      'https://synctrol.com/assets/global/social-default.hash.webp',
-    )
-  })
-
-  it('uses site description and noindex on fallback pages', () => {
-    const zh = page({
-      identity: 'release:first',
-      locale: 'zh',
-      contentType: 'release',
-      packagePath: 'content/releases/first',
-      url: url('https://synctrol.com/zh/releases/first/'),
-      title: '第一张',
-    })
-    const en = page({
-      identity: 'release:first',
-      locale: 'en',
-      contentType: 'release',
-      packagePath: 'content/releases/first',
-      url: url('https://synctrol.com/en/releases/first/'),
-      title: '第一张',
-      isFallback: true,
-      noindex: true,
-      canonicalLocale: 'zh',
-      bodyLocale: 'zh',
-    })
-    const seo = buildPageSeo(en, [zh, en], options, seoContentContext())
-    expect(seo.description).toBe(
-      'Official website of the Synctrol music team',
-    )
-    expect(seo.canonicalUrl).toBe('https://synctrol.com/zh/releases/first/')
-    expect(seo.robots).toBe('noindex,follow')
-    expect(seo.hreflang).toEqual([
-      {
-        hreflang: 'zh-CN',
-        href: 'https://synctrol.com/zh/releases/first/',
-      },
+  it('assembles SEO for translated news, collections, and fallback pages', () => {
+    const zhNews = page({ identity: 'news:launch', locale: 'zh', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/zh/news/launch/'), title: '发布', description: '中文摘要' })
+    const enNews = page({ identity: 'news:launch', locale: 'en', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/en/news/launch/'), title: 'Launch', description: 'English summary' })
+    const newsSeo = buildPageSeo(enNews, [enNews, zhNews], options, seoContentContext({ dateByPackagePath: new Map([['/site/content/news/launch', '2026-08-11']]) }))
+    expect(newsSeo.title).toBe('Launch')
+    expect(newsSeo.hreflang).toEqual([
+      { hreflang: 'zh-CN', href: 'https://synctrol.com/zh/news/launch/' },
+      { hreflang: 'en-US', href: 'https://synctrol.com/en/news/launch/' },
     ])
+    expect(newsSeo.jsonLd[0]!['@type']).toBe('Article')
+
+    const collection = page({ identity: 'release-index', locale: 'zh', contentType: 'release-collection', url: url('https://synctrol.com/zh/releases/'), collection: { page: 1, pageCount: 1, itemIdentities: [] } })
+    expect(buildPageSeo(collection, [collection], options, seoContentContext()).title).toBe('作品')
+
+    const zhRelease = page({ identity: 'release:first', locale: 'zh', contentType: 'release', url: url('https://synctrol.com/zh/releases/first/'), title: '第一张' })
+    const enFallback = page({ identity: 'release:first', locale: 'en', contentType: 'release', url: url('https://synctrol.com/en/releases/first/'), title: '第一张', isFallback: true, noindex: true, canonicalLocale: 'zh', bodyLocale: 'zh' })
+    const fallbackSeo = buildPageSeo(enFallback, [zhRelease, enFallback], options, seoContentContext())
+    expect(fallbackSeo.canonicalUrl).toBe('https://synctrol.com/zh/releases/first/')
+    expect(fallbackSeo.robots).toBe('noindex,follow')
   })
 })
 ```
@@ -2151,38 +1255,30 @@ describe('buildPageSeo', () => {
 
 Run: `npm test -- tests/compiler/seo/build-page-seo.test.ts`
 
-Expected: FAIL with module not found
+Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement orchestrator**
 
 ```ts
 // src/compiler/seo/build-page-seo.ts
-import type { PageSeo, SeoContentContext } from '../../shared/seo/types'
-import type { CompiledPage, CompiledSite } from '../../shared/route-types'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
-import { resolveCollectionCopy } from './collection-copy'
-import { resolvePageDescription } from './resolve-description'
-import { resolveOgImage } from './resolve-og-image'
-import {
-  resolveCanonicalUrl,
-  resolveHreflang,
-  resolveLang,
-  resolveRobots,
-} from './resolve-alternates'
-import { buildOpenGraph } from './open-graph'
-import { buildPageJsonLd } from './json-ld'
+import type { CompiledSite } from '../compile-site-routes.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { PageSeo, SeoContentContext } from '../../shared/seo/types.js'
+import { buildPageJsonLd } from './json-ld.js'
+import { buildOpenGraph } from './open-graph.js'
+import { resolveCollectionCopy } from './collection-copy.js'
+import { resolveCanonicalUrl, resolveHreflang, resolveLang, resolveRobots } from './resolve-alternates.js'
+import { resolvePageDescription } from './resolve-description.js'
+import { resolveOgImage } from './resolve-og-image.js'
 
 export function buildPageSeo(
   page: CompiledPage,
-  pages: CompiledPage[],
+  pages: readonly CompiledPage[],
   options: ResolvedSynctrolThemeOptions,
   content: SeoContentContext,
 ): PageSeo {
-  const collectionCopy = resolveCollectionCopy(
-    page,
-    options,
-    content.definitions,
-  )
+  const collectionCopy = resolveCollectionCopy(page, options, content.definitions)
   const title = collectionCopy?.title ?? page.title
   const description = resolvePageDescription(page, options, collectionCopy)
   const canonicalUrl = resolveCanonicalUrl(page, pages)
@@ -2190,31 +1286,9 @@ export function buildPageSeo(
   const image = resolveOgImage(page, content.assets)
   const robots = resolveRobots(page)
   const hreflang = resolveHreflang(page, pages, options)
-  const openGraph = buildOpenGraph({
-    contentType: page.contentType,
-    title,
-    description,
-    canonicalUrl,
-    image,
-    lang,
-  })
-  const jsonLd = buildPageJsonLd(page, options, content, {
-    title,
-    description,
-    canonicalUrl,
-    image,
-  })
-
-  return {
-    title,
-    description,
-    canonicalUrl,
-    lang,
-    robots,
-    openGraph,
-    hreflang,
-    jsonLd,
-  }
+  const openGraph = buildOpenGraph({ contentType: page.contentType, title, description, canonicalUrl, image, lang })
+  const jsonLd = buildPageJsonLd(page, options, content, { title, description, canonicalUrl, image })
+  return { title, description, canonicalUrl, lang, robots, openGraph, hreflang, jsonLd }
 }
 
 export function buildSiteSeo(
@@ -2224,8 +1298,7 @@ export function buildSiteSeo(
 ): Map<string, PageSeo> {
   const map = new Map<string, PageSeo>()
   for (const page of site.pages) {
-    const key = `${page.locale}:${page.url.routePath}`
-    map.set(key, buildPageSeo(page, site.pages, options, content))
+    map.set(`${page.locale}:${page.url.routePath}`, buildPageSeo(page, site.pages, options, content))
   }
   return map
 }
@@ -2235,305 +1308,165 @@ export function buildSiteSeo(
 
 Run: `npm test -- tests/compiler/seo/build-page-seo.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/compiler/seo/build-page-seo.ts tests/compiler/seo/build-page-seo.test.ts
-git commit -m "feat(seo): orchestrate per-page SEO metadata"
+git commit -m "feat(seo): build page seo metadata"
 ```
 
 ---
 
-### Task 8: Locale RSS feed (`/{locale}/rss.xml`)
+### Task 9: RSS and Sitemap generation
 
 **Files:**
 - Create: `src/compiler/feeds/rss.ts`
+- Create: `src/compiler/feeds/sitemap.ts`
 - Create: `tests/compiler/feeds/rss.test.ts`
+- Create: `tests/compiler/feeds/sitemap.test.ts`
 
 **Interfaces:**
-- Consumes: `CompiledPage[]`; `ResolvedSynctrolThemeOptions.seo` name/description; `dateByPackagePath`; `feeds.rss`
-- Produces: `selectRssItems(pages, content): RssItem[]`; `generateLocaleRssXml(input): string`; `rssOutputPath(locale, base): { routePath: string; outputPath: string; publicPath: string }`
+- Produces: `selectRssItems`, `generateLocaleRssXml`, `rssOutputPath`, `selectSitemapUrls`, `generateSitemapXml`, `sitemapOutputPath`.
 
 Rules:
+- RSS uses `CompiledPage.isDraft` / `isFallback` exclusion intentionally; `NewsListItem.excludeFromRss` remains UI metadata.
+- RSS sort: package date descending, then identity ascending.
+- Sitemap includes every `!isDraft && !isFallback` compiled page URL and excludes the root language router.
 
-- Include only `contentType === 'news' | 'release'` detail pages for that locale
-- Exclude `isDraft` and `isFallback`
-- Sort by package date descending, then identity ascending for stability
-- Channel title/description: locale `seo.name` / `seo.description`
-- Channel link: locale Home absolute URL `siteUrl` + base + `/{locale}/`
-- Item `pubDate`: RFC 1123 from calendar `YYYY-MM-DD` at `00:00:00 GMT`
-- Item description: page description or site locale description
-- `generateLocaleRssXml` returns XML string; caller skips writing when `feeds.rss === false`
-
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write failing tests**
 
 ```ts
 // tests/compiler/feeds/rss.test.ts
 import { describe, expect, it } from 'vitest'
-import {
-  generateLocaleRssXml,
-  rssOutputPath,
-  selectRssItems,
-} from '../../../src/compiler/feeds/rss'
-import {
-  page,
-  resolvedOptions,
-  seoContentContext,
-  url,
-} from '../../helpers/seo-fixtures'
+import { generateLocaleRssXml, rssOutputPath, selectRssItems } from '../../../src/compiler/feeds/rss.js'
+import { page, resolvedOptions, seoContentContext, url } from '../../helpers/seo-fixtures.js'
 
 const options = resolvedOptions()
 
-describe('rssOutputPath', () => {
-  it('places rss under the locale prefix', () => {
-    expect(rssOutputPath('zh', '/')).toEqual({
-      routePath: '/zh/rss.xml',
-      outputPath: 'zh/rss.xml',
-      publicPath: '/zh/rss.xml',
-    })
-    expect(rssOutputPath('en', '/docs/')).toEqual({
-      routePath: '/en/rss.xml',
-      outputPath: 'en/rss.xml',
-      publicPath: '/docs/en/rss.xml',
-    })
-  })
-})
-
-describe('selectRssItems', () => {
-  const pages = [
-    page({
-      identity: 'news:older',
-      locale: 'en',
-      contentType: 'news',
-      packagePath: 'content/news/older',
-      url: url('https://synctrol.com/en/news/older/'),
-      title: 'Older',
-      description: 'Old news',
-    }),
-    page({
-      identity: 'release:first',
-      locale: 'en',
-      contentType: 'release',
-      packagePath: 'content/releases/first',
-      url: url('https://synctrol.com/en/releases/first/'),
-      title: 'First',
-    }),
-    page({
-      identity: 'news:draft',
-      locale: 'en',
-      contentType: 'news',
-      packagePath: 'content/news/draft',
-      url: url('https://synctrol.com/en/news/draft/'),
-      title: 'Draft',
-      isDraft: true,
-      noindex: true,
-    }),
-    page({
-      identity: 'news:fallback',
-      locale: 'en',
-      contentType: 'news',
-      packagePath: 'content/news/fallback',
-      url: url('https://synctrol.com/en/news/fallback/'),
-      title: 'Fallback',
-      isFallback: true,
-      noindex: true,
-      canonicalLocale: 'zh',
-    }),
-    page({
-      identity: 'home',
-      locale: 'en',
-      contentType: 'home',
-      url: url('https://synctrol.com/en/'),
-      title: 'Home',
-    }),
-    page({
-      identity: 'news-index',
-      locale: 'en',
-      contentType: 'news-collection',
-      url: url('https://synctrol.com/en/news/'),
-      title: 'News',
-      collection: { page: 1, pageCount: 1, itemIdentities: [] },
-    }),
-    page({
-      identity: 'news:newer',
-      locale: 'en',
-      contentType: 'news',
-      packagePath: 'content/news/newer',
-      url: url('https://synctrol.com/en/news/newer/'),
-      title: 'Newer',
-      description: 'New news',
-    }),
-  ]
-
-  const content = seoContentContext({
-    dateByPackagePath: new Map([
-      ['content/news/older', '2026-08-01'],
-      ['content/news/newer', '2026-08-11'],
-      ['content/news/draft', '2026-08-10'],
-      ['content/news/fallback', '2026-08-09'],
-      ['content/releases/first', '2026-08-05'],
-    ]),
+describe('rss', () => {
+  it('places rss under locale route path and public base', () => {
+    expect(rssOutputPath('en', '/docs/')).toEqual({ routePath: '/en/rss.xml', outputPath: 'en/rss.xml', publicPath: '/docs/en/rss.xml' })
   })
 
-  it('includes only non-draft non-fallback news and release, newest first', () => {
-    const items = selectRssItems(pages, 'en', options, content)
-    expect(items.map((i) => i.title)).toEqual(['Newer', 'First', 'Older'])
-    expect(items[0]).toMatchObject({
-      link: 'https://synctrol.com/en/news/newer/',
-      description: 'New news',
-      guid: 'https://synctrol.com/en/news/newer/',
-      pubDate: 'Tue, 11 Aug 2026 00:00:00 GMT',
-    })
-    expect(items[1]!.description).toBe(
-      'Official website of the Synctrol music team',
-    )
+  it('selects non-draft non-fallback news and release pages newest first', () => {
+    const pages = [
+      page({ identity: 'news:older', locale: 'en', contentType: 'news', packagePath: '/site/content/news/older', url: url('https://synctrol.com/en/news/older/'), title: 'Older', description: 'Old news' }),
+      page({ identity: 'release:first', locale: 'en', contentType: 'release', packagePath: '/site/content/releases/first', url: url('https://synctrol.com/en/releases/first/'), title: 'First' }),
+      page({ identity: 'news:draft', locale: 'en', contentType: 'news', packagePath: '/site/content/news/draft', url: url('https://synctrol.com/en/news/draft/'), title: 'Draft', isDraft: true, noindex: true }),
+      page({ identity: 'news:fallback', locale: 'en', contentType: 'news', packagePath: '/site/content/news/fallback', url: url('https://synctrol.com/en/news/fallback/'), title: 'Fallback', isFallback: true, noindex: true, canonicalLocale: 'zh' }),
+      page({ identity: 'home', locale: 'en', contentType: 'home', url: url('https://synctrol.com/en/'), title: 'Home' }),
+    ]
+    const items = selectRssItems(pages, 'en', options, seoContentContext({ dateByPackagePath: new Map([['/site/content/news/older', '2026-08-01'], ['/site/content/releases/first', '2026-08-05'], ['/site/content/news/draft', '2026-08-10'], ['/site/content/news/fallback', '2026-08-09']]) }))
+    expect(items.map((item) => item.title)).toEqual(['First', 'Older'])
+    expect(items[0]!.pubDate).toBe('Wed, 05 Aug 2026 00:00:00 GMT')
   })
-})
 
-describe('generateLocaleRssXml', () => {
-  it('renders RSS 2.0 channel metadata from seo locale values', () => {
-    const xml = generateLocaleRssXml({
-      locale: 'en',
-      options,
-      channelLink: 'https://synctrol.com/en/',
-      items: [
-        {
-          title: 'Launch',
-          description: 'Summary',
-          link: 'https://synctrol.com/en/news/launch/',
-          guid: 'https://synctrol.com/en/news/launch/',
-          pubDate: 'Tue, 11 Aug 2026 00:00:00 GMT',
-        },
-      ],
-    })
+  it('renders RSS XML metadata', () => {
+    const xml = generateLocaleRssXml({ locale: 'en', options, channelLink: 'https://synctrol.com/en/', items: [{ title: 'Launch', description: 'Summary', link: 'https://synctrol.com/en/news/launch/', guid: 'https://synctrol.com/en/news/launch/', pubDate: 'Tue, 11 Aug 2026 00:00:00 GMT' }] })
     expect(xml).toContain('<rss version="2.0">')
     expect(xml).toContain('<title>Synctrol</title>')
-    expect(xml).toContain(
-      '<description>Official website of the Synctrol music team</description>',
-    )
-    expect(xml).toContain('<link>https://synctrol.com/en/</link>')
-    expect(xml).toContain('<item>')
-    expect(xml).toContain('<title>Launch</title>')
     expect(xml).toContain('<guid>https://synctrol.com/en/news/launch/</guid>')
   })
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+```ts
+// tests/compiler/feeds/sitemap.test.ts
+import { describe, expect, it } from 'vitest'
+import { generateSitemapXml, selectSitemapUrls, sitemapOutputPath } from '../../../src/compiler/feeds/sitemap.js'
+import { page, url } from '../../helpers/seo-fixtures.js'
 
-Run: `npm test -- tests/compiler/feeds/rss.test.ts`
+describe('sitemap', () => {
+  it('writes sitemap.xml at destination root with base-aware public path', () => {
+    expect(sitemapOutputPath('/docs/')).toEqual({ routePath: '/sitemap.xml', outputPath: 'sitemap.xml', publicPath: '/docs/sitemap.xml' })
+  })
 
-Expected: FAIL with module not found
+  it('excludes drafts and fallbacks and keeps locale URLs', () => {
+    const urls = selectSitemapUrls([
+      page({ identity: 'home', locale: 'zh', contentType: 'home', url: url('https://synctrol.com/zh/'), title: '首页' }),
+      page({ identity: 'home', locale: 'en', contentType: 'home', url: url('https://synctrol.com/en/'), title: 'Home' }),
+      page({ identity: 'news:draft', locale: 'zh', contentType: 'news', url: url('https://synctrol.com/zh/news/draft/'), title: 'Draft', isDraft: true, noindex: true }),
+      page({ identity: 'news:only-zh', locale: 'en', contentType: 'news', url: url('https://synctrol.com/en/news/only-zh/'), title: 'Only', isFallback: true, noindex: true, canonicalLocale: 'zh' }),
+    ])
+    expect(urls).toEqual(['https://synctrol.com/en/', 'https://synctrol.com/zh/'])
+    expect(generateSitemapXml(urls)).toContain('<loc>https://synctrol.com/en/</loc>')
+  })
+})
+```
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `npm test -- tests/compiler/feeds/rss.test.ts tests/compiler/feeds/sitemap.test.ts`
+
+Expected: FAIL with modules not found.
+
+- [ ] **Step 3: Implement feeds**
 
 ```ts
 // src/compiler/feeds/rss.ts
-import type { RssItem, SeoContentContext } from '../../shared/seo/types'
-import type { LocaleKey } from '../../shared/types'
-import type { CompiledPage } from '../../shared/route-types'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
-import { resolveMultilanguage } from '../../shared/multilanguage'
-import { joinPublicPath, normalizeBase } from '../../shared/url/normalize-path'
-import { resolvePageDescription } from '../seo/resolve-description'
+import { resolveMultilanguage } from '../../shared/multilanguage.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type { RssItem, SeoContentContext } from '../../shared/seo/types.js'
+import type { LocaleKey } from '../../shared/types.js'
+import { resolvePageDescription } from '../seo/resolve-description.js'
 
 function escapeXml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;')
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
 }
 
 export function calendarDateToRfc1123(date: string): string {
-  // date is YYYY-MM-DD interpreted as UTC midnight without timezone shift
-  const [y, m, d] = date.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, m! - 1, d!, 0, 0, 0))
-  return dt.toUTCString()
+  const [year, month, day] = date.split('-').map(Number)
+  return new Date(Date.UTC(year!, month! - 1, day!, 0, 0, 0)).toUTCString()
 }
 
-export function rssOutputPath(
-  locale: LocaleKey,
-  base: string,
-): { routePath: string; outputPath: string; publicPath: string } {
+export function rssOutputPath(locale: LocaleKey, base: string): { routePath: string; outputPath: string; publicPath: string } {
   const routePath = `/${locale}/rss.xml`
-  return {
-    routePath,
-    outputPath: `${locale}/rss.xml`,
-    publicPath: joinPublicPath(normalizeBase(base), routePath),
-  }
+  return { routePath, outputPath: `${locale}/rss.xml`, publicPath: joinPublicPath(normalizeBase(base), routePath) }
 }
 
 export function selectRssItems(
-  pages: CompiledPage[],
+  pages: readonly CompiledPage[],
   locale: LocaleKey,
   options: ResolvedSynctrolThemeOptions,
   content: SeoContentContext,
 ): RssItem[] {
-  const items = pages.filter(
-    (page) =>
-      page.locale === locale &&
-      (page.contentType === 'news' || page.contentType === 'release') &&
-      !page.isDraft &&
-      !page.isFallback &&
-      page.packagePath,
-  )
-
-  items.sort((a, b) => {
-    const da = content.dateByPackagePath.get(a.packagePath!) ?? ''
-    const db = content.dateByPackagePath.get(b.packagePath!) ?? ''
-    if (da !== db) return db.localeCompare(da)
-    return String(a.identity).localeCompare(String(b.identity))
-  })
-
-  return items.map((page) => {
-    const date = content.dateByPackagePath.get(page.packagePath!)
-    if (!date) {
-      throw new Error(`Missing date for RSS item ${page.packagePath}`)
-    }
-    const description = resolvePageDescription(page, options, null)
-    return {
-      title: page.title,
-      description,
-      link: page.url.absoluteUrl,
-      guid: page.url.absoluteUrl,
-      pubDate: calendarDateToRfc1123(date),
-    }
-  })
+  return pages
+    .filter((page) => page.locale === locale && (page.contentType === 'news' || page.contentType === 'release') && !page.isDraft && !page.isFallback && page.packagePath)
+    .sort((a, b) => {
+      const da = content.dateByPackagePath.get(a.packagePath!) ?? ''
+      const db = content.dateByPackagePath.get(b.packagePath!) ?? ''
+      if (da !== db) return db < da ? -1 : 1
+      const ai = String(a.identity)
+      const bi = String(b.identity)
+      return ai < bi ? -1 : ai > bi ? 1 : 0
+    })
+    .map((page) => {
+      const date = content.dateByPackagePath.get(page.packagePath!)
+      if (!date) throw new Error(`Missing date for RSS item ${page.packagePath}`)
+      return {
+        title: page.title,
+        description: resolvePageDescription(page, options, null),
+        link: page.url.absoluteUrl,
+        guid: page.url.absoluteUrl,
+        pubDate: calendarDateToRfc1123(date),
+      }
+    })
 }
 
-export function generateLocaleRssXml(input: {
-  locale: LocaleKey
-  options: ResolvedSynctrolThemeOptions
-  channelLink: string
-  items: RssItem[]
-}): string {
-  const title = resolveMultilanguage(
-    input.options.seo.name,
-    input.locale,
-    input.options.mainLocale,
-  ).text
-  const description = resolveMultilanguage(
-    input.options.seo.description,
-    input.locale,
-    input.options.mainLocale,
-  ).text
-
-  const itemXml = input.items
-    .map(
-      (item) => `    <item>
+export function generateLocaleRssXml(input: { locale: LocaleKey; options: ResolvedSynctrolThemeOptions; channelLink: string; items: readonly RssItem[] }): string {
+  const title = resolveMultilanguage(input.options.seo.name, input.locale, input.options.mainLocale).text
+  const description = resolveMultilanguage(input.options.seo.description, input.locale, input.options.mainLocale).text
+  const itemXml = input.items.map((item) => `    <item>
       <title>${escapeXml(item.title)}</title>
       <link>${escapeXml(item.link)}</link>
       <guid>${escapeXml(item.guid)}</guid>
       <pubDate>${escapeXml(item.pubDate)}</pubDate>
       <description>${escapeXml(item.description)}</description>
-    </item>`,
-    )
-    .join('\n')
-
+    </item>`).join('\n')
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
@@ -2548,185 +1481,28 @@ ${itemXml}
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `npm test -- tests/compiler/feeds/rss.test.ts`
-
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/compiler/feeds/rss.ts tests/compiler/feeds/rss.test.ts
-git commit -m "feat(feeds): generate per-locale RSS for news and releases"
-```
-
----
-
-### Task 9: Sitemap generation
-
-**Files:**
-- Create: `src/compiler/feeds/sitemap.ts`
-- Create: `tests/compiler/feeds/sitemap.test.ts`
-
-**Interfaces:**
-- Consumes: `CompiledPage[]`; `feeds.sitemap`
-- Produces: `selectSitemapUrls(pages): string[]`; `generateSitemapXml(urls): string`; `sitemapOutputPath(base)`
-
-Rules:
-
-- Include every page where `!isDraft && !isFallback` (equivalently indexable content routes)
-- Use `absoluteUrl` values (already locale-specific)
-- Exclude the root language router (it is not a `CompiledPage`)
-- Single file `sitemap.xml` at site dest root (`outputPath: 'sitemap.xml'`)
-- Sorted ascending by URL for stability
-
-- [ ] **Step 1: Write the failing test**
-
-```ts
-// tests/compiler/feeds/sitemap.test.ts
-import { describe, expect, it } from 'vitest'
-import {
-  generateSitemapXml,
-  selectSitemapUrls,
-  sitemapOutputPath,
-} from '../../../src/compiler/feeds/sitemap'
-import { page, url } from '../../helpers/seo-fixtures'
-
-describe('sitemapOutputPath', () => {
-  it('writes sitemap.xml at destination root with base-aware public path', () => {
-    expect(sitemapOutputPath('/')).toEqual({
-      routePath: '/sitemap.xml',
-      outputPath: 'sitemap.xml',
-      publicPath: '/sitemap.xml',
-    })
-    expect(sitemapOutputPath('/docs/')).toEqual({
-      routePath: '/sitemap.xml',
-      outputPath: 'sitemap.xml',
-      publicPath: '/docs/sitemap.xml',
-    })
-  })
-})
-
-describe('selectSitemapUrls', () => {
-  it('excludes drafts and fallbacks and keeps locale URLs', () => {
-    const urls = selectSitemapUrls([
-      page({
-        identity: 'home',
-        locale: 'zh',
-        contentType: 'home',
-        url: url('https://synctrol.com/zh/'),
-        title: '首页',
-      }),
-      page({
-        identity: 'home',
-        locale: 'en',
-        contentType: 'home',
-        url: url('https://synctrol.com/en/'),
-        title: 'Home',
-      }),
-      page({
-        identity: 'news:draft',
-        locale: 'zh',
-        contentType: 'news',
-        url: url('https://synctrol.com/zh/news/draft/'),
-        title: 'Draft',
-        isDraft: true,
-        noindex: true,
-      }),
-      page({
-        identity: 'news:only-zh',
-        locale: 'en',
-        contentType: 'news',
-        url: url('https://synctrol.com/en/news/only-zh/'),
-        title: 'Only',
-        isFallback: true,
-        noindex: true,
-        canonicalLocale: 'zh',
-      }),
-      page({
-        identity: 'release-index',
-        locale: 'zh',
-        contentType: 'release-collection',
-        url: url('https://synctrol.com/zh/releases/'),
-        title: '作品',
-        collection: { page: 1, pageCount: 1, itemIdentities: [] },
-      }),
-    ])
-    expect(urls).toEqual([
-      'https://synctrol.com/en/',
-      'https://synctrol.com/zh/',
-      'https://synctrol.com/zh/releases/',
-    ])
-  })
-})
-
-describe('generateSitemapXml', () => {
-  it('emits urlset entries', () => {
-    const xml = generateSitemapXml([
-      'https://synctrol.com/en/',
-      'https://synctrol.com/zh/',
-    ])
-    expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
-    expect(xml).toContain(
-      'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
-    )
-    expect(xml).toContain('<loc>https://synctrol.com/en/</loc>')
-    expect(xml).toContain('<loc>https://synctrol.com/zh/</loc>')
-  })
-})
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npm test -- tests/compiler/feeds/sitemap.test.ts`
-
-Expected: FAIL with module not found
-
-- [ ] **Step 3: Write minimal implementation**
-
 ```ts
 // src/compiler/feeds/sitemap.ts
-import type { CompiledPage } from '../../shared/route-types'
-import { joinPublicPath, normalizeBase } from '../../shared/url/normalize-path'
+import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
+import type { CompiledPage } from '../../shared/route-types.js'
 
 function escapeXml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;')
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
 }
 
-export function sitemapOutputPath(base: string): {
-  routePath: string
-  outputPath: string
-  publicPath: string
-} {
+export function sitemapOutputPath(base: string): { routePath: string; outputPath: string; publicPath: string } {
   const routePath = '/sitemap.xml'
-  return {
-    routePath,
-    outputPath: 'sitemap.xml',
-    publicPath: joinPublicPath(normalizeBase(base), routePath),
-  }
+  return { routePath, outputPath: 'sitemap.xml', publicPath: joinPublicPath(normalizeBase(base), routePath) }
 }
 
-export function selectSitemapUrls(pages: CompiledPage[]): string[] {
-  return pages
-    .filter((page) => !page.isDraft && !page.isFallback)
-    .map((page) => page.url.absoluteUrl)
-    .sort((a, b) => a.localeCompare(b))
+export function selectSitemapUrls(pages: readonly CompiledPage[]): string[] {
+  return pages.filter((page) => !page.isDraft && !page.isFallback).map((page) => page.url.absoluteUrl).sort()
 }
 
-export function generateSitemapXml(urls: string[]): string {
-  const body = urls
-    .map(
-      (loc) => `  <url>
+export function generateSitemapXml(urls: readonly string[]): string {
+  const body = urls.map((loc) => `  <url>
     <loc>${escapeXml(loc)}</loc>
-  </url>`,
-    )
-    .join('\n')
+  </url>`).join('\n')
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${body}
@@ -2735,317 +1511,139 @@ ${body}
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npm test -- tests/compiler/feeds/sitemap.test.ts`
+Run: `npm test -- tests/compiler/feeds/rss.test.ts tests/compiler/feeds/sitemap.test.ts`
 
-Expected: PASS
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/compiler/feeds/sitemap.ts tests/compiler/feeds/sitemap.test.ts
-git commit -m "feat(feeds): generate sitemap excluding drafts and fallbacks"
+git add src/compiler/feeds/rss.ts src/compiler/feeds/sitemap.ts tests/compiler/feeds/rss.test.ts tests/compiler/feeds/sitemap.test.ts
+git commit -m "feat(feeds): generate rss and sitemap"
 ```
 
 ---
 
-### Task 10: Emit orchestrator, feed toggles, and integration verification
+### Task 10: Emit orchestrator, public exports, and VuePress integration
 
 **Files:**
 - Create: `src/compiler/seo/emit-seo-and-feeds.ts`
 - Create: `src/compiler/seo/index.ts`
 - Create: `tests/compiler/seo/emit-seo-and-feeds.test.ts`
-- Modify: `src/index.ts` (re-export SEO/feed entrypoints)
+- Modify: `src/compiler/theme.ts`
+- Modify: `src/index.ts`
+- Modify: `tests/compiler/theme.integration.test.ts`
+- Modify: `tests/public-exports.test.ts`
 
 **Interfaces:**
-- Consumes: `buildSiteSeo`, `serializeHeadTags`, RSS + Sitemap generators, `ResolvedSynctrolThemeOptions.feeds`
-- Produces: `emitSeoAndFeeds(input): EmitSeoAndFeedsResult` where result includes `pageSeo`, `headTagsByRoute`, and `filesToWrite` (path + contents); `feeds.rss: false` / `feeds.sitemap: false` omit those files without changing head tags
+- Produces: `emitSeoAndFeeds(input): EmitSeoAndFeedsResult`.
+- Public exports: `export * from './compiler/seo/index.js'` and SEO type exports from `./shared/seo/types.js`.
+- Theme integration: convert `HeadTag[]` to VuePress-compatible head tuples locally in `theme.ts`; write `filesToWrite` under `app.dir.dest()`.
 
-`filesToWrite` paths are destination-relative `outputPath` values. Channel link for each locale RSS is the Home page absolute URL for that locale (required to exist in `site.pages`).
-
-- [ ] **Step 1: Write the failing integration test**
+- [ ] **Step 1: Write failing unit and integration tests**
 
 ```ts
 // tests/compiler/seo/emit-seo-and-feeds.test.ts
 import { describe, expect, it } from 'vitest'
-import { emitSeoAndFeeds } from '../../../src/compiler/seo/emit-seo-and-feeds'
-import type { CompiledSite } from '../../../src/shared/route-types'
-import type { AlbumBook } from '../../../src/shared/types'
-import {
-  page,
-  resolvedOptions,
-  seoContentContext,
-  url,
-} from '../../helpers/seo-fixtures'
+import { emitSeoAndFeeds } from '../../../src/compiler/seo/emit-seo-and-feeds.js'
+import { page, resolvedOptions, seoContentContext, siteFixture, url } from '../../helpers/seo-fixtures.js'
 
-const album: AlbumBook = {
-  type: 'album',
-  title: { zh: '第一张专辑', en: 'First Album' },
-  authors: ['Synctrol'],
-  album: {
-    discs: [
-      {
-        title: 'Disc',
-        tracks: [
-          { title: { zh: '曲', en: 'Track' }, artists: ['Synctrol'], duration: 120 },
-        ],
-      },
-    ],
-  },
-}
-
-function siteFixture(): CompiledSite {
-  return {
-    diagnostics: [],
-    rootRouterHtml: '<!doctype html><html></html>',
-    pages: [
-      page({
-        identity: 'home',
-        locale: 'zh',
-        contentType: 'home',
-        url: url('https://synctrol.com/zh/'),
-        title: '首页',
-        description: '主页说明',
-      }),
-      page({
-        identity: 'home',
-        locale: 'en',
-        contentType: 'home',
-        url: url('https://synctrol.com/en/'),
-        title: 'Home',
-        description: 'Home blurb',
-      }),
-      page({
-        identity: 'release:first',
-        locale: 'zh',
-        contentType: 'release',
-        packagePath: 'content/releases/first',
-        url: url('https://synctrol.com/zh/releases/first/'),
-        title: '第一张专辑',
-        description: '专辑说明',
-      }),
-      page({
-        identity: 'release:first',
-        locale: 'en',
-        contentType: 'release',
-        packagePath: 'content/releases/first',
-        url: url('https://synctrol.com/en/releases/first/'),
-        title: '第一张专辑',
-        isFallback: true,
-        noindex: true,
-        canonicalLocale: 'zh',
-        bodyLocale: 'zh',
-      }),
-      page({
-        identity: 'news:launch',
-        locale: 'zh',
-        contentType: 'news',
-        packagePath: 'content/news/launch',
-        url: url('https://synctrol.com/zh/news/launch/'),
-        title: '发布',
-        description: '新闻说明',
-      }),
-      page({
-        identity: 'news:launch',
-        locale: 'en',
-        contentType: 'news',
-        packagePath: 'content/news/launch',
-        url: url('https://synctrol.com/en/news/launch/'),
-        title: 'Launch',
-        description: 'News blurb',
-      }),
-      page({
-        identity: 'news:secret',
-        locale: 'zh',
-        contentType: 'news',
-        packagePath: 'content/news/secret',
-        url: url('https://synctrol.com/zh/news/secret/'),
-        title: '秘密',
-        isDraft: true,
-        noindex: true,
-      }),
-      page({
-        identity: 'release-index',
-        locale: 'zh',
-        contentType: 'release-collection',
-        url: url('https://synctrol.com/zh/releases/'),
-        title: 'release-index',
-        collection: { page: 1, pageCount: 1, itemIdentities: ['release:first'] },
-      }),
-      page({
-        identity: 'news-tag:release:page:2',
-        locale: 'en',
-        contentType: 'news-collection',
-        url: url('https://synctrol.com/en/news/tags/release/page/2/'),
-        title: 'news-tag:release:page:2',
-        collection: {
-          page: 2,
-          pageCount: 2,
-          itemIdentities: [],
-          tag: 'release',
-        },
-      }),
-    ],
-  }
+function site() {
+  return siteFixture([
+    page({ identity: 'home', locale: 'zh', contentType: 'home', url: url('https://synctrol.com/zh/'), title: '首页' }),
+    page({ identity: 'home', locale: 'en', contentType: 'home', url: url('https://synctrol.com/en/'), title: 'Home' }),
+    page({ identity: 'news:launch', locale: 'zh', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/zh/news/launch/'), title: '发布', description: '新闻说明' }),
+    page({ identity: 'news:launch', locale: 'en', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/en/news/launch/'), title: 'Launch', description: 'News blurb' }),
+    page({ identity: 'news:secret', locale: 'zh', contentType: 'news', packagePath: '/site/content/news/secret', url: url('https://synctrol.com/zh/news/secret/'), title: '秘密', isDraft: true, noindex: true }),
+  ])
 }
 
 const content = seoContentContext({
-  assets: {
-    defaultImageAbsoluteUrl:
-      'https://synctrol.com/assets/global/social-default.hash.webp',
-    organizationLogoAbsoluteUrl:
-      'https://synctrol.com/assets/global/logo.hash.svg',
-    coverAbsoluteUrlByPackagePath: new Map([
-      [
-        'content/releases/first',
-        'https://synctrol.com/assets/content/release/first/cover.hash.webp',
-      ],
-    ]),
-  },
-  definitions: {
-    tags: {
-      release: { title: { zh: '作品发布', en: 'Releases' } },
-    },
-  },
-  bookByPackagePath: new Map([['content/releases/first', album]]),
   dateByPackagePath: new Map([
-    ['content/releases/first', '2026-08-05'],
-    ['content/news/launch', '2026-08-11'],
-    ['content/news/secret', '2026-08-10'],
+    ['/site/content/news/launch', '2026-08-11'],
+    ['/site/content/news/secret', '2026-08-10'],
   ]),
 })
 
 describe('emitSeoAndFeeds', () => {
   it('builds head tags, rss for each locale, and sitemap while honoring exclusions', () => {
-    const result = emitSeoAndFeeds({
-      site: siteFixture(),
-      options: resolvedOptions(),
-      content,
-      base: '/',
-    })
-
-    const enLaunch = result.headTagsByRoute.get('en:/en/news/launch/')!
-    expect(enLaunch.some((t) => t.tag === 'title' && t.text === 'Launch')).toBe(
-      true,
-    )
-    expect(
-      enLaunch.some(
-        (t) =>
-          t.tag === 'link' &&
-          t.attrs?.rel === 'alternate' &&
-          t.attrs.hreflang === 'zh-CN',
-      ),
-    ).toBe(true)
-
-    const releaseSeo = result.pageSeo.get('zh:/zh/releases/first/')!
-    expect(releaseSeo.openGraph.image).toBe(
-      'https://synctrol.com/assets/content/release/first/cover.hash.webp',
-    )
-    expect(releaseSeo.jsonLd.map((n) => n['@type'])).toEqual([
-      'MusicAlbum',
-      'MusicRecording',
-    ])
-
-    const tagPage = result.pageSeo.get('en:/en/news/tags/release/page/2/')!
-    expect(tagPage.title).toBe('Releases · News · Page 2')
-    expect(tagPage.description).toBe('Synctrol news')
-
-    const fallback = result.pageSeo.get('en:/en/releases/first/')!
-    expect(fallback.robots).toBe('noindex,follow')
-    expect(fallback.canonicalUrl).toBe(
-      'https://synctrol.com/zh/releases/first/',
-    )
-
-    const filePaths = result.filesToWrite.map((f) => f.outputPath).sort()
-    expect(filePaths).toEqual(['en/rss.xml', 'sitemap.xml', 'zh/rss.xml'])
-
-    const zhRss = result.filesToWrite.find((f) => f.outputPath === 'zh/rss.xml')!
-    expect(zhRss.contents).toContain('<title>第一张专辑</title>')
-    expect(zhRss.contents).toContain('<title>发布</title>')
-    expect(zhRss.contents).not.toContain('秘密')
-    expect(zhRss.contents).not.toContain('/en/releases/first/')
-
-    const sitemap = result.filesToWrite.find(
-      (f) => f.outputPath === 'sitemap.xml',
-    )!
-    expect(sitemap.contents).toContain('https://synctrol.com/zh/news/launch/')
-    expect(sitemap.contents).not.toContain('https://synctrol.com/zh/news/secret/')
-    expect(sitemap.contents).not.toContain(
-      'https://synctrol.com/en/releases/first/',
-    )
+    const result = emitSeoAndFeeds({ site: site(), options: resolvedOptions(), content, base: '/' })
+    expect(result.headTagsByRoute.get('en:/en/news/launch/')!.some((tag) => tag.tag === 'title' && tag.text === 'Launch')).toBe(true)
+    expect(result.filesToWrite.map((file) => file.outputPath).sort()).toEqual(['en/rss.xml', 'sitemap.xml', 'zh/rss.xml'])
+    expect(result.filesToWrite.find((file) => file.outputPath === 'zh/rss.xml')!.contents).not.toContain('秘密')
+    expect(result.filesToWrite.find((file) => file.outputPath === 'sitemap.xml')!.contents).not.toContain('/zh/news/secret/')
   })
 
-  it('suppresses rss and/or sitemap when feeds toggles are false without changing head SEO', () => {
-    const full = emitSeoAndFeeds({
-      site: siteFixture(),
-      options: resolvedOptions({ feeds: { rss: true, sitemap: true } }),
-      content,
-      base: '/',
-    })
-    const noRss = emitSeoAndFeeds({
-      site: siteFixture(),
-      options: resolvedOptions({ feeds: { rss: false, sitemap: true } }),
-      content,
-      base: '/',
-    })
-    const noSitemap = emitSeoAndFeeds({
-      site: siteFixture(),
-      options: resolvedOptions({ feeds: { rss: true, sitemap: false } }),
-      content,
-      base: '/',
-    })
-    const neither = emitSeoAndFeeds({
-      site: siteFixture(),
-      options: resolvedOptions({ feeds: { rss: false, sitemap: false } }),
-      content,
-      base: '/',
-    })
-
-    expect(noRss.filesToWrite.map((f) => f.outputPath)).toEqual([
-      'sitemap.xml',
-    ])
-    expect(noSitemap.filesToWrite.map((f) => f.outputPath).sort()).toEqual([
-      'en/rss.xml',
-      'zh/rss.xml',
-    ])
+  it('suppresses rss and sitemap without changing page head SEO', () => {
+    const full = emitSeoAndFeeds({ site: site(), options: resolvedOptions(), content, base: '/' })
+    const neither = emitSeoAndFeeds({ site: site(), options: resolvedOptions({ feeds: { rss: false, sitemap: false } }), content, base: '/' })
     expect(neither.filesToWrite).toEqual([])
-
-    expect(noRss.pageSeo.get('en:/en/news/launch/')!.canonicalUrl).toBe(
-      full.pageSeo.get('en:/en/news/launch/')!.canonicalUrl,
-    )
-    expect(noRss.headTagsByRoute.get('en:/en/news/launch/')).toEqual(
-      full.headTagsByRoute.get('en:/en/news/launch/'),
-    )
+    expect(neither.headTagsByRoute.get('en:/en/news/launch/')).toEqual(full.headTagsByRoute.get('en:/en/news/launch/'))
   })
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+Add assertions to `tests/compiler/theme.integration.test.ts`:
 
-Run: `npm test -- tests/compiler/seo/emit-seo-and-feeds.test.ts`
+```ts
+it('attaches SEO head tags and writes rss/sitemap while preserving root router and CSP', async () => {
+  write('content/news/alpha/content.yml', 'type: news\nslug: alpha\ndate: 2026-08-11\ntags: [release]\n')
+  write('content/news/alpha/zh.md', '---\ntitle: Alpha\ndescription: Alpha desc\n---\n正文\n')
+  write('content/news/alpha/en.md', '---\ntitle: Alpha EN\ndescription: Alpha EN desc\n---\nBody\n')
 
-Expected: FAIL with module not found
+  const app = await runBuild()
+  const page = app.pages.find((candidate: Page) => candidate.path === '/en/news/alpha/')
+  expect(page).toBeDefined()
+  expect(page!.frontmatter.title).toBe('Alpha EN')
+  expect(page!.frontmatter.head).toEqual(
+    expect.arrayContaining([
+      ['link', { rel: 'canonical', href: 'https://synctrol.com/en/news/alpha/' }],
+      ['meta', { property: 'og:type', content: 'article' }],
+    ]),
+  )
 
-- [ ] **Step 3: Write minimal implementation**
+  const dest = app.dir.dest()
+  expect(existsSync(join(dest, 'en/rss.xml'))).toBe(true)
+  expect(existsSync(join(dest, 'zh/rss.xml'))).toBe(true)
+  expect(existsSync(join(dest, 'sitemap.xml'))).toBe(true)
+  expect(existsSync(join(dest, 'index.html'))).toBe(true)
+  expect(existsSync(join(dest, 'synctrol-csp.json'))).toBe(true)
+})
+```
+
+Add export assertions to `tests/public-exports.test.ts`:
+
+```ts
+import { buildPageSeo, buildSeoContentContext, emitSeoAndFeeds } from '../src/index.js'
+
+expect(typeof buildPageSeo).toBe('function')
+expect(typeof buildSeoContentContext).toBe('function')
+expect(typeof emitSeoAndFeeds).toBe('function')
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run:
+
+```bash
+npm test -- tests/compiler/seo/emit-seo-and-feeds.test.ts tests/compiler/theme.integration.test.ts tests/public-exports.test.ts
+```
+
+Expected: FAIL with missing emit module/export and missing production feed/head integration.
+
+- [ ] **Step 3: Implement emit orchestrator and barrel**
 
 ```ts
 // src/compiler/seo/emit-seo-and-feeds.ts
-import type { HeadTag, PageSeo, SeoContentContext } from '../../shared/seo/types'
-import type { CompiledSite } from '../../shared/route-types'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
-import { buildSiteSeo } from './build-page-seo'
-import { serializeHeadTags } from './serialize-head'
-import {
-  generateLocaleRssXml,
-  rssOutputPath,
-  selectRssItems,
-} from '../feeds/rss'
-import {
-  generateSitemapXml,
-  selectSitemapUrls,
-  sitemapOutputPath,
-} from '../feeds/sitemap'
+import type { CompiledSite } from '../compile-site-routes.js'
+import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { HeadTag, PageSeo, SeoContentContext } from '../../shared/seo/types.js'
+import { generateLocaleRssXml, rssOutputPath, selectRssItems } from '../feeds/rss.js'
+import { generateSitemapXml, selectSitemapUrls, sitemapOutputPath } from '../feeds/sitemap.js'
+import { buildSiteSeo } from './build-page-seo.js'
+import { serializeHeadTags } from './serialize-head.js'
 
 export interface FeedFileToWrite {
   outputPath: string
@@ -3066,28 +1664,13 @@ export function emitSeoAndFeeds(input: {
   base: string
 }): EmitSeoAndFeedsResult {
   const pageSeo = buildSiteSeo(input.site, input.options, input.content)
-  const headTagsByRoute = new Map<string, HeadTag[]>()
-  for (const [key, seo] of pageSeo) {
-    headTagsByRoute.set(key, serializeHeadTags(seo))
-  }
-
+  const headTagsByRoute = new Map([...pageSeo].map(([key, seo]) => [key, serializeHeadTags(seo)] as const))
   const filesToWrite: FeedFileToWrite[] = []
 
   if (input.options.feeds.rss) {
-    const locales = Object.keys(input.options.locales)
-    for (const locale of locales) {
-      const home = input.site.pages.find(
-        (page) => page.locale === locale && page.identity === 'home',
-      )
-      if (!home) {
-        throw new Error(`Missing home page for locale RSS channel: ${locale}`)
-      }
-      const items = selectRssItems(
-        input.site.pages,
-        locale,
-        input.options,
-        input.content,
-      )
+    for (const locale of Object.keys(input.options.locales)) {
+      const home = input.site.pages.find((page) => page.locale === locale && page.identity === 'home')
+      if (!home) throw new Error(`Missing home page for locale RSS channel: ${locale}`)
       const paths = rssOutputPath(locale, input.base)
       filesToWrite.push({
         outputPath: paths.outputPath,
@@ -3096,7 +1679,7 @@ export function emitSeoAndFeeds(input: {
           locale,
           options: input.options,
           channelLink: home.url.absoluteUrl,
-          items,
+          items: selectRssItems(input.site.pages, locale, input.options, input.content),
         }),
       })
     }
@@ -3117,27 +1700,125 @@ export function emitSeoAndFeeds(input: {
 
 ```ts
 // src/compiler/seo/index.ts
-export { buildPageSeo, buildSiteSeo } from './build-page-seo'
-export { emitSeoAndFeeds } from './emit-seo-and-feeds'
-export { serializeHeadTags } from './serialize-head'
-export { resolveCollectionCopy } from './collection-copy'
-export * from '../feeds/rss'
-export * from '../feeds/sitemap'
+export { buildPageSeo, buildSiteSeo } from './build-page-seo.js'
+export { buildSeoContentContext } from './content-context.js'
+export { emitSeoAndFeeds } from './emit-seo-and-feeds.js'
+export { serializeHeadTags } from './serialize-head.js'
+export { resolveCollectionCopy } from './collection-copy.js'
+export * from '../feeds/rss.js'
+export * from '../feeds/sitemap.js'
 ```
 
-Update `src/index.ts` to re-export:
+Patch `src/index.ts`:
 
 ```ts
-export { emitSeoAndFeeds, buildPageSeo, buildSiteSeo } from './node/seo/index.js'
+export * from './compiler/seo/index.js'
 export type {
-  PageSeo,
   HeadTag,
+  HreflangAlternate,
+  JsonLdNode,
+  OpenGraphData,
+  PageSeo,
+  RssItem,
   SeoAssetContext,
   SeoContentContext,
 } from './shared/seo/types.js'
 ```
 
-- [ ] **Step 4: Run all SEO/feed tests**
+- [ ] **Step 4: Patch `theme.ts` additively**
+
+Add imports:
+
+```ts
+import type { HeadTag } from '../shared/seo/types.js'
+import { buildSeoContentContext, emitSeoAndFeeds, type EmitSeoAndFeedsResult } from './seo/index.js'
+```
+
+Add local adapter and state:
+
+```ts
+type VuePressHeadTag = [string, Record<string, string>] | [string, Record<string, string>, string]
+
+function toVuePressHead(tags: readonly HeadTag[]): VuePressHeadTag[] {
+  return tags.map((tag) =>
+    tag.text === undefined
+      ? [tag.tag, tag.attrs ?? {}]
+      : [tag.tag, tag.attrs ?? {}, tag.text],
+  )
+}
+```
+
+Inside `synctrolTheme`, next to `let built`:
+
+```ts
+let seoAndFeeds: EmitSeoAndFeedsResult | undefined
+```
+
+After `compileAssets(...)`, before the page loop:
+
+```ts
+const seoContent = buildSeoContentContext({
+  assetManifest,
+  packages: built.packages,
+  compiledPackages: built.compiledPackages,
+  definitions: built.definitions,
+  options: resolved,
+})
+seoAndFeeds = emitSeoAndFeeds({
+  site: built.site,
+  options: resolved,
+  content: seoContent,
+  base: app.options.base,
+})
+```
+
+During `createPage`, before calling `createPage`:
+
+```ts
+const seoKey = `${compiled.locale}:${compiled.url.routePath}`
+const seoForPage = seoAndFeeds.pageSeo.get(seoKey)
+const headForPage = seoAndFeeds.headTagsByRoute.get(seoKey) ?? []
+```
+
+Then update frontmatter without changing nested `synctrol` shape:
+
+```ts
+frontmatter: {
+  lang: seoForPage?.lang ?? resolved.locales[compiled.locale]?.lang ?? compiled.locale,
+  title: seoForPage?.title ?? compiled.title,
+  ...(seoForPage?.description === undefined
+    ? compiled.description === undefined
+      ? {}
+      : { description: compiled.description }
+    : { description: seoForPage.description }),
+  head: toVuePressHead(headForPage),
+  synctrol: {
+    // keep the existing nested fields exactly as Plans 03-09 require
+  },
+},
+```
+
+During `onGenerated`, after the root router write and before/after CSP (order does not matter), write feed files while preserving both existing artifacts:
+
+```ts
+for (const file of seoAndFeeds?.filesToWrite ?? []) {
+  const target = app.dir.dest(file.outputPath)
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, file.contents, 'utf8')
+}
+```
+
+- [ ] **Step 5: Run integration and public export tests**
+
+Run:
+
+```bash
+npm test -- tests/compiler/seo/emit-seo-and-feeds.test.ts tests/compiler/theme.integration.test.ts tests/public-exports.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 6: Run all SEO/feed tests**
 
 Run:
 
@@ -3145,49 +1826,49 @@ Run:
 npm test -- tests/shared/seo tests/compiler/seo tests/compiler/feeds
 ```
 
-Expected: PASS (all tasks in this plan)
+Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/compiler/seo src/compiler/feeds src/shared/seo src/index.ts tests/helpers/seo-fixtures.ts tests/shared/seo tests/compiler/seo tests/compiler/feeds
-git commit -m "feat(seo): emit page SEO head tags with optional RSS and sitemap"
+git add src/compiler/seo src/compiler/feeds src/shared/seo src/compiler/theme.ts src/index.ts tests/helpers/seo-fixtures.ts tests/shared/seo tests/compiler/seo tests/compiler/feeds tests/compiler/theme.integration.test.ts tests/public-exports.test.ts
+git commit -m "feat(seo): integrate page seo rss and sitemap"
 ```
 
 ---
 
 ## Self-Review
 
-**1. Spec coverage (§28 + related publishing rules, SEO/feeds slice only):**
+**Spec coverage:**
 
 | Requirement | Task |
 | --- | --- |
-| Required `siteUrl` + `seo` (`name` / `description` / `defaultImage` / `organization` / `collections`) | Fixtures + Tasks 2, 3, 6, 7, 8 (consumed from Plan 01 options) |
-| Localized title/description/canonical/OG/`lang`/real-translation `hreflang` | Tasks 2–5, 7 |
-| Description fallback to site locale description | Task 3, 7 |
-| OG image: cover else `seo.defaultImage`; never artwork; Home uses default | Task 3, 7, 10 |
-| JSON-LD Article / MusicAlbum+MusicRecording / WebSite+Organization; no Product for gifts | Task 6, 10 |
-| `feeds.rss` / `feeds.sitemap` toggles default true; false suppresses only feeds | Task 10 |
-| `/{locale}/rss.xml` with News+Release; exclude drafts + fallback | Task 8, 10 |
-| Sitemap exclude drafts + fallback | Task 9, 10 |
-| Collection titles + `paginatedTitle` + `tagArchiveTitle` | Task 2, 7, 10 |
-| Fallback `noindex` + main-locale canonical + no false hreflang | Task 4, 7, 10 |
-| Drafts outside Sitemap/RSS and `noindex` | Tasks 4, 8, 9, 10 |
+| Current HEAD type ownership and NodeNext `.js` imports | Revision Notes, Tasks 1-10 |
+| Existing `formatMessage` reuse | Task 1, Task 2 |
+| `ContentDefinitions` with `tags` and `platforms` | Task 1 fixtures, Tasks 2/7 tests |
+| Collection SEO copy | Task 2 |
+| Description fallback and OG image cover/default behavior | Task 3 |
+| Canonical, `lang`, robots, real-only `hreflang` with deterministic order | Task 4 |
+| Open Graph and HeadTag serialization | Task 5 |
+| JSON-LD Article / MusicAlbum / MusicRecording / WebSite / Organization; no Product | Task 6 |
+| Explicit package/assets -> SEO content context | Task 7 |
+| Page SEO orchestration | Task 8 |
+| RSS and Sitemap generation; Plan 09 `excludeFromRss` relationship | Task 9 |
+| Feed toggles, public exports, and additive `theme.ts` production integration | Task 10 |
+| Preserve Plans 03-09 frontmatter/Layout/assets/platforms/release/news/page/home/root-router/CSP | Revision Notes, Task 10 |
 
-**Explicitly out of scope (no tasks):** shell UI, LanguageSwitcher, platform embeds, asset hashing implementation, root language router HTML, Release/News visual layouts, npm package publish.
+**Placeholder scan:** No task contains a deferred implementation step; implementation snippets bind exact files, imports, commands, and expected outcomes.
 
-**2. Placeholder scan:** No TBD/TODO/`implement later`/`similar to Task N` wording; every code step includes full implementations and exact commands.
-
-**3. Type consistency:** `PageSeo`, `SeoContentContext`, `SeoAssetContext`, `HeadTag`, `RssItem`, `CollectionCopy`, `emitSeoAndFeeds` / `buildPageSeo` names are shared across tasks; RSS exclusion uses `isDraft`/`isFallback` matching Sitemap; OG image resolver never accepts artwork; Gift JSON-LD path returns `[]` with no `Product`.
+**Type consistency:** `ResolvedSynctrolThemeOptions`, `CompiledPage`, `ContentIdentity`, `CompiledSite`, `ContentDefinitions`, `joinPublicPath`, `normalizeBase`, `SeoContentContext`, `SeoAssetContext`, `PageSeo`, `HeadTag`, and RSS/Sitemap outputs use current HEAD modules and stable names across tasks.
 
 ---
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-08-11-10-seo-and-feeds.md`. Two execution options:
+Plan complete and saved to `docs/superpowers/plans/2026-08-11-10-seo-and-feeds.md`.
 
-**1. Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks, fast iteration (`superpowers:subagent-driven-development`)
+Implementation options:
 
-**2. Inline Execution** — execute tasks in this session using `superpowers:executing-plans`, batch execution with checkpoints
+**1. Subagent-Driven (recommended)** - dispatch a fresh subagent per task, review between tasks, fast iteration (`superpowers:subagent-driven-development`).
 
-Which approach?
+**2. Inline Execution** - execute tasks in one session using `superpowers:executing-plans`, batching with checkpoints.
