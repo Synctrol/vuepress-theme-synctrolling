@@ -1,10 +1,11 @@
-import { existsSync, readFileSync, mkdtempSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
 import { compileAssets } from '../../../src/compiler/assets/compile-assets'
+import { hashFileContents } from '../../../src/compiler/assets/hash'
 import { themeOptions } from '../../helpers/asset-fixtures'
 import type { AssetPackageSource } from '../../../src/shared/asset-types'
 
@@ -163,5 +164,55 @@ describe('compileAssets', () => {
         expect(error.diagnostics[0]?.code).toBe('ASSET_RAW_HTML_RELATIVE')
       }
     }
+  })
+
+  it('rejects .vuepress/public refs before hashing or copying into dest', () => {
+    const destDir = mkdtempSync(join(tmpdir(), 'synctrol-assets-public-'))
+    const publicCname = join(fixtureRoot, '.vuepress/public/CNAME')
+    const pollutedName = `CNAME.${hashFileContents(readFileSync(publicCname))}`
+
+    try {
+      compileAssets({
+        packages: [],
+        themeOptions: themeOptions({
+          seo: {
+            name: 'Synctrol',
+            description: 'd',
+            defaultImage: './public/CNAME',
+            organization: { name: 'Synctrol', logo: '/images/logo.png' },
+            collections: {
+              release: { title: 'R', description: 'r' },
+              news: { title: 'N', description: 'n' },
+            },
+          },
+          socialLinks: { items: [] },
+          release: {
+            urlSegment: 'releases',
+            index: {
+              enabled: true,
+              pagination: 12,
+              mobileGridColumns: 2,
+              desktopGridColumns: 3,
+            },
+          },
+        }),
+        configDir: join(fixtureRoot, '.vuepress'),
+        themeAssetsRoot: join(fixtureRoot, 'theme-assets'),
+        themeAssetPaths: [],
+        base: '/',
+        destDir,
+      })
+      expect.unreachable('expected .vuepress/public rejection')
+    } catch (error) {
+      expect(String(error)).toMatch(
+        /\.vuepress\/public|must not enter the hashed asset pipeline/i,
+      )
+    }
+
+    expect(existsSync(join(destDir, 'assets/global', pollutedName))).toBe(false)
+    const written = existsSync(destDir)
+      ? readdirSync(destDir, { recursive: true }).map(String)
+      : []
+    expect(written.some((entry) => entry.includes('CNAME'))).toBe(false)
   })
 })

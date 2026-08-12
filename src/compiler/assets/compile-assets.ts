@@ -1,5 +1,5 @@
-import { copyFileSync, mkdirSync, readFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import type {
   AssetManifest,
   AssetPackageSource,
@@ -29,6 +29,32 @@ function packageIdentity(pkg: AssetPackageSource): string {
   return `${pkg.type}:${pkg.slug}`
 }
 
+/**
+ * `.vuepress/public` is reserved for fixed-name copies (CNAME, robots.txt).
+ * Reject before any read/hash/copy so destDir is never polluted.
+ */
+function assertNotVuepressPublic(
+  sourcePath: string,
+  publicDir: string,
+): void {
+  let publicReal = resolve(publicDir)
+  let sourceReal = resolve(sourcePath)
+  if (existsSync(publicReal)) {
+    publicReal = realpathSync(publicReal)
+  }
+  if (existsSync(sourceReal)) {
+    sourceReal = realpathSync(sourceReal)
+  }
+  if (
+    sourceReal === publicReal ||
+    sourceReal.startsWith(`${publicReal}${sep}`)
+  ) {
+    throw new Error(
+      '.vuepress/public files must not enter the hashed asset pipeline',
+    )
+  }
+}
+
 function resolveContentAssetFile(input: {
   resolveRoot: string
   packageDir: string
@@ -37,8 +63,10 @@ function resolveContentAssetFile(input: {
   relativeRef: string
   base: string
   siteUrl: string
+  publicDir: string
 }): ResolvedAsset {
   const sourcePath = resolveSafePath(input.resolveRoot, input.relativeRef)
+  assertNotVuepressPublic(sourcePath, input.publicDir)
   const buffer = readFileSync(sourcePath)
   const contentHash = hashFileContents(buffer)
   const packageRelativeAsset = relative(input.packageDir, sourcePath).replace(
@@ -74,6 +102,7 @@ export function compileAssets(
   const registry = new AssetRegistry()
   const siteUrl = options.themeOptions.siteUrl
   const seenSources = new Set<string>()
+  const publicDir = resolve(options.configDir, 'public')
 
   const registerUnique = (asset: ResolvedAsset): ResolvedAsset => {
     const existing = registry.getBySource(asset.sourcePath)
@@ -98,6 +127,7 @@ export function compileAssets(
         relativeRef: ref,
         base: options.base,
         siteUrl,
+        publicDir,
       })
       const unique = registerUnique(resolved)
       registry.registerContent(identity, ref, unique)
@@ -119,6 +149,7 @@ export function compileAssets(
           relativeRef: ref,
           base: options.base,
           siteUrl,
+          publicDir,
         })
         const unique = registerUnique(resolved)
         registry.registerContent(identity, ref, unique)
@@ -131,6 +162,11 @@ export function compileAssets(
   }
 
   for (const ref of collectGlobalOptionRefs(options.themeOptions)) {
+    // Resolve + reserve-check before resolveGlobalAsset reads/hashes.
+    assertNotVuepressPublic(
+      resolveSafePath(options.configDir, ref),
+      publicDir,
+    )
     const resolved = resolveGlobalAsset({
       configDir: options.configDir,
       relativeRef: ref,
@@ -142,6 +178,10 @@ export function compileAssets(
   }
 
   for (const ref of options.themeAssetPaths) {
+    assertNotVuepressPublic(
+      resolveSafePath(options.themeAssetsRoot, ref),
+      publicDir,
+    )
     const resolved = resolveThemeAsset({
       themeAssetsRoot: options.themeAssetsRoot,
       relativeRef: ref,
@@ -149,19 +189,6 @@ export function compileAssets(
       siteUrl,
     })
     registerUnique(resolved)
-  }
-
-  const publicDir = resolve(options.configDir, 'public')
-  for (const asset of registry.toManifest().assets) {
-    if (
-      asset.sourcePath === publicDir ||
-      asset.sourcePath.startsWith(`${publicDir}/`) ||
-      asset.sourcePath.startsWith(`${publicDir}\\`)
-    ) {
-      throw new Error(
-        '.vuepress/public files must not enter the hashed asset pipeline',
-      )
-    }
   }
 
   return registry.toManifest()
