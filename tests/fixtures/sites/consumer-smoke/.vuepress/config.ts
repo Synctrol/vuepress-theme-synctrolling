@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { viteBundler } from '@vuepress/bundler-vite'
 import { defineUserConfig } from 'vuepress'
 import {
   enMessages,
@@ -12,6 +13,7 @@ const configDir = resolve(fileURLToPath(new URL('.', import.meta.url)))
 export default defineUserConfig({
   base: '/',
   dest: resolve(configDir, 'dist'),
+  bundler: viteBundler(),
   locales: {
     '/zh/': { lang: 'zh-CN' },
     '/en/': { lang: 'en-US' },
