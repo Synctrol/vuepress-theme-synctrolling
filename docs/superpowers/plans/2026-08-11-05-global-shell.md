@@ -53,7 +53,7 @@
 | `src/client/styles/shell.css` | Grid, dock, mobile, overlay, focus-visible rules |
 | `src/client/config.ts` | VuePress client config: layouts + styles |
 | `src/client/index.ts` | Client package export |
-| `src/compiler/theme.ts` | Theme factory registering client + Layout (extend Plan 01) |
+| `src/compiler/theme.ts` | **Extend Plan 03 Task 12** — do not replace `synctrolTheme`; add clientConfigFile + color-mode boot script |
 | `tests/shared/format-message.test.ts` | Message interpolation |
 | `tests/client/color-mode/*.test.ts` | Cycle, storage, resolve, boot script |
 | `tests/client/navigation/*.test.ts` | Href resolution |
@@ -70,7 +70,9 @@
 - `resolveMultilanguage`, `LocaleMessages` (`auto`/`light`/`dark`/`menu`/`close`/`language`/`themeModeAnnouncement`)
 - Dock tokens in `src/client/styles/tokens.css`
 - `PageIdentity`, `CompiledPage.url.publicPath`, storage key `synctrol:locale` for root router
-- `__SYNCTROL_THEME_OPTIONS__` define from `synctrolTheme()`
+- `__SYNCTROL_THEME_OPTIONS__` define from `synctrolTheme()` via Plan 01 `toClientThemeOptions`
+- Plan 03 Task 12 owns `src/compiler/theme.ts` (`onInitialized` page registration, content-tree filter, `onGenerated` root router). This plan **extends** that module only.
+- Locale home / alternate `publicPath` values are encodeRouteSegment'd (ASCII fixtures unchanged; CJK locale keys must not appear raw in hrefs)
 
 ---
 
@@ -565,11 +567,11 @@ git commit -m "feat: add color-mode helpers and message formatter"
 **Files:**
 - Create: `src/client/color-mode/boot-script.ts`
 - Create: `tests/client/color-mode/boot-script.test.ts`
-- Modify: `src/compiler/theme.ts` (or Plan 01 `src/index.ts` theme factory) to inject the script into `head`
+- Modify: `src/compiler/theme.ts` — **extend** Plan 03 Task 12's `synctrolTheme` (do not create a replacement factory; keep page registration, content-tree filtering, root-router `onGenerated`, and `toClientThemeOptions` define)
 
 **Interfaces:**
-- Consumes: `COLOR_MODE_STORAGE_KEY`, `defaultColorMode`
-- Produces: `buildColorModeBootScript(defaultColorMode: ColorModePreference): string` that sets `document.documentElement.dataset.theme` to `light` or `dark` before paint
+- Consumes: `COLOR_MODE_STORAGE_KEY`, `defaultColorMode`; existing Plan 03 `synctrolTheme`
+- Produces: `buildColorModeBootScript(defaultColorMode: ColorModePreference): string` that sets `document.documentElement.dataset.theme` to `light` or `dark` before paint; theme `onInitialized` also injects the boot script into `app.siteData.head` without dropping Task 12 wiring
 
 - [ ] **Step 1: Write the failing boot-script test**
 
@@ -601,7 +603,7 @@ Run: `npm test -- tests/client/color-mode/boot-script.test.ts`
 
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Implement boot script and theme head injection**
+- [ ] **Step 3: Implement boot script and extend the Plan 03 theme module**
 
 ```ts
 // src/client/color-mode/boot-script.ts
@@ -617,43 +619,45 @@ export function buildColorModeBootScript(
 }
 ```
 
-Create `src/compiler/theme.ts` and re-export it from `src/index.ts` as `synctrolTheme` (keeps Plan 01 smoke tests working). Inject the boot script into `app.siteData.head` during `onInitialized` so it runs before paint:
+Extend the existing Plan 03 `src/compiler/theme.ts` — inject the boot script in `onInitialized` **after** Task 12's buildSite / createPage work (or at the start of the same hook), set `clientConfigFile` when Task 13 lands, and keep `define.__SYNCTROL_THEME_OPTIONS__` from `toClientThemeOptions`. Do **not** replace the factory with a Plan-01-style stub that drops route compilation:
 
 ```ts
-// src/compiler/theme.ts
-import type { Theme } from 'vuepress'
-import { getDirname, path } from '@vuepress/utils'
-import type { SynctrolThemeOptions } from '../shared/options.js'
-import { resolveThemeOptions } from '../shared/options.js'
+// src/compiler/theme.ts — additive changes only (illustrative)
+import { path } from '@vuepress/utils'
+import { getDirname } from '@vuepress/utils'
 import { buildColorModeBootScript } from '../client/color-mode/boot-script.js'
+// ...existing Plan 03 imports...
 
 const __dirname = getDirname(import.meta.url)
 
-export function synctrolTheme(options: SynctrolThemeOptions): Theme {
+export function synctrolTheme(options: SynctrolThemeOptions) {
   const resolved = resolveThemeOptions(options)
+  const clientOptions = toClientThemeOptions(resolved)
   const boot = buildColorModeBootScript(resolved.defaultColorMode)
+  let built: BuiltSite | undefined
 
   return {
     name: 'vuepress-theme-synctrolling',
+    // Task 13 may set this; keep Task 12 define + hooks intact.
     clientConfigFile: path.resolve(__dirname, '../client/config.ts'),
     define: {
-      __SYNCTROL_THEME_OPTIONS__: JSON.parse(JSON.stringify(resolved)),
+      __SYNCTROL_THEME_OPTIONS__: clientOptions,
     },
-    onInitialized: (app) => {
+    onInitialized: async (app: App): Promise<void> => {
       app.siteData.head.push(['script', {}, boot])
+      // ...existing Task 12 buildSite / filter / createPage body unchanged...
     },
-  }
+    onGenerated: (app: App): void => {
+      // ...existing Task 12 root-router write unchanged...
+    },
+  } satisfies ThemeObject
 }
 ```
 
 ```ts
-// src/index.ts
-export { synctrolTheme } from './node/theme.js'
-export * from './shared/types.js'
-export * from './shared/messages.js'
-export * from './shared/options.js'
-export * from './shared/multilanguage.js'
-export * from './shared/format-message.js'
+// src/index.ts — already re-exports from ./compiler/theme.js after Plan 03 Task 12;
+// do not switch back to an inline factory or ./node/theme.js.
+export { synctrolTheme } from './compiler/theme.js'
 ```
 
 - [ ] **Step 4: Run tests**
@@ -1759,6 +1763,8 @@ git commit -m "feat: add SocialLinks fixed dock control"
   - Collapsible upward switcher showing full current locale label
   - Escape / outside click / selection close; keyboard listbox pattern; focus restore; persists `synctrol:locale`
 
+**Plan 03 publicPath contract:** alternate `href` values must come from compiled `url.publicPath` (locale segment already encodeRouteSegment'd). Do not build home hrefs by concatenating a raw LocaleKey into `/${key}/` when the key may be non-ASCII — use the encoded publicPath Plan 03 already emitted (or `encodeRouteSegment` if synthesizing a home fallback in tests).
+
 - [ ] **Step 1: Write failing tests**
 
 ```ts
@@ -2506,7 +2512,7 @@ git commit -m "feat: add golden-ratio ShellLayout and responsive dock CSS"
 - Create: `src/client/layouts/Layout.vue`
 - Create: `src/client/config.ts`
 - Create: `src/client/index.ts`
-- Modify: `src/compiler/theme.ts`
+- Modify: `src/compiler/theme.ts` — set `clientConfigFile` on the Plan 03 Task 12 theme (do not recreate `synctrolTheme`)
 - Modify: `src/index.ts`
 - Create: `tests/client/layouts/Layout.test.ts`
 
@@ -2624,6 +2630,9 @@ const localeAlternates = computed(() => {
       : Object.keys(theme.locales).map((key) => ({
           identity: identity.value,
           locale: key,
+          // Prefer compiled publicPath from Plan 03. If synthesizing a home
+          // fallback, the locale segment must be encodeRouteSegment'd — ASCII
+          // keys are identity under encoding.
           publicPath: `/${key}/`,
         })),
   })

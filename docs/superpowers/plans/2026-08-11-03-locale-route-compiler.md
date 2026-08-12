@@ -32,6 +32,13 @@ A second review pass added:
 15. **Fallback pages inherit their source's draft state**, so `showDrafts: true` cannot publish a non-draft-looking fallback of a draft body.
 16. **Edge cases that were only checked in a scratch harness are now real tests**: BOM, CRLF, `---` inside the body, `&` / U+2028 / U+2029 script serialization, and aggregation of a Home error together with route collisions.
 
+A third review pass (routePath ↔ VuePress `page.path` parity) added:
+
+17. **Every segment that enters `routePath` is encoded.** Plan 01's `assertRouteSegment` accepts CJK locale keys (e.g. `日本語`) and characters such as `*` in `urlSegment`. VuePress `createPage` finalizes routes with `encodeURI(path.split('/').map(sanitizeFileName).join('/'))`. Leaving those values as raw literals makes `CompiledPage.url.routePath !== Page.path` (CJK becomes percent-encoded; `*` becomes `_`). Locale keys and the three configured segments (`release.urlSegment`, `news.urlSegment`, `news.tags.urlSegment`) therefore go through the same `encodeRouteSegment` / `assertRoutableSegment` pipeline as slugs and tags. Characters where strict RFC 3986 encoding disagrees with VuePress (`!'()*` and the rest of the ASCII sweep set) are rejected at compile time — Plan 01 still allows them through `assertRouteSegment`, but Plan 03 refuses to publish a route VuePress would rewrite. CJK locales stay allowed (Plan 01 already permits them); they are encoded, not banned.
+18. **`buildUrlLayers` does not treat `locale` as a safe literal.** The `BuildUrlLayersInput.locale` field is the **already-encoded** locale route segment (`encodeRouteSegment(localeKey, 'locale')`). Callers encode; the builder concatenates. ASCII keys such as `zh`/`en` are unchanged by encoding, so existing fixtures stay valid.
+19. **Root-router visible links and `location.replace` targets use encoded `publicPath`.** Negotiation still keys off the raw locale key (`localStorage`, `matchBrowserLocale`); only the emitted href / redirect path is encoded.
+20. **Task 12 gains a real lifecycle regression** for a non-ASCII locale and an encoded slug, asserting `compiled.routePath === page.path` and `outputPath === page.htmlFilePathRelative`.
+
 ## Global Constraints
 
 - Package name: `vuepress-theme-synctrolling`
@@ -50,6 +57,9 @@ A second review pass added:
 - `showDrafts` defaults to `false` (already applied by `resolveThemeOptions`)
 - Default `release.urlSegment` is `releases`; default `news.urlSegment` is `news`; default `news.tags.urlSegment` is `tags` (already applied by `resolveThemeOptions`)
 - Default pagination for release/news indexes is `12`; `false` means one unpaginated list
+- Every value interpolated into `routePath` — locale keys, `release.urlSegment`, `news.urlSegment`, `news.tags.urlSegment`, slugs, tags, and page-specific path segments — must pass `encodeRouteSegment` (which gates with `assertRoutableSegment`). Plan 01's `assertRouteSegment` alone is not sufficient for VuePress parity.
+- `buildUrlLayers({ locale })` receives an **already-encoded** locale segment; it never re-encodes and never assumes the raw configuration key is URL-safe
+- Root-router hrefs and inline redirect targets are encoded `publicPath` values; raw locale keys remain the negotiation / storage identity
 - Tests run with `npm test -- <path>`; for a fast inner loop use `npx vitest run <path>` and finish with the full `npm test`
 
 ## File Structure
@@ -867,6 +877,8 @@ git commit -m "feat(compiler): read locale markdown and build route packages"
 - Consumes: `ResolvedSynctrolThemeOptions.siteUrl`; VuePress `base`
 - Produces: `UrlLayers`, `CompiledPage`, identity types; `normalizePathSuffix`, `normalizeBase`, `joinPublicPath`; `assertSiteUrl(siteUrl: string): string`; `buildUrlLayers(input: BuildUrlLayersInput): UrlLayers`
 
+**`BuildUrlLayersInput.locale` contract:** the field is the **already-encoded** locale route segment from `encodeRouteSegment(localeKey, 'locale')`. This builder concatenates and never encodes. Callers that still have a raw LocaleKey must encode before calling. ASCII keys are identity under encoding, so Task 2 fixtures may pass `'zh'` / `'en'` directly; the CJK pre-encoded cases in the tests lock the contract for non-ASCII keys (Task 3 introduces `encodeRouteSegment`; until then tests use `encodeURIComponent`, which matches for CJK).
+
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
@@ -1226,6 +1238,36 @@ describe('buildUrlLayers', () => {
     expect(layers.outputPath).toBe('zh/releases/作品/index.html')
   })
 
+  it('treats locale as an already-encoded segment (CJK must be pre-encoded by the caller)', () => {
+    // buildUrlLayers concatenates; it does not call encodeRouteSegment.
+    // Callers (detail/collection routes) pass encodeRouteSegment(localeKey, 'locale').
+    const locale = encodeURIComponent('日本語')
+    const layers = buildUrlLayers({
+      locale,
+      pathSuffix: '/',
+      base: '/docs/',
+      siteUrl: 'https://synctrol.com',
+    })
+
+    expect(layers.routePath).toBe(`/${locale}/`)
+    expect(layers.outputPath).toBe('日本語/index.html')
+    expect(layers.publicPath).toBe(`/docs/${locale}/`)
+    expect(layers.absoluteUrl).toBe(`https://synctrol.com/docs/${locale}/`)
+  })
+
+  it('does not re-encode a locale segment that is already percent-encoded', () => {
+    const locale = encodeURIComponent('日本語')
+    const layers = buildUrlLayers({
+      locale,
+      pathSuffix: '/news/tags/a%20b/',
+      base: '/',
+      siteUrl: 'https://synctrol.com',
+    })
+
+    expect(layers.routePath).toBe(`/${locale}/news/tags/a%20b/`)
+    expect(layers.outputPath).toBe('日本語/news/tags/a b/index.html')
+  })
+
   it('decodes a percent-encoded space in outputPath only', () => {
     const layers = buildUrlLayers({
       locale: 'zh',
@@ -1287,8 +1329,21 @@ export type ContentIdentity =
 export type PageIdentity = ContentIdentity | GeneratedCollectionIdentity
 
 export interface BuildUrlLayersInput {
-  locale: LocaleKey
-  /** Type default or page-specific suffix; normalized by the builder. */
+  /**
+   * Locale route segment **already** passed through
+   * `encodeRouteSegment(localeKey, 'locale')`.
+   *
+   * This builder concatenates; it does not encode and must not be given a raw
+   * configuration LocaleKey that still needs encoding. ASCII keys such as
+   * `zh` / `en` are identity under encoding, so fixtures may pass them as-is.
+   * Non-ASCII keys (e.g. `日本語`) must arrive percent-encoded.
+   */
+  locale: string
+  /**
+   * Type default or page-specific suffix; normalized by the builder.
+   * Every segment inside the suffix must already be encodeRouteSegment'd
+   * (slugs, tags, urlSegments, page-specific path parts).
+   */
   pathSuffix: string
   base: string
   siteUrl: string
@@ -1401,6 +1456,7 @@ import { assertSiteUrl } from './site-url.js'
 export function buildUrlLayers(input: BuildUrlLayersInput): UrlLayers {
   const siteUrl = assertSiteUrl(input.siteUrl)
   const pathSuffix = normalizePathSuffix(input.pathSuffix)
+  // `input.locale` is the encoded locale segment — see BuildUrlLayersInput.
   const routePath =
     pathSuffix === '/' ? `/${input.locale}/` : `/${input.locale}${pathSuffix}`
   const publicPath = joinPublicPath(input.base, routePath)
@@ -1446,15 +1502,17 @@ Rules (spec §8, lines 491–520):
 
 - Resolution order is current-locale page-specific `path` → type route from `urlSegment` → built-in type path. A locale absent from a `path` map never inherits the main locale's custom path.
 - Page-specific paths must begin and end with `/`, cannot carry a query or hash, cannot contain empty segments, and cannot be `/` (Home owns the locale root).
-- Each segment is validated by the shipped `assertRouteSegment`, which already rejects `.`, `..`, `\`, control characters, and percent-encoded traversal.
-- `release.urlSegment`, `news.urlSegment`, and `news.tags.urlSegment` are validated by `resolveThemeOptions`, so they are not re-validated here.
-- Every author-supplied segment (slug, tag key, page-specific path segment) is encoded with strict RFC 3986 percent-encoding, so route paths are stable regardless of locale or host.
+- Each segment is validated by the shipped `assertRouteSegment`, which already rejects `.`, `..`, `\`, control characters, and percent-encoded traversal, **and then** by `assertRoutableSegment` / `encodeRouteSegment` so the result matches VuePress.
+- `release.urlSegment`, `news.urlSegment`, and `news.tags.urlSegment` were validated by Plan 01's `assertRouteSegment` only. That is necessary but not sufficient for VuePress parity (`*` etc. still pass Plan 01). This plan re-runs them through `encodeRouteSegment` at the point they enter a path suffix. Unroutable values fail the build with `UNROUTABLE_SEGMENT` rather than publishing a rewritten route.
+- Every author-supplied segment (locale key when joined into `routePath`, slug, tag key, page-specific path segment, and the three configured `urlSegment`s) is encoded with strict RFC 3986 percent-encoding, so route paths are stable regardless of locale or host.
 
 **Encoding and routability.** `encodeURIComponent` is not RFC 3986: it leaves `!`, `'`, `(`, `)`, and `*` unescaped. `encodePathSegment` escapes those five as well.
 
-Strict encoding alone is not sufficient, because VuePress owns the final route. `createPage` resolves a page path with `encodeURI(path.split('/').map(sanitizeFileName).join('/'))` (`@vuepress/core` `resolvePagePath`), and `sanitizeFileName` (`@vuepress/utils`) replaces `[\u0000-\u001F"#$%&*+,:;<=>?[\]^`{|}\u007F]` with `_` and strips leading underscores. For some characters our strict encoding and VuePress's result disagree, and VuePress silently wins — a slug `a*b` would be served at `/a_b/` while the compiler advertised `/a%2Ab/`.
+Strict encoding alone is not sufficient, because VuePress owns the final route. `createPage` resolves a page path with `encodeURI(path.split('/').map(sanitizeFileName).join('/'))` (`@vuepress/core` `resolvePagePath`), and `sanitizeFileName` (`@vuepress/utils`) replaces `[\u0000-\u001F"#$%&*+,:;<=>?[\]^`{|}\u007F]` with `_` and strips leading underscores. For some characters our strict encoding and VuePress's result disagree, and VuePress silently wins — a slug `a*b` would be served at `/a_b/` while the compiler advertised `/a%2Ab/`. The same mismatch hits a raw CJK locale key: Plan 01 accepts `日本語`, but concatenating it into `routePath` as a literal yields `/日本語/` while VuePress serves `/%E6%97%A5%E6%9C%AC%E8%AA%9E/`.
 
-`assertRoutableSegment` therefore rejects exactly the characters where the two disagree. The set below was derived by sweeping every ASCII code point against `encodeURI(sanitizeFileName(segment))` in the installed `vuepress@2.0.0-rc.24`; it produces zero disagreements. Unreserved characters, spaces, and all non-ASCII (CJK, accented Latin, astral symbols) pass and round-trip identically. A segment starting with `_` is also rejected, because `sanitizeFileName` strips leading underscores.
+`assertRoutableSegment` therefore rejects exactly the characters where the two disagree. The set below was derived by sweeping every ASCII code point against `encodeURI(sanitizeFileName(segment))` in the installed `vuepress@2.0.0-rc.24`; it produces zero disagreements. Unreserved characters, spaces, and all non-ASCII (CJK, accented Latin, astral symbols) pass and round-trip identically once encoded. A segment starting with `_` is also rejected, because `sanitizeFileName` strips leading underscores.
+
+**Choice vs tightening Plan 01:** this plan does **not** suddenly ban CJK locale keys (Plan 01 already allows them). It encodes them. Characters in the disagreement set (`!'()*` and the rest) stay rejected by `assertRoutableSegment` when they appear in any route segment — including configured `urlSegment`s — so a theme that passed `resolveThemeOptions` with `urlSegment: 'x*y'` fails at route compile rather than shipping a colliding path.
 
 Task 12 re-checks this equivalence against the real VuePress functions, so the gate cannot silently rot if VuePress changes its sanitizer.
 
@@ -1572,7 +1630,22 @@ describe('assertRoutableSegment', () => {
 describe('encodeRouteSegment', () => {
   it('gates then encodes', () => {
     expect(encodeRouteSegment('作品', 'slug')).toBe('%E4%BD%9C%E5%93%81')
+    expect(encodeRouteSegment('日本語', 'locale')).toBe(
+      '%E6%97%A5%E6%9C%AC%E8%AA%9E',
+    )
     expectCode(() => encodeRouteSegment('a(b)', 'slug'), 'UNROUTABLE_SEGMENT')
+  })
+
+  it('rejects urlSegment values Plan 01 accepts but VuePress would rewrite', () => {
+    // assertRouteSegment allows '*'; assertRoutableSegment does not.
+    expectCode(
+      () => encodeRouteSegment('x*y', 'options.release.urlSegment'),
+      'UNROUTABLE_SEGMENT',
+    )
+    expectCode(
+      () => encodeRouteSegment("a!'()*b", 'options.news.urlSegment'),
+      'UNROUTABLE_SEGMENT',
+    )
   })
 })
 
@@ -1829,10 +1902,23 @@ function typeDefaultSuffix(
     })
   }
 
-  // urlSegment values were route-segment validated by resolveThemeOptions.
+  // Plan 01 validated these with assertRouteSegment only; re-gate + encode
+  // so VuePress cannot rewrite them under our feet.
   const slug = encodeRouteSegment(pkg.slug, 'slug', pkg.dir)
-  if (pkg.type === 'release') return `/${options.release.urlSegment}/${slug}/`
-  if (pkg.type === 'news') return `/${options.news.urlSegment}/${slug}/`
+  if (pkg.type === 'release') {
+    const segment = encodeRouteSegment(
+      options.release.urlSegment,
+      'options.release.urlSegment',
+    )
+    return `/${segment}/${slug}/`
+  }
+  if (pkg.type === 'news') {
+    const segment = encodeRouteSegment(
+      options.news.urlSegment,
+      'options.news.urlSegment',
+    )
+    return `/${segment}/${slug}/`
+  }
   return `/${slug}/`
 }
 
@@ -2754,7 +2840,7 @@ git commit -m "feat(compiler): implement Home publishing matrix"
 - Create: `tests/compiler/detail-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `decidePackageAvailability`, `decideHomeAvailability`, `resolveDetailPathSuffix`, `buildUrlLayers`, `ResolvedSynctrolThemeOptions`, VuePress `base`
+- Consumes: `decidePackageAvailability`, `decideHomeAvailability`, `resolveDetailPathSuffix`, `encodeRouteSegment`, `buildUrlLayers`, `ResolvedSynctrolThemeOptions`, VuePress `base`
 - Produces: `DetailCompileContext`; `compileDetailRoutes(packages, ctx): { pages: CompiledPage[]; diagnostics: SynctrolDiagnostic[] }`
 
 Flags (SEO emission deferred to Plan 10):
@@ -2762,6 +2848,7 @@ Flags (SEO emission deferred to Plan 10):
 - Fallback page: `isFallback: true`, `noindex: true`, `canonicalLocale: mainLocale`, `bodyLocale: mainLocale`, title/description from the main-locale Markdown.
 - Draft page: `isDraft: true`, `noindex: true`.
 - Published real translation: `noindex: false`, `canonicalLocale === locale`.
+- `buildUrlLayers` receives `encodeRouteSegment(locale, 'locale')` — never the raw LocaleKey — so CJK locale homes/details match VuePress `page.path`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2769,6 +2856,7 @@ Flags (SEO emission deferred to Plan 10):
 // tests/compiler/detail-routes.test.ts
 import { describe, expect, it } from 'vitest'
 import { compileDetailRoutes } from '../../src/compiler/detail-routes'
+import { encodeRouteSegment } from '../../src/compiler/path-suffix'
 import {
   homePackage,
   localeMarkdown,
@@ -2798,6 +2886,31 @@ describe('compileDetailRoutes', () => {
     expect(pages.every((page) => page.packagePath === '/content/releases/first-release')).toBe(
       true,
     )
+  })
+
+  it('encodes a non-ASCII locale key in routePath while keeping CompiledPage.locale raw', () => {
+    const locale = '日本語'
+    const encoded = encodeRouteSegment(locale, 'locale')
+    const options = themeOptions({
+      mainLocale: locale,
+      locales: { [locale]: { lang: 'ja', label: '日本語' } },
+    })
+    const { pages } = compileDetailRoutes(
+      [
+        releasePackage({
+          locales: { [locale]: localeMarkdown({ title: '作品' }) },
+        }),
+      ],
+      { options, base: '/', localeKeys: [locale] },
+    )
+
+    expect(pages).toHaveLength(1)
+    expect(pages[0]?.locale).toBe(locale)
+    expect(pages[0]?.url.routePath).toBe(`/${encoded}/releases/first-release/`)
+    expect(pages[0]?.url.outputPath).toBe(
+      `${locale}/releases/first-release/index.html`,
+    )
+    expect(pages[0]?.url.routePath).not.toContain('/日本語/')
   })
 
   it('emits opaque custom paths including locale-like segments', () => {
@@ -2923,7 +3036,7 @@ import {
   decidePackageAvailability,
   type LocaleAvailability,
 } from './package-availability.js'
-import { resolveDetailPathSuffix } from './path-suffix.js'
+import { encodeRouteSegment, resolveDetailPathSuffix } from './path-suffix.js'
 import { buildUrlLayers } from './url-layers.js'
 
 export interface DetailCompileContext {
@@ -2957,7 +3070,7 @@ function toPage(
     locale,
     contentType: pkg.type,
     url: buildUrlLayers({
-      locale,
+      locale: encodeRouteSegment(locale, 'locale'),
       pathSuffix: resolveDetailPathSuffix(pkg, locale, ctx.options),
       base: ctx.base,
       siteUrl: ctx.options.siteUrl,
@@ -3033,7 +3146,7 @@ git commit -m "feat(compiler): compile locale detail and home pages with fallbac
 - Create: `tests/compiler/collection-routes.test.ts`
 
 **Interfaces:**
-- Consumes: compiled detail `CompiledPage[]`, `RouteContentPackage[]`, `ResolvedSynctrolThemeOptions`, `buildUrlLayers`, `encodePathSegment`
+- Consumes: compiled detail `CompiledPage[]`, `RouteContentPackage[]`, `ResolvedSynctrolThemeOptions`, `buildUrlLayers`, `encodeRouteSegment`
 - Produces: `CollectionCompileInput`; `compileCollectionRoutes(input): CompiledPage[]`
 
 Rules (spec §8, lines 454–544):
@@ -3058,6 +3171,7 @@ Rules (spec §8, lines 454–544):
 import { describe, expect, it } from 'vitest'
 import { compileCollectionRoutes } from '../../src/compiler/collection-routes'
 import { compileDetailRoutes } from '../../src/compiler/detail-routes'
+import { isDiagnosticError } from '../../src/compiler/diagnostics'
 import type { ResolvedSynctrolThemeOptions } from '../../src/shared/options'
 import type { RouteContentPackage } from '../../src/shared/types'
 import {
@@ -3133,6 +3247,54 @@ describe('compileCollectionRoutes', () => {
     expect(paths).toContain('/zh/journal/')
     expect(paths).toContain('/zh/journal/topics/release/')
     expect(paths).not.toContain('/zh/journal/topics/')
+  })
+
+  it('encodes a non-ASCII locale key into every collection routePath', () => {
+    const locale = '日本語'
+    const encoded = encodeURIComponent(locale)
+    const options = themeOptions({
+      mainLocale: locale,
+      locales: {
+        [locale]: { lang: 'ja', label: '日本語' },
+        en: { lang: 'en-US', label: 'English' },
+      },
+      release: { index: { pagination: false } },
+      news: { index: { pagination: false } },
+    })
+    const paths = compile(
+      [
+        releasePackage({
+          locales: { [locale]: localeMarkdown({ title: '作品' }) },
+        }),
+        newsPackage({
+          locales: { [locale]: localeMarkdown({ title: 'ニュース' }) },
+        }),
+      ],
+      options,
+      [locale],
+      ['release'],
+    ).map((page) => page.url.routePath)
+
+    expect(paths).toContain(`/${encoded}/releases/`)
+    expect(paths).toContain(`/${encoded}/news/`)
+    expect(paths).toContain(`/${encoded}/news/tags/`)
+    expect(paths).toContain(`/${encoded}/news/tags/release/`)
+    expect(paths.every((path) => !path.includes('/日本語/'))).toBe(true)
+  })
+
+  it('rejects a Plan-01-valid urlSegment that VuePress would rewrite', () => {
+    const options = themeOptions({
+      release: { urlSegment: 'x*y', index: { pagination: false } },
+    })
+    try {
+      compile([releasePackage()], options, ['zh'])
+      throw new Error('Expected UNROUTABLE_SEGMENT')
+    } catch (error) {
+      expect(isDiagnosticError(error)).toBe(true)
+      if (isDiagnosticError(error)) {
+        expect(error.diagnostics[0]?.code).toBe('UNROUTABLE_SEGMENT')
+      }
+    }
   })
 
   it('suppresses indexes when enabled is false but keeps tag archives', () => {
@@ -3368,7 +3530,7 @@ function collectionPage(args: {
     locale: args.locale,
     contentType: args.contentType,
     url: buildUrlLayers({
-      locale: args.locale,
+      locale: encodeRouteSegment(args.locale, 'locale'),
       pathSuffix: args.pathSuffix,
       base: args.base,
       siteUrl: args.options.siteUrl,
@@ -3448,10 +3610,19 @@ export function compileCollectionRoutes(
   input: CollectionCompileInput,
 ): CompiledPage[] {
   const { options, base, localeKeys } = input
-  // Every segment below was route-segment validated by resolveThemeOptions.
-  const releaseSegment = options.release.urlSegment
-  const newsSegment = options.news.urlSegment
-  const tagsSegment = options.news.tags.urlSegment
+  // Plan 01 assertRouteSegment alone is not VuePress-safe; gate + encode here.
+  const releaseSegment = encodeRouteSegment(
+    options.release.urlSegment,
+    'options.release.urlSegment',
+  )
+  const newsSegment = encodeRouteSegment(
+    options.news.urlSegment,
+    'options.news.urlSegment',
+  )
+  const tagsSegment = encodeRouteSegment(
+    options.news.tags.urlSegment,
+    'options.news.tags.urlSegment',
+  )
 
   const releases = sortPackages(
     input.packages.filter((pkg) => pkg.type === 'release'),
@@ -3576,7 +3747,7 @@ git commit -m "feat(compiler): emit virtual collection indexes, pagination, and 
 - Create: `tests/compiler/root-router-html.test.ts`
 
 **Interfaces:**
-- Consumes: `matchBrowserLocale`, `normalizeLanguageTag`, `toLocaleTable`, `joinPublicPath`, `normalizeBase`, `resolveMultilanguage`, `ResolvedSynctrolThemeOptions`
+- Consumes: `matchBrowserLocale`, `normalizeLanguageTag`, `toLocaleTable`, `joinPublicPath`, `normalizeBase`, `resolveMultilanguage`, `encodeRouteSegment`, `ResolvedSynctrolThemeOptions`
 - Produces: `LOCALE_STORAGE_KEY`; `buildRootRouterScript(): string`; `generateRootRouterHtml(input): string`
 
 Behavior (spec §7.3, lines 375–383):
@@ -3586,6 +3757,8 @@ Behavior (spec §7.3, lines 375–383):
 3. `mainLocale`
 
 The document also carries visible language links for no-JS clients, redirects with `location.replace()` to a `publicPath` (so a non-root VuePress base is included), and loads no background module.
+
+**Encoded public paths.** Visible `<a href>` values and the inline redirect target must be the encoded locale home `publicPath` (`joinPublicPath(base, \`/\${encodeRouteSegment(key, 'locale')}/\`)`). Negotiation still uses the raw configuration locale key: `localStorage['synctrol:locale']` stores the key, `matchBrowserLocale` returns the key, and the script looks up the precomputed home path for that key. Never concatenate a raw non-ASCII key into the redirect URL.
 
 **Security:** the inline config is serialized with `<`, `>`, `&`, U+2028, and U+2029 escaped. `LocaleOptions.lang` is only checked for non-emptiness by Plan 01, so an unescaped `lang` could otherwise terminate the `<script>` element. Text and attributes go through `escapeHtml`.
 
@@ -3607,6 +3780,8 @@ import {
   matchBrowserLocale,
   toLocaleTable,
 } from '../../src/shared/match-browser-locale'
+import { encodeRouteSegment } from '../../src/compiler/path-suffix'
+import { joinPublicPath } from '../../src/shared/route-path'
 import { baseLocales, themeOptions } from '../helpers/route-fixtures'
 
 interface RunOptions {
@@ -3614,13 +3789,27 @@ interface RunOptions {
   stored?: string | null
   languages?: string[]
   throwOnStorage?: boolean
+  locales?: ReturnType<typeof toLocaleTable>
+  mainLocale?: string
+  homes?: Record<string, string>
 }
 
 function runScript(options: RunOptions = {}): string {
+  const locales = options.locales ?? toLocaleTable(baseLocales())
+  const base = options.base ?? '/'
+  const homes =
+    options.homes ??
+    Object.fromEntries(
+      locales.map((entry) => [
+        entry.key,
+        joinPublicPath(base, `/${encodeRouteSegment(entry.key, 'locale')}/`),
+      ]),
+    )
   const config = {
-    mainLocale: 'zh',
-    base: options.base ?? '/',
-    locales: toLocaleTable(baseLocales()),
+    mainLocale: options.mainLocale ?? 'zh',
+    base,
+    locales,
+    homes,
   }
   const replaced: string[] = []
   const sandbox = {
@@ -3683,6 +3872,31 @@ describe('buildRootRouterScript', () => {
       )
     }
   })
+
+  it('redirects a non-ASCII locale key to its encoded publicPath', () => {
+    const locales = toLocaleTable({
+      日本語: { lang: 'ja' },
+      en: { lang: 'en-US' },
+    })
+    const encoded = encodeRouteSegment('日本語', 'locale')
+
+    expect(
+      runScript({
+        locales,
+        mainLocale: '日本語',
+        stored: '日本語',
+      }),
+    ).toBe(`/${encoded}/`)
+
+    expect(
+      runScript({
+        locales,
+        mainLocale: '日本語',
+        languages: ['ja'],
+        base: '/docs/',
+      }),
+    ).toBe(`/docs/${encoded}/`)
+  })
 })
 
 describe('generateRootRouterHtml', () => {
@@ -3713,6 +3927,26 @@ describe('generateRootRouterHtml', () => {
     expect(html).toContain('href="/docs/zh/"')
     expect(html).toContain('href="/docs/en/"')
     expect(html).toContain('"base":"/docs/"')
+  })
+
+  it('emits encoded hrefs and homes for a non-ASCII locale key', () => {
+    const html = generateRootRouterHtml({
+      options: themeOptions({
+        mainLocale: '日本語',
+        locales: {
+          日本語: { lang: 'ja', label: '日本語' },
+          en: { lang: 'en-US', label: 'English' },
+        },
+      }),
+      base: '/docs/',
+    })
+    const encoded = encodeRouteSegment('日本語', 'locale')
+
+    expect(html).toContain(`href="/docs/${encoded}/"`)
+    expect(html).not.toContain('href="/docs/日本語/"')
+    expect(html).toContain(`"homes"`)
+    expect(html).toContain(`"/${encoded}/"`) // inside homes map values after base join
+    expect(html).toContain(`"/docs/${encoded}/"`)
   })
 
   it('embeds locale key and lang metadata for negotiation', () => {
@@ -3808,6 +4042,7 @@ import {
 import { resolveMultilanguage } from '../shared/multilanguage.js'
 import type { ResolvedSynctrolThemeOptions } from '../shared/options.js'
 import { joinPublicPath, normalizeBase } from '../shared/route-path.js'
+import { encodeRouteSegment } from './path-suffix.js'
 
 export const LOCALE_STORAGE_KEY = 'synctrol:locale'
 
@@ -3841,9 +4076,26 @@ function serializeForScript(value: unknown): string {
     .replace(/\u2029/g, '\\u2029')
 }
 
+function localeHomePublicPaths(
+  locales: ResolvedSynctrolThemeOptions['locales'],
+  base: string,
+): Record<string, string> {
+  const homes: Record<string, string> = {}
+  for (const key of Object.keys(locales)) {
+    homes[key] = joinPublicPath(
+      base,
+      `/${encodeRouteSegment(key, 'locale')}/`,
+    )
+  }
+  return homes
+}
+
 /**
  * Serializes the shared negotiation functions so the browser runs the exact
  * algorithm the Node compiler tests. Never hand-write a second copy.
+ *
+ * Redirect targets come from `cfg.homes[locale]` (encoded publicPath), not from
+ * concatenating the raw locale key into a URL.
  */
 export function buildRootRouterScript(): string {
   return [
@@ -3863,8 +4115,9 @@ export function buildRootRouterScript(): string {
     '      : (navigator.language ? [navigator.language] : []);',
     '    locale = matchBrowserLocale(preferences, cfg.locales, cfg.mainLocale);',
     '  }',
-    "  var prefix = cfg.base === '/' ? '' : cfg.base.slice(0, -1);",
-    "  location.replace(prefix + '/' + locale + '/');",
+    '  var target = cfg.homes && cfg.homes[locale];',
+    '  if (!target) { return; }',
+    '  location.replace(target);',
     '})();',
   ].join('\n')
 }
@@ -3877,10 +4130,11 @@ export function generateRootRouterHtml(input: RootRouterInput): string {
     input.options.mainLocale,
     input.options.mainLocale,
   ).text
+  const homes = localeHomePublicPaths(input.options.locales, base)
 
   const links = Object.entries(input.options.locales)
     .map(([key, locale]) => {
-      const href = escapeHtml(joinPublicPath(base, `/${key}/`))
+      const href = escapeHtml(homes[key]!)
       const lang = escapeHtml(locale.lang)
       return `      <li><a href="${href}" lang="${lang}" hreflang="${lang}">${escapeHtml(locale.label)}</a></li>`
     })
@@ -3890,6 +4144,7 @@ export function generateRootRouterHtml(input: RootRouterInput): string {
     mainLocale: input.options.mainLocale,
     base,
     locales: toLocaleTable(input.options.locales),
+    homes,
   })
 
   return `<!DOCTYPE html>
@@ -4500,7 +4755,7 @@ Everything above is pure and unit-tested, but nothing is wired into a build. Thi
 
 1. `@vuepress/cli` builds with exactly `app.init()` → `app.prepare()` → `app.build()` → `app.pluginApi.hooks.onGenerated.process(app)`. `app.init()` assigns `app.pages` and *then* runs `onInitialized`, so `onInitialized` is the correct place to add pages.
 2. VuePress's default `pagePatterns` glob every `**/*.md` under the source directory, which **includes the theme's `content/` tree**. Left alone, `content/home/zh.md` is published at `/content/home/zh.html`. The theme must drop those auto-resolved pages. Match them on `page.filePathRelative` being `content` or starting with `content/`, and keep pages whose `filePathRelative` is `null` — that is how the automatic `/404.html` page is represented.
-3. `createPage` computes the final route with `encodeURI(path.split('/').map(sanitizeFileName).join('/'))`. Pass it `decodeURI(page.url.routePath)`; Task 3's `assertRoutableSegment` guarantees VuePress re-encodes that to exactly `routePath`.
+3. `createPage` computes the final route with `encodeURI(path.split('/').map(sanitizeFileName).join('/'))`. Pass it `decodeURI(page.url.routePath)`. Because every segment in `routePath` — including locale keys and the three configured `urlSegment`s — has already passed `assertRoutableSegment` / `encodeRouteSegment`, VuePress re-encodes that input to exactly `routePath`. Skipping encoding for locales or urlSegments makes `CompiledPage.url.routePath !== Page.path` (verified: raw `日本語` → percent-encoded; raw `x*y` → `x_y`).
 4. `Page.htmlFilePathRelative` is `removeLeadingSlash(decodeURI(page.path) + 'index.html')` for directory routes, which is exactly `url.outputPath` (Task 2). `Page.htmlFilePath` is that path resolved under `app.dir.dest()`, and it is the path bundlers write.
 5. `app.options.base` supplies the VuePress base for `compileSiteRoutes`.
 
@@ -4626,7 +4881,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createBuildApp } from 'vuepress/core'
 import type { App, Bundler, Page } from 'vuepress/core'
 import { sanitizeFileName } from 'vuepress/utils'
+import { buildSite } from '../../src/compiler/build-site'
 import { encodePathSegment } from '../../src/compiler/path-suffix'
+import { resolveThemeOptions } from '../../src/shared/options'
 import { synctrolTheme } from '../../src/index'
 
 let root: string
@@ -4804,15 +5061,101 @@ describe('synctrolTheme production integration', () => {
   it('keeps the routable-segment gate aligned with the installed VuePress', () => {
     // If VuePress changes sanitizeFileName, this fails instead of silently
     // serving routes that differ from the compiled routePath.
-    const safe = ['first-release', '作品', 'café', 'A-B_c.d~e', 'a b']
+    const safe = ['first-release', '作品', 'café', 'A-B_c.d~e', 'a b', '日本語']
     for (const segment of safe) {
       expect(encodeURI(sanitizeFileName(segment))).toBe(encodePathSegment(segment))
     }
 
-    const rejected = ['a(b)', 'a*b', 'a!b', 'a,b', '_lead']
+    const rejected = ['a(b)', 'a*b', 'a!b', 'a,b', '_lead', "a!'()*b", 'x*y']
     for (const segment of rejected) {
       expect(encodeURI(sanitizeFileName(segment))).not.toBe(encodePathSegment(segment))
     }
+  })
+
+  it('keeps compiled routePath/outputPath identical to VuePress for a CJK locale + CJK slug', async () => {
+    // Regression: raw locale/slug literals diverge from
+    // encodeURI(sanitizeFileName(...)). Encode locale keys (and slugs);
+    // !'()* stay rejected by assertRoutableSegment (path-suffix / collection
+    // unit tests) rather than suddenly banning CJK locales Plan 01 allows.
+    write('content/home/日本語.md', '---\ntitle: ホーム\ndescription: SEO\n---\n本文\n')
+    write('content/releases/作品/content.yml', 'type: release\nslug: 作品\ndate: 2026-08-09\n')
+    write('content/releases/作品/日本語.md', '---\ntitle: 作品\n---\n本文\n')
+
+    const locale = '日本語'
+    const encodedLocale = encodePathSegment(locale)
+    const encodedSlug = encodePathSegment('作品')
+
+    const themeOptionsInput = {
+      siteUrl: 'https://synctrol.com',
+      mainLocale: locale,
+      copyright: '© Synctrol',
+      locales: {
+        [locale]: { lang: 'ja', label: '日本語' },
+      },
+      seo: {
+        name: 'Synctrol',
+        description: 'Synctrol releases and news',
+        defaultImage: '/images/og.png',
+        organization: { name: 'Synctrol', logo: '/images/logo.png' },
+        collections: {
+          release: { title: 'Releases', description: 'All releases' },
+          news: { title: 'News', description: 'All news' },
+        },
+      },
+      release: { index: { pagination: false } },
+      news: { index: { enabled: false } },
+    } as const
+
+    const app = createBuildApp({
+      source: root,
+      dest: join(root, '.vuepress/dist-cjk'),
+      base: '/',
+      bundler: stubBundler(),
+      theme: synctrolTheme({ ...themeOptionsInput }),
+    })
+
+    await app.init()
+    await app.prepare()
+    await app.build()
+    await app.pluginApi.hooks.onGenerated.process(app)
+
+    const built = buildSite({
+      sourceDir: root,
+      configDir: join(root, '.vuepress'),
+      options: resolveThemeOptions({ ...themeOptionsInput }),
+      base: '/',
+    })
+
+    const homeCompiled = built.site.pages.find(
+      (page) => page.identity === 'home' && page.locale === locale,
+    )
+    const detailCompiled = built.site.pages.find(
+      (page) => page.identity === 'release:作品' && page.locale === locale,
+    )
+    expect(homeCompiled).toBeDefined()
+    expect(detailCompiled).toBeDefined()
+
+    const homePage = app.pages.find(
+      (page: Page) => page.path === `/${encodedLocale}/`,
+    )
+    const detailPage = app.pages.find(
+      (page: Page) =>
+        page.path === `/${encodedLocale}/releases/${encodedSlug}/`,
+    )
+    expect(homePage).toBeDefined()
+    expect(detailPage).toBeDefined()
+
+    expect(homeCompiled!.url.routePath).toBe(homePage!.path)
+    expect(homeCompiled!.url.outputPath).toBe(homePage!.htmlFilePathRelative)
+    expect(detailCompiled!.url.routePath).toBe(detailPage!.path)
+    expect(detailCompiled!.url.outputPath).toBe(detailPage!.htmlFilePathRelative)
+
+    expect(homeCompiled!.url.routePath).not.toContain('/日本語/')
+    expect(detailCompiled!.url.routePath).not.toContain('/日本語/')
+
+    const rootHtml = readFileSync(join(app.dir.dest(), 'index.html'), 'utf8')
+    expect(rootHtml).toContain(`href="/${encodedLocale}/"`)
+    expect(rootHtml).not.toContain('href="/日本語/"')
   })
 })
 ```
@@ -5041,10 +5384,11 @@ Plans 04–11 were written against the previous, uncompilable layout. They have 
 Semantic notes that a rename cannot express:
 
 - Plan 04 must not redeclare `LocaleMarkdown`; Task 1 owns it in `src/shared/types.ts`.
-- Plan 05 extends the Task 12 theme module rather than creating it, and must keep the Plan 01 `define.__SYNCTROL_THEME_OPTIONS__` payload built by `toClientThemeOptions`.
-- Plan 05's `LOCALE_STORAGE_KEY` must equal the root router's; import it from `src/compiler/root-router-html.js`.
+- Plan 05 **must extend** the Task 12 `src/compiler/theme.ts` module — add `clientConfigFile`, color-mode boot script injection, and layout wiring inside the existing `onInitialized` / `onGenerated` / `define` surface. It must **not** create a replacement `synctrolTheme` that overwrites Task 12's page registration, content-tree filtering, or root-router `onGenerated` write. Keep the Plan 01 `define.__SYNCTROL_THEME_OPTIONS__` payload built by `toClientThemeOptions`.
+- Plan 05's `LOCALE_STORAGE_KEY` must equal the root router's; import it from `src/compiler/root-router-html.js`. LanguageSwitcher hrefs for locale homes must use the same encoded `publicPath` convention as the root router (encode the locale key), not raw CJK keys.
 - Plan 10 still resolves the real collection titles; this plan deliberately leaves the identity string as the placeholder `title`.
 - Plan 11's root-router expectation is satisfied by Task 12's `onGenerated`, which writes `<dest>/index.html`.
+- Downstream plans that assemble or assert `routePath` / `publicPath` for locale homes must treat locale keys as encodeRouteSegment'd segments (ASCII fixtures remain unchanged).
 
 Out of scope here and unchanged: UI shell, LanguageSwitcher component, platforms, SEO meta / `hreflang` / RSS / Sitemap emission, assets, Release/News visual layouts.
 
@@ -5079,7 +5423,8 @@ Out of scope here and unchanged: UI shell, LanguageSwitcher component, platforms
 - Every `src/` import carries `.js`; every test import is extensionless.
 - Every VuePress behaviour Task 12 relies on (hook order, `pagePatterns` globbing the content tree, the automatic `/404.html`, `resolvePagePath`, `sanitizeFileName`, `resolvePageHtmlInfo`) was read from the installed `vuepress@2.0.0-rc.24` sources and exercised against a real `createBuildApp` lifecycle, not assumed.
 - The routable-segment set was derived by sweeping every ASCII code point; Task 12 keeps that derivation honest with an equivalence test against the real `sanitizeFileName`.
+- Locale keys and the three configured `urlSegment`s share the slug/tag `encodeRouteSegment` pipeline; `buildUrlLayers` concatenates a pre-encoded locale segment; root-router hrefs/redirects use encoded `homes` publicPaths; Task 12 asserts `compiled.routePath === page.path` and `outputPath === page.htmlFilePathRelative` for a CJK locale + CJK slug.
 
-**Type consistency:** `UrlLayers`, `CompiledPage`, `PageIdentity`, `LocaleAvailability`, `PackageAvailabilityResult`, `CompiledSite`, and `SynctrolDiagnostic` are declared once and imported everywhere. `publishedAvailability` / `fallbackAvailability` are shared by Tasks 5 and 6 so the two matrices cannot diverge. `matchBrowserLocale` is declared once and serialized into the browser script, with a test proving the two agree.
+**Type consistency:** `UrlLayers`, `CompiledPage`, `PageIdentity`, `LocaleAvailability`, `PackageAvailabilityResult`, `CompiledSite`, and `SynctrolDiagnostic` are declared once and imported everywhere. `publishedAvailability` / `fallbackAvailability` are shared by Tasks 5 and 6 so the two matrices cannot diverge. `matchBrowserLocale` is declared once and serialized into the browser script, with a test proving the two agree. `CompiledPage.locale` stays the raw configuration key; only URL layers carry the encoded segment.
 
 **Placeholder scan:** no TBD/TODO. The only deliberate placeholder is the collection-page `title`, which is documented in `CompiledPage`, in Task 8, and in the Plan 10 contract note.
