@@ -289,4 +289,46 @@ describe('BackgroundRuntime', () => {
     expect(host.dataset.leaked).toBeUndefined()
     runtime.dispose()
   })
+
+  it('ignores a pending loader after setHost so it cannot mount into a stale host', async () => {
+    let resolveLoader!: (mod: Awaited<ReturnType<BackgroundLoader>>) => void
+    const pendingLoader: BackgroundLoader = () =>
+      new Promise((resolve) => {
+        resolveLoader = resolve
+      })
+
+    const oldHost = host
+    const newHost = document.createElement('div')
+    newHost.className = 'syn-background'
+    document.body.appendChild(newHost)
+
+    const runtime = new BackgroundRuntime({
+      backgrounds: { home: pendingLoader },
+    })
+    runtime.setHost(oldHost)
+
+    const pending = runtime.sync({
+      contentType: 'home',
+      route: '/zh/',
+      locale: 'zh',
+      colorMode: 'light',
+      reducedMotion: false,
+    })
+
+    runtime.setHost(newHost)
+
+    resolveLoader({
+      default(context) {
+        context.element.dataset.leaked = '1'
+        return { update() {}, dispose() {} }
+      },
+    })
+    await pending
+
+    expect(oldHost.dataset.leaked).toBeUndefined()
+    expect(newHost.dataset.leaked).toBeUndefined()
+    expect(newHost.dataset.synBackground).not.toBe('module')
+    expect(solidProbeLog).toEqual([])
+    runtime.dispose()
+  })
 })

@@ -34,6 +34,9 @@ export class BackgroundRuntime {
   }
 
   setHost(element: HTMLElement): void {
+    // Invalidate in-flight loads so a late resolve cannot mount into the old host.
+    this.loadGeneration += 1
+    this.disposeActive()
     this.host = element
     this.applySolidSurface(element)
   }
