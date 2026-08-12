@@ -17,7 +17,8 @@
   grid-template-areas:
     'header header'
     'main navigation'
-    'main footer'
+    'main .'
+    'footer footer'
     'dock dock';
   grid-template-columns:
     minmax(0, 1.618fr)
@@ -26,6 +27,7 @@
     auto
     minmax(0, 1.618fr)
     minmax(0, 1fr)
+    auto
     var(--syn-dock-content-clearance);
   color: var(--syn-fg);
   background: transparent;
@@ -69,12 +71,21 @@
 .syn-main {
   grid-area: main;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   border-right: var(--syn-border-strong);
   padding: 24px 16px;
 }
 
-.syn-main__inner {
+.syn-main > .cell {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
   max-width: var(--syn-content-width);
+}
+
+.syn-main:has(.syn-home-logo) > .cell {
+  max-width: none;
 }
 
 .syn-navigation {
@@ -113,6 +124,10 @@
 
 .syn-site-footer {
   grid-area: footer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   background: var(--syn-bar-bg);
   color: var(--syn-bar-fg);
   border-top: var(--syn-border-strong);
@@ -127,15 +142,11 @@
   pointer-events: none;
 }
 
-.syn-social-links,
-.syn-language {
+.syn-social-links {
   position: fixed;
   bottom: var(--syn-dock-bottom);
   z-index: 20;
   pointer-events: auto;
-}
-
-.syn-social-links {
   left: var(--syn-dock-left);
   display: flex;
   flex-wrap: wrap-reverse;
@@ -184,7 +195,8 @@
 }
 
 .syn-language {
-  right: var(--syn-dock-right);
+  position: relative;
+  flex-shrink: 0;
 }
 
 .syn-language__list {
@@ -315,10 +327,19 @@
 }
 
 .syn-home-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
   text-align: right;
+  min-height: 100%;
 }
 
-.syn-home-logo h1 {
+.syn-formatter--home-logo {
+  display: contents;
+}
+
+.syn-home-logo .logo {
   font-size: clamp(48px, 9vw, 96px);
   font-weight: 900;
   line-height: 0.9;
@@ -326,7 +347,7 @@
   margin: 0;
 }
 
-.syn-home-logo p {
+.syn-home-logo .logo-sub {
   font-size: 14px;
   letter-spacing: 4px;
   text-transform: uppercase;
@@ -345,11 +366,11 @@
     padding: 8px 10px;
   }
 
-  .syn-home-logo h1 {
+  .syn-home-logo .logo {
     font-size: 52px;
   }
 
-  .syn-home-logo p {
+  .syn-home-logo .logo-sub {
     font-size: 10px;
     letter-spacing: 1px;
   }
