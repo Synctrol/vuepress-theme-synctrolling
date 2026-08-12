@@ -65,10 +65,33 @@ body {
 
 .syn-header__menu {
   display: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--syn-fg);
+  cursor: pointer;
 }
 
 .syn-header__menu-icon {
   display: block;
+}
+
+.syn-header__menu-icon line {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.syn-header__menu-icon--active line:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.syn-header__menu-icon--active line:nth-child(2) {
+  opacity: 0;
+}
+
+.syn-header__menu-icon--active line:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 /* Shared chip look for in-bar controls (theme toggle, language toggle):
@@ -105,6 +128,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
   border-right: var(--syn-border-strong);
   padding: 24px 16px;
 }
@@ -119,6 +143,9 @@ body {
 
 .syn-main:has(.syn-home-logo) > .cell {
   max-width: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .syn-navigation {
@@ -334,17 +361,21 @@ body {
   position: absolute;
   inset: 0;
   z-index: 40;
-  display: none;
+  display: flex;
   flex-direction: column;
   background: var(--syn-bg);
   color: var(--syn-fg);
+  visibility: hidden;
+  pointer-events: none;
   transform: translateX(100%);
-  transition: transform 0.25s ease;
+  transition: transform 0.25s ease, visibility 0s linear 0.25s;
 }
 
 .syn-shell--drawer-open .syn-nav-drawer {
-  display: flex;
+  visibility: visible;
+  pointer-events: auto;
   transform: translateX(0);
+  transition: transform 0.25s ease;
 }
 
 .syn-nav-drawer__panel {
@@ -403,9 +434,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  justify-content: center;
   text-align: right;
-  min-height: 100%;
 }
 
 .syn-formatter--home-logo {

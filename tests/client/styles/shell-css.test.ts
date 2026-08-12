@@ -64,6 +64,9 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-home-logo\s*\.logo-sub\s*\{[^}]*font-size:\s*14px/)
     expect(css).toMatch(/\.syn-home-logo\s*\.logo-sub\s*\{[^}]*text-transform:\s*uppercase/)
     expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)[^{]*\.[^}]*max-width:\s*none/)
+    expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)\s*>\s*\.cell\s*\{[^}]*justify-content:\s*center/)
+    expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)\s*>\s*\.cell\s*\{[^}]*display:\s*flex/)
+    expect(css).not.toMatch(/\.syn-home-logo\s*\{[^}]*min-height:/)
     expect(css).toMatch(/\.syn-formatter--home-logo\s*\{[^}]*display:\s*contents/)
   })
 
@@ -169,6 +172,20 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-main\s*\{[^}]*position:\s*relative/)
     expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*position:\s*absolute/)
     expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*inset:\s*0/)
+    // The drawer stays rendered so the close slide can animate (visibility,
+    // not display, toggles; the header icon morphs into a close icon).
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*visibility:\s*hidden/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*transform:\s*translateX\(100%\)/)
+    expect(css).toMatch(/\.syn-shell--drawer-open\s*\.syn-nav-drawer\s*\{[^}]*visibility:\s*visible/)
+    expect(css).toMatch(/\.syn-header__menu-icon--active\s*line:nth-child\(1\)\s*\{[^}]*rotate\(45deg\)/)
+    expect(css).toMatch(/\.syn-header__menu-icon--active\s*line:nth-child\(3\)\s*\{[^}]*rotate\(-45deg\)/)
+  })
+
+  it('styles the hamburger as a plain currentColor icon', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*background:\s*transparent/)
+    expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*border:\s*0/)
+    expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*color:\s*var\(--syn-fg\)/)
   })
 
   it('adds the reference 640px mobile breakpoint', () => {

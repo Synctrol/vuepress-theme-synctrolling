@@ -31,6 +31,7 @@ function toggleMenu(): void {
       >
         <svg
           class="syn-header__menu-icon"
+          :class="{ 'syn-header__menu-icon--active': drawerOpen }"
           viewBox="0 0 24 24"
           width="20"
           height="20"
