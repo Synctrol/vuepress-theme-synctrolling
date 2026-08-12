@@ -18,6 +18,7 @@ import { createSynctrolBackgroundsVitePlugin } from './backgrounds/vite-plugin.j
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 import { collectVisiblePlatformEntries } from './platforms/collect-visible-platform-entries.js'
 import { writeSynctrolCspJson } from './platforms/write-csp-artifact.js'
+import { registerHomeFormatters } from './markdown/home-formatters.js'
 import { buildReleaseFrontmatterForPage } from './release/inject-release-frontmatter.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -50,6 +51,9 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
     clientConfigFile: resolve(__dirname, '../client/config.js'),
     define: {
       __SYNCTROL_THEME_OPTIONS__: clientOptions,
+    },
+    extendsMarkdown: (md): void => {
+      registerHomeFormatters(md)
     },
     onInitialized: async (app: App): Promise<void> => {
       app.siteData.head.push(['script', {}, boot])

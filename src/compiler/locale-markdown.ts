@@ -6,6 +6,7 @@ import type {
   LocaleMarkdown,
 } from '../shared/types.js'
 import { fail } from './diagnostics.js'
+import { assertHomeHasLogo } from './markdown/home-formatters.js'
 import { parseYamlString } from './yaml.js'
 
 type PlainObject = Record<string, unknown>
@@ -131,6 +132,7 @@ export function parseLocaleMarkdown(
       'description is required for Home as SEO metadata',
       filePath,
     )
+    assertHomeHasLogo(markdown.body, filePath)
     return markdown
   }
 
