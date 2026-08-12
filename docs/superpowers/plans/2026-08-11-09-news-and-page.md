@@ -25,7 +25,7 @@
 - News detail and Page Main body max width is `760px`; no search UI and no table of contents
 - Page has no automatic listing and optional `cover` only
 - Brand tokens fixed: black/white, `3px` strong border, `0` radius, Archivo Black display
-- Tests run with `pnpm exec vitest run <path>` (or `npm test -- <path>` if the package uses npm scripts equivalently)
+- Tests run with `npm test -- <path>` (or `npm test -- <path>` if the package uses npm scripts equivalently)
 - Plans 01–05 and 08 are assumed complete for shared types, content compiler, routes, assets, shell, and Release pagination/date helpers reused here
 
 ## File Structure
@@ -34,11 +34,11 @@
 | --- | --- |
 | `src/shared/types/news.ts` | `NewsListItem`, `NewsTagCount`, `NewsCollectionPageData` view-model types |
 | `src/shared/format-message.ts` | Interpolate `{title}`, `{page}`, `{tag}` message templates |
-| `src/node/news/build-news-list-items.ts` | Build per-locale list items from packages + detail pages (fallback/draft flags) |
-| `src/node/news/build-news-tags-index.ts` | Declared tags + visible counts for News Tags Index |
-| `src/node/news/attach-news-page-data.ts` | Attach list/tag/detail page data onto compiled news-collection pages |
-| `src/node/markdown/home-formatters.ts` | Register `home-logo` (required) and `home-footer` (optional) containers |
-| `src/node/markdown/assert-home-formatters.ts` | Build-time assert Home packages include `home-logo` |
+| `src/compiler/news/build-news-list-items.ts` | Build per-locale list items from packages + detail pages (fallback/draft flags) |
+| `src/compiler/news/build-news-tags-index.ts` | Declared tags + visible counts for News Tags Index |
+| `src/compiler/news/attach-news-page-data.ts` | Attach list/tag/detail page data onto compiled news-collection pages |
+| `src/compiler/markdown/home-formatters.ts` | Register `home-logo` (required) and `home-footer` (optional) containers |
+| `src/compiler/markdown/assert-home-formatters.ts` | Build-time assert Home packages include `home-logo` |
 | `src/client/components/DraftBadge.vue` | Localized draft badge |
 | `src/client/components/TranslationUnavailableBadge.vue` | Localized translation-unavailable badge |
 | `src/client/components/ContentCover.vue` | Optional cover image for News/Page detail and News list |
@@ -53,9 +53,9 @@
 | `src/client/layouts/PageDetailLayout.vue` | General page 760px, optional cover |
 | `src/client/components/home/HomeLogoSlot.vue` | Renders `home-logo` formatter output in Main |
 | `src/client/components/home/HomeFooterSlot.vue` | Renders `home-footer` into shell Footer |
-| `tests/node/news/*.test.ts` | View-model and page-data attachment tests |
+| `tests/compiler/news/*.test.ts` | View-model and page-data attachment tests |
 | `tests/shared/format-message.test.ts` | Message interpolation tests |
-| `tests/node/markdown/home-formatters.test.ts` | Formatter registration / Home assert tests |
+| `tests/compiler/markdown/home-formatters.test.ts` | Formatter registration / Home assert tests |
 | `tests/client/components/*.test.ts` | Badge, list item, meta, cover component tests |
 | `tests/client/layouts/*.test.ts` | Layout composition tests |
 | `tests/integration/news-page-fixtures.test.ts` | Fixture build assertions for routes + list models |
@@ -97,26 +97,15 @@ export interface SynctrolThemeOptions {
   // …
 }
 
-// Plan 02 — ContentPackage, definitions tags
-export interface LocaleMarkdown {
-  filePath: string
-  title: string
-  description?: string
-  draft: boolean
-  body: string
-}
-export interface ContentPackage {
-  packagePath: string
-  type: ContentType
-  slug: string | null
-  date?: string
-  updated?: string
-  draft: boolean
-  cover?: string
-  path?: import('../types').LocalePath
-  tags?: string[]
-  locales: Partial<Record<LocaleKey, LocaleMarkdown>>
-}
+// Plan 03 — LocaleMarkdown / RouteContentPackage live in src/shared/types.ts
+// (Plan 03 Task 1). Do not redeclare them here. Canonical shape:
+//   RouteContentPackage {
+//     dir, identity, type, slug, date?, updated?, draft, path?, tags,
+//     cover?, artwork?, locales
+//   }
+//   LocaleMarkdown { filePath, title, description?, draft, body }
+// Plan 03 still stamps CompiledPage's packagePath field from pkg.dir.
+import type { LocaleMarkdown, RouteContentPackage } from '../types'
 export interface TagDefinition {
   title: Multilanguage
 }
@@ -127,10 +116,10 @@ export interface DefinitionsFile {
 
 // Plan 03 — CompiledPage
 export interface CompiledPage {
-  identity: import('../types/routes').PageIdentity
+  identity: import('../route-types').PageIdentity
   locale: LocaleKey
   contentType: ContentType | 'release-collection' | 'news-collection'
-  url: import('../types/routes').UrlLayers
+  url: import('../route-types').UrlLayers
   isFallback: boolean
   isDraft: boolean
   noindex: boolean
@@ -143,14 +132,14 @@ export interface CompiledPage {
   collection?: {
     page: number
     pageCount: number
-    itemIdentities: import('../types/routes').ContentIdentity[]
+    itemIdentities: import('../route-types').ContentIdentity[]
     tag?: string
   }
 }
 
 // Plan 04 — resolved cover public URL helper (assumed)
 export function resolveContentAssetPublicUrl(
-  pkg: ContentPackage,
+  pkg: RouteContentPackage,
   relativePath: string,
 ): string
 
@@ -249,7 +238,7 @@ describe('news view-model types', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/shared/format-message.test.ts tests/shared/news-types.test.ts`
+Run: `npm test -- tests/shared/format-message.test.ts tests/shared/news-types.test.ts`
 
 Expected: FAIL with module not found for `format-message` / `types/news`.
 
@@ -369,7 +358,7 @@ export { formatMessage } from './shared/format-message.js'
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/shared/format-message.test.ts tests/shared/news-types.test.ts`
+Run: `npm test -- tests/shared/format-message.test.ts tests/shared/news-types.test.ts`
 
 Expected: PASS
 
@@ -385,12 +374,12 @@ git commit -m "feat(news): add news view-model types and message interpolation"
 ### Task 2: Build News list items with fallback and draft badges metadata
 
 **Files:**
-- Create: `src/node/news/build-news-list-items.ts`
-- Create: `tests/node/news/build-news-list-items.test.ts`
+- Create: `src/compiler/news/build-news-list-items.ts`
+- Create: `tests/compiler/news/build-news-list-items.test.ts`
 - Create: `tests/helpers/news-fixtures.ts`
 
 **Interfaces:**
-- Consumes: `ContentPackage`, `CompiledPage`, `DefinitionsFile`, `NewsOptions`, `resolveMultilanguage`, `resolveContentAssetPublicUrl`, `encodePathSegment`
+- Consumes: `RouteContentPackage`, `CompiledPage`, `DefinitionsFile`, `NewsOptions`, `resolveMultilanguage`, `resolveContentAssetPublicUrl`, `encodePathSegment`
 - Produces: `buildNewsListItems(input): NewsListItem[]`
 
 Rules encoded in tests:
@@ -406,8 +395,8 @@ Rules encoded in tests:
 
 ```ts
 // tests/helpers/news-fixtures.ts
-import type { ContentPackage, LocaleMarkdown, SynctrolThemeOptions } from '../../src/shared/types'
-import type { CompiledPage } from '../../src/shared/types/routes'
+import type { RouteContentPackage, LocaleMarkdown, SynctrolThemeOptions } from '../../src/shared/types'
+import type { CompiledPage } from '../../src/shared/route-types'
 import { themeOptions as baseThemeOptions } from './route-fixtures'
 
 export function md(
@@ -422,25 +411,32 @@ export function md(
   }
 }
 
-export function newsPkg(overrides: Partial<ContentPackage> & { slug: string }): ContentPackage {
-  return {
-    packagePath: `content/news/${overrides.slug}`,
+export function newsPkg(overrides: Partial<RouteContentPackage> & { slug: string }): RouteContentPackage {
+  const defaults: RouteContentPackage = {
+    dir: `/content/news/${overrides.slug}`,
+    identity: `news:${overrides.slug}`,
     type: 'news',
     slug: overrides.slug,
-    date: overrides.date ?? '2026-08-11',
-    updated: overrides.updated,
-    draft: overrides.draft ?? false,
-    cover: overrides.cover,
-    tags: overrides.tags ?? ['release'],
-    locales: overrides.locales ?? {
+    date: '2026-08-11',
+    draft: false,
+    tags: ['release'],
+    locales: {
       zh: md({ title: `中文-${overrides.slug}`, description: '中文摘要', filePath: 'zh.md' }),
       en: md({ title: `EN-${overrides.slug}`, description: 'EN summary', filePath: 'en.md' }),
     },
   }
+  return {
+    ...defaults,
+    ...overrides,
+    type: 'news',
+    slug: overrides.slug,
+    dir: overrides.dir ?? defaults.dir,
+    identity: overrides.identity ?? defaults.identity,
+  }
 }
 
 export function newsDetailPage(
-  pkg: ContentPackage,
+  pkg: RouteContentPackage,
   locale: string,
   flags: Partial<Pick<CompiledPage, 'isFallback' | 'isDraft' | 'bodyLocale'>> = {},
 ): CompiledPage {
@@ -461,7 +457,7 @@ export function newsDetailPage(
     noindex: Boolean(flags.isFallback || flags.isDraft),
     bodyLocale,
     canonicalLocale: flags.isFallback ? 'zh' : locale,
-    packagePath: pkg.packagePath,
+    packagePath: pkg.dir,
     slug: pkg.slug,
     title: body.title,
     description: body.description,
@@ -483,9 +479,9 @@ export function newsTheme(
 ```
 
 ```ts
-// tests/node/news/build-news-list-items.test.ts
+// tests/compiler/news/build-news-list-items.test.ts
 import { describe, expect, it } from 'vitest'
-import { buildNewsListItems } from '../../../src/node/news/build-news-list-items'
+import { buildNewsListItems } from '../../../src/compiler/news/build-news-list-items'
 import {
   newsDetailPage,
   newsPkg,
@@ -611,27 +607,27 @@ describe('buildNewsListItems', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/node/news/build-news-list-items.test.ts`
+Run: `npm test -- tests/compiler/news/build-news-list-items.test.ts`
 
 Expected: FAIL with `buildNewsListItems` not found.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/news/build-news-list-items.ts
+// src/compiler/news/build-news-list-items.ts
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
-import type { ContentPackage, DefinitionsFile, LocaleKey, SynctrolThemeOptions } from '../../shared/types.js'
-import type { CompiledPage } from '../../shared/types/routes.js'
+import type { RouteContentPackage, DefinitionsFile, LocaleKey, SynctrolThemeOptions } from '../../shared/types.js'
+import type { CompiledPage } from '../../shared/route-types.js'
 import type { NewsListItem, NewsTagLink } from '../../shared/types/news.js'
 import { encodePathSegment } from '../url/validate-segment.js'
 
 export interface BuildNewsListItemsInput {
   locale: LocaleKey
-  packages: ContentPackage[]
+  packages: RouteContentPackage[]
   detailPages: CompiledPage[]
   options: SynctrolThemeOptions
   definitions: DefinitionsFile
-  resolveCoverUrl: (pkg: ContentPackage, relativePath: string) => string
+  resolveCoverUrl: (pkg: RouteContentPackage, relativePath: string) => string
 }
 
 function tagPublicPath(
@@ -683,7 +679,7 @@ export function buildNewsListItems(input: BuildNewsListItemsInput): NewsListItem
 
     const bodyMd = pkg.locales[page.bodyLocale]
     if (!bodyMd) {
-      throw new Error(`Missing body locale ${page.bodyLocale} for ${pkg.packagePath}`)
+      throw new Error(`Missing body locale ${page.bodyLocale} for ${pkg.dir}`)
     }
 
     const titleLang = options.locales[page.bodyLocale]!.lang
@@ -719,14 +715,14 @@ export function buildNewsListItems(input: BuildNewsListItemsInput): NewsListItem
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/node/news/build-news-list-items.test.ts`
+Run: `npm test -- tests/compiler/news/build-news-list-items.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/news/build-news-list-items.ts tests/node/news/build-news-list-items.test.ts tests/helpers/news-fixtures.ts
+git add src/compiler/news/build-news-list-items.ts tests/compiler/news/build-news-list-items.test.ts tests/helpers/news-fixtures.ts
 git commit -m "feat(news): build list items with fallback lang and RSS exclusion flags"
 ```
 
@@ -735,8 +731,8 @@ git commit -m "feat(news): build list items with fallback lang and RSS exclusion
 ### Task 3: News Tags Index counts (unpaginated)
 
 **Files:**
-- Create: `src/node/news/build-news-tags-index.ts`
-- Create: `tests/node/news/build-news-tags-index.test.ts`
+- Create: `src/compiler/news/build-news-tags-index.ts`
+- Create: `tests/compiler/news/build-news-tags-index.test.ts`
 
 **Interfaces:**
 - Consumes: `buildNewsListItems` output or equivalent visible packages; `DefinitionsFile.tags`; `NewsOptions`
@@ -751,10 +747,10 @@ Rules:
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/news/build-news-tags-index.test.ts
+// tests/compiler/news/build-news-tags-index.test.ts
 import { describe, expect, it } from 'vitest'
-import { buildNewsListItems } from '../../../src/node/news/build-news-list-items'
-import { buildNewsTagsIndex } from '../../../src/node/news/build-news-tags-index'
+import { buildNewsListItems } from '../../../src/compiler/news/build-news-list-items'
+import { buildNewsTagsIndex } from '../../../src/compiler/news/build-news-tags-index'
 import {
   newsDetailPage,
   newsPkg,
@@ -842,14 +838,14 @@ describe('buildNewsTagsIndex', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/node/news/build-news-tags-index.test.ts`
+Run: `npm test -- tests/compiler/news/build-news-tags-index.test.ts`
 
 Expected: FAIL with module not found.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/news/build-news-tags-index.ts
+// src/compiler/news/build-news-tags-index.ts
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
 import type { DefinitionsFile, LocaleKey, SynctrolThemeOptions } from '../../shared/types.js'
 import type { NewsListItem, NewsTagCount } from '../../shared/types/news.js'
@@ -895,14 +891,14 @@ export function buildNewsTagsIndex(input: BuildNewsTagsIndexInput): NewsTagCount
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/node/news/build-news-tags-index.test.ts`
+Run: `npm test -- tests/compiler/news/build-news-tags-index.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/news/build-news-tags-index.ts tests/node/news/build-news-tags-index.test.ts
+git add src/compiler/news/build-news-tags-index.ts tests/compiler/news/build-news-tags-index.test.ts
 git commit -m "feat(news): build unpaginated tags index with visible counts"
 ```
 
@@ -911,8 +907,8 @@ git commit -m "feat(news): build unpaginated tags index with visible counts"
 ### Task 4: Attach News collection and detail page data
 
 **Files:**
-- Create: `src/node/news/attach-news-page-data.ts`
-- Create: `tests/node/news/attach-news-page-data.test.ts`
+- Create: `src/compiler/news/attach-news-page-data.ts`
+- Create: `tests/compiler/news/attach-news-page-data.test.ts`
 
 **Interfaces:**
 - Consumes: `CompiledSite` / `CompiledPage[]`, `buildNewsListItems`, `buildNewsTagsIndex`, `formatMessage`, `resolveMultilanguage` for `seo.collections.news`
@@ -927,15 +923,15 @@ Rules:
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/news/attach-news-page-data.test.ts
+// tests/compiler/news/attach-news-page-data.test.ts
 import { describe, expect, it } from 'vitest'
-import { attachNewsPageData } from '../../../src/node/news/attach-news-page-data'
+import { attachNewsPageData } from '../../../src/compiler/news/attach-news-page-data'
 import {
   newsDetailPage,
   newsPkg,
   newsTheme,
 } from '../../helpers/news-fixtures'
-import type { CompiledPage } from '../../../src/shared/types/routes'
+import type { CompiledPage } from '../../../src/shared/route-types'
 
 const definitions = {
   tags: {
@@ -1191,18 +1187,18 @@ describe('attachNewsPageData', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/node/news/attach-news-page-data.test.ts`
+Run: `npm test -- tests/compiler/news/attach-news-page-data.test.ts`
 
 Expected: FAIL with module not found.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/news/attach-news-page-data.ts
+// src/compiler/news/attach-news-page-data.ts
 import { formatMessage } from '../../shared/format-message.js'
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
-import type { ContentPackage, DefinitionsFile, SynctrolThemeOptions } from '../../shared/types.js'
-import type { CompiledPage } from '../../shared/types/routes.js'
+import type { RouteContentPackage, DefinitionsFile, SynctrolThemeOptions } from '../../shared/types.js'
+import type { CompiledPage } from '../../shared/route-types.js'
 import type {
   NewsCollectionPageData,
   NewsDetailPageData,
@@ -1213,10 +1209,10 @@ import { buildNewsTagsIndex } from './build-news-tags-index.js'
 
 export interface AttachNewsPageDataInput {
   pages: CompiledPage[]
-  packages: ContentPackage[]
+  packages: RouteContentPackage[]
   options: SynctrolThemeOptions
   definitions: DefinitionsFile
-  resolveCoverUrl: (pkg: ContentPackage, relativePath: string) => string
+  resolveCoverUrl: (pkg: RouteContentPackage, relativePath: string) => string
 }
 
 export type AttachedNewsData = NewsCollectionPageData | NewsDetailPageData
@@ -1390,14 +1386,14 @@ export function attachNewsPageData(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/node/news/attach-news-page-data.test.ts`
+Run: `npm test -- tests/compiler/news/attach-news-page-data.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/news/attach-news-page-data.ts tests/node/news/attach-news-page-data.test.ts
+git add src/compiler/news/attach-news-page-data.ts tests/compiler/news/attach-news-page-data.test.ts
 git commit -m "feat(news): attach collection and detail page data models"
 ```
 
@@ -1443,7 +1439,7 @@ describe('badges', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/client/components/badges.test.ts`
+Run: `npm test -- tests/client/components/badges.test.ts`
 
 Expected: FAIL with component module not found.
 
@@ -1500,7 +1496,7 @@ defineProps<{ label: string }>()
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/client/components/badges.test.ts`
+Run: `npm test -- tests/client/components/badges.test.ts`
 
 Expected: PASS
 
@@ -1653,7 +1649,7 @@ describe('NewsList', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/client/components/news-list.test.ts`
+Run: `npm test -- tests/client/components/news-list.test.ts`
 
 Expected: FAIL with modules not found.
 
@@ -1795,7 +1791,7 @@ defineProps<{
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/client/components/news-list.test.ts`
+Run: `npm test -- tests/client/components/news-list.test.ts`
 
 Expected: PASS
 
@@ -1947,7 +1943,7 @@ describe('News collection layouts', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/client/layouts/news-collections.test.ts`
+Run: `npm test -- tests/client/layouts/news-collections.test.ts`
 
 Expected: FAIL with layout modules not found.
 
@@ -2113,7 +2109,7 @@ export function resolveNewsCollectionLayout(identity: string) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/client/layouts/news-collections.test.ts`
+Run: `npm test -- tests/client/layouts/news-collections.test.ts`
 
 Expected: PASS
 
@@ -2228,7 +2224,7 @@ describe('NewsDetailLayout', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/client/layouts/news-detail.test.ts`
+Run: `npm test -- tests/client/layouts/news-detail.test.ts`
 
 Expected: FAIL with module not found.
 
@@ -2354,7 +2350,7 @@ Update `resolve-layout.ts` so `contentType === 'news'` maps to `NewsDetailLayout
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/client/layouts/news-detail.test.ts`
+Run: `npm test -- tests/client/layouts/news-detail.test.ts`
 
 Expected: PASS
 
@@ -2370,33 +2366,35 @@ git commit -m "feat(news): add 760px news detail layout without TOC or search"
 ### Task 9: Page detail layout (unified 760px, optional cover, no listing)
 
 **Files:**
-- Create: `src/node/page/attach-page-page-data.ts`
+- Create: `src/compiler/page/attach-page-page-data.ts`
 - Create: `src/client/layouts/PageDetailLayout.vue`
-- Create: `tests/node/page/attach-page-page-data.test.ts`
+- Create: `tests/compiler/page/attach-page-page-data.test.ts`
 - Create: `tests/client/layouts/page-detail.test.ts`
 - Modify: `src/client/layouts/resolve-layout.ts`
 
 **Interfaces:**
-- Consumes: `ContentPackage` type `page`, `CompiledPage`, badges, `ContentCover`, `ContentColumn`
+- Consumes: `RouteContentPackage` type `page`, `CompiledPage`, badges, `ContentCover`, `ContentColumn`
 - Produces: `PageDetailPageData`; layout with no auto listing and no `layout` prop API
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/page/attach-page-page-data.test.ts
+// tests/compiler/page/attach-page-page-data.test.ts
 import { describe, expect, it } from 'vitest'
-import { attachPagePageData } from '../../../src/node/page/attach-page-page-data'
+import { attachPagePageData } from '../../../src/compiler/page/attach-page-page-data'
 import { newsTheme } from '../../helpers/news-fixtures'
-import type { ContentPackage } from '../../../src/shared/types'
-import type { CompiledPage } from '../../../src/shared/types/routes'
+import type { RouteContentPackage } from '../../../src/shared/types'
+import type { CompiledPage } from '../../../src/shared/route-types'
 
 describe('attachPagePageData', () => {
   it('builds page detail data with optional cover and fallback message', () => {
-    const pkg: ContentPackage = {
-      packagePath: 'content/pages/team',
+    const pkg: RouteContentPackage = {
+      dir: '/content/pages/team',
+      identity: 'page:team',
       type: 'page',
       slug: 'team',
       draft: false,
+      tags: [],
       cover: './assets/team.webp',
       locales: {
         zh: {
@@ -2422,7 +2420,7 @@ describe('attachPagePageData', () => {
       noindex: true,
       bodyLocale: 'zh',
       canonicalLocale: 'zh',
-      packagePath: pkg.packagePath,
+      packagePath: pkg.dir,
       slug: 'team',
       title: '团队',
     }
@@ -2447,11 +2445,13 @@ describe('attachPagePageData', () => {
   })
 
   it('omits cover when not configured', () => {
-    const pkg: ContentPackage = {
-      packagePath: 'content/pages/about',
+    const pkg: RouteContentPackage = {
+      dir: '/content/pages/about',
+      identity: 'page:about',
       type: 'page',
       slug: 'about',
       draft: false,
+      tags: [],
       locales: {
         zh: { filePath: 'zh.md', title: '关于', draft: false, body: 'x' },
       },
@@ -2557,23 +2557,23 @@ describe('PageDetailLayout', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/node/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts`
+Run: `npm test -- tests/compiler/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts`
 
 Expected: FAIL with modules not found.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/page/attach-page-page-data.ts
-import type { ContentPackage, SynctrolThemeOptions } from '../../shared/types.js'
-import type { CompiledPage } from '../../shared/types/routes.js'
+// src/compiler/page/attach-page-page-data.ts
+import type { RouteContentPackage, SynctrolThemeOptions } from '../../shared/types.js'
+import type { CompiledPage } from '../../shared/route-types.js'
 import type { PageDetailPageData } from '../../shared/types/news.js'
 
 export interface AttachPagePageDataInput {
   pages: CompiledPage[]
-  packages: ContentPackage[]
+  packages: RouteContentPackage[]
   options: SynctrolThemeOptions
-  resolveCoverUrl: (pkg: ContentPackage, relativePath: string) => string
+  resolveCoverUrl: (pkg: RouteContentPackage, relativePath: string) => string
 }
 
 export function attachPagePageData(
@@ -2590,7 +2590,7 @@ export function attachPagePageData(
     if (!pkg || !pkg.slug) continue
     const bodyMd = pkg.locales[page.bodyLocale]
     if (!bodyMd) {
-      throw new Error(`Missing body for page ${pkg.packagePath}`)
+      throw new Error(`Missing body for page ${pkg.dir}`)
     }
     out.set(page.url.routePath, {
       kind: 'page-detail',
@@ -2651,14 +2651,14 @@ Map `contentType === 'page'` → `PageDetailLayout` in `resolve-layout.ts`. Do n
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/node/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts`
+Run: `npm test -- tests/compiler/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/page/attach-page-page-data.ts src/client/layouts/PageDetailLayout.vue src/client/layouts/resolve-layout.ts tests/node/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts
+git add src/compiler/page/attach-page-page-data.ts src/client/layouts/PageDetailLayout.vue src/client/layouts/resolve-layout.ts tests/compiler/page/attach-page-page-data.test.ts tests/client/layouts/page-detail.test.ts
 git commit -m "feat(page): add unified 760px page detail without auto listing"
 ```
 
@@ -2667,11 +2667,11 @@ git commit -m "feat(page): add unified 760px page detail without auto listing"
 ### Task 10: Home `home-logo` and `home-footer` markdown formatters
 
 **Files:**
-- Create: `src/node/markdown/home-formatters.ts`
-- Create: `src/node/markdown/assert-home-formatters.ts`
+- Create: `src/compiler/markdown/home-formatters.ts`
+- Create: `src/compiler/markdown/assert-home-formatters.ts`
 - Create: `src/client/components/home/HomeLogoSlot.vue`
 - Create: `src/client/components/home/HomeFooterSlot.vue`
-- Create: `tests/node/markdown/home-formatters.test.ts`
+- Create: `tests/compiler/markdown/home-formatters.test.ts`
 - Create: `tests/client/components/home-formatters.test.ts`
 - Modify: theme markdown setup from Plan 01/05 to call `registerHomeFormatters(md)`
 - Modify: Home layout / shell Footer slot to render formatter outputs
@@ -2689,13 +2689,13 @@ Rules from spec §20.2:
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/markdown/home-formatters.test.ts
+// tests/compiler/markdown/home-formatters.test.ts
 import MarkdownIt from 'markdown-it'
 import { describe, expect, it } from 'vitest'
 import {
   assertHomeHasLogo,
   registerHomeFormatters,
-} from '../../../src/node/markdown/home-formatters'
+} from '../../../src/compiler/markdown/home-formatters'
 
 describe('home formatters', () => {
   it('renders home-logo and home-footer containers as marked blocks', () => {
@@ -2767,14 +2767,14 @@ describe('Home formatter slots', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/node/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts`
+Run: `npm test -- tests/compiler/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts`
 
 Expected: FAIL with modules not found. If `markdown-it` is not a dependency yet, add it as a `devDependency`/`dependency` matching VuePress’s markdown-it major before re-running.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/markdown/home-formatters.ts
+// src/compiler/markdown/home-formatters.ts
 import type MarkdownIt from 'markdown-it'
 import container from 'markdown-it-container'
 
@@ -2804,7 +2804,7 @@ export { assertHomeHasLogo as assertHomeFormatters }
 ```
 
 ```ts
-// src/node/markdown/assert-home-formatters.ts
+// src/compiler/markdown/assert-home-formatters.ts
 export { assertHomeHasLogo } from './home-formatters.js'
 ```
 
@@ -2863,7 +2863,7 @@ In `SynctrolShell` Footer slot for Home routes only:
 Non-Home routes keep Footer empty (Plan 05 contract). Extract `homeLogoHtml` / `homeFooterHtml` by selecting nodes with `data-syn-formatter` from the rendered Markdown HTML in the Home page data attach step:
 
 ```ts
-// src/node/home/extract-home-formatter-html.ts
+// src/compiler/home/extract-home-formatter-html.ts
 export function extractHomeFormatterHtml(renderedHtml: string): {
   logoHtml: string
   footerHtml?: string
@@ -2887,7 +2887,7 @@ export function extractHomeFormatterHtml(renderedHtml: string): {
 Add unit coverage inside the same markdown test file:
 
 ```ts
-import { extractHomeFormatterHtml } from '../../../src/node/home/extract-home-formatter-html'
+import { extractHomeFormatterHtml } from '../../../src/compiler/home/extract-home-formatter-html'
 
 it('extracts logo and optional footer html', () => {
   const md = new MarkdownIt()
@@ -2899,18 +2899,18 @@ it('extracts logo and optional footer html', () => {
 })
 ```
 
-Create `src/node/home/extract-home-formatter-html.ts` with the function above when implementing this step.
+Create `src/compiler/home/extract-home-formatter-html.ts` with the function above when implementing this step.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/node/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts`
+Run: `npm test -- tests/compiler/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/markdown/home-formatters.ts src/node/markdown/assert-home-formatters.ts src/node/home/extract-home-formatter-html.ts src/client/components/home/HomeLogoSlot.vue src/client/components/home/HomeFooterSlot.vue tests/node/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts
+git add src/compiler/markdown/home-formatters.ts src/compiler/markdown/assert-home-formatters.ts src/compiler/home/extract-home-formatter-html.ts src/client/components/home/HomeLogoSlot.vue src/client/components/home/HomeFooterSlot.vue tests/compiler/markdown/home-formatters.test.ts tests/client/components/home-formatters.test.ts
 git commit -m "feat(home): add home-logo and home-footer markdown formatters"
 ```
 
@@ -2921,7 +2921,7 @@ git commit -m "feat(home): add home-logo and home-footer markdown formatters"
 **Files:**
 - Create: `tests/integration/news-page-fixtures.test.ts`
 - Create: `tests/fixtures/news-page-site/` (minimal content tree)
-- Modify: `src/node/routes/compile-site-routes.ts` orchestration (or theme data plugin) to call `attachNewsPageData` / `attachPagePageData` and expose results on page data
+- Modify: `src/compiler/compile-site-routes.ts` orchestration (or theme data plugin) to call `attachNewsPageData` / `attachPagePageData` and expose results on page data
 
 **Interfaces:**
 - Consumes: Plan 03 `compileSiteRoutes`, Plan 02 compile content, Tasks 2–4 & 9 attachers
@@ -2958,10 +2958,10 @@ tests/fixtures/news-page-site/
 ```ts
 // tests/integration/news-page-fixtures.test.ts
 import { describe, expect, it } from 'vitest'
-import { compileContent } from '../../src/node/content/compile-content'
-import { compileSiteRoutes } from '../../src/node/routes/compile-site-routes'
-import { attachNewsPageData } from '../../src/node/news/attach-news-page-data'
-import { attachPagePageData } from '../../src/node/page/attach-page-page-data'
+import { compileContent } from '../../src/compiler/compile-content'
+import { compileSiteRoutes } from '../../src/compiler/compile-site-routes'
+import { attachNewsPageData } from '../../src/compiler/news/attach-news-page-data'
+import { attachPagePageData } from '../../src/compiler/page/attach-page-page-data'
 import { resolve } from 'node:path'
 import { newsTheme } from '../helpers/news-fixtures'
 
@@ -3077,7 +3077,7 @@ Create the fixture files with the YAML/Markdown described above (alpha with cove
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/integration/news-page-fixtures.test.ts`
+Run: `npm test -- tests/integration/news-page-fixtures.test.ts`
 
 Expected: FAIL until fixtures exist and attach wiring matches (or FAIL on missing fixture files).
 
@@ -3164,14 +3164,14 @@ for (const page of site.pages) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/integration/news-page-fixtures.test.ts`
+Run: `npm test -- tests/integration/news-page-fixtures.test.ts`
 
 Expected: PASS
 
 Also run the full News/Page suite:
 
 ```bash
-pnpm exec vitest run tests/shared/format-message.test.ts tests/shared/news-types.test.ts tests/node/news tests/node/page tests/node/markdown/home-formatters.test.ts tests/client/components/badges.test.ts tests/client/components/news-list.test.ts tests/client/components/home-formatters.test.ts tests/client/layouts tests/integration/news-page-fixtures.test.ts
+npm test -- tests/shared/format-message.test.ts tests/shared/news-types.test.ts tests/compiler/news tests/compiler/page tests/compiler/markdown/home-formatters.test.ts tests/client/components/badges.test.ts tests/client/components/news-list.test.ts tests/client/components/home-formatters.test.ts tests/client/layouts tests/integration/news-page-fixtures.test.ts
 ```
 
 Expected: all PASS
@@ -3179,7 +3179,7 @@ Expected: all PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/fixtures/news-page-site tests/integration/news-page-fixtures.test.ts src/node/news src/node/page src/client
+git add tests/fixtures/news-page-site tests/integration/news-page-fixtures.test.ts src/compiler/news src/compiler/page src/client
 git commit -m "test(news): add news and page integration fixtures for segments and fallbacks"
 ```
 

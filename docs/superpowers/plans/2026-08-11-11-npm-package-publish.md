@@ -30,7 +30,7 @@
 | `scripts/assert-pack-contents.mjs` | Assert `npm pack --dry-run` / pack listing excludes leaks and includes required paths |
 | `scripts/assert-exports-resolve.mjs` | Resolve package exports (`.`, `./client`, CSS/messages) from built `dist/` |
 | `scripts/prepublish-check.mjs` | Orchestrate tests → build → pack assert → exports resolve |
-| `src/node/theme.ts` | Ensure `clientConfigFile` resolves to published `dist/client/config.js` |
+| `src/compiler/theme.ts` | Ensure `clientConfigFile` resolves to published `dist/client/config.js` |
 | `src/client/styles/fonts.css` | `@font-face` for self-hosted Archivo Black (if not already present) |
 | `src/client/assets/fonts/archivo-black.woff2` | Display font binary shipped in `dist/` |
 | `src/client/styles/index.ts` | Import fonts + tokens + shell (+ feature CSS from Plans 05–09) |
@@ -49,7 +49,7 @@
 
 **Assumed from Plans 01–10 (do not recreate):**
 
-- `synctrolTheme(options)` theme factory in `src/node/theme.ts` / `src/index.ts`
+- `synctrolTheme(options)` theme factory in `src/compiler/theme.ts` / `src/index.ts`
 - `zhMessages` / `enMessages` from `src/shared/messages.ts`, re-exported from package root
 - Client entry `src/client/index.ts` + `src/client/config.ts` with layouts and styles
 - CSS tokens in `src/client/styles/tokens.css`; shell/feature CSS imported via `src/client/styles/index.ts`
@@ -255,12 +255,12 @@ git commit -m "chore: finalize package.json for npm publish"
 - Create: `src/client/styles/fonts.css` (if `@font-face` is not already present)
 - Create: `src/client/assets/fonts/archivo-black.woff2` (binary; obtain from a licensed self-hostable Archivo Black WOFF2 already used by Synctrol, or generate a minimal placeholder only in tests — production ships the real font)
 - Modify: `src/client/styles/index.ts` — import `./fonts.css` before tokens
-- Modify: `src/node/theme.ts` — resolve `clientConfigFile` to `../client/config.js` (published path)
+- Modify: `src/compiler/theme.ts` — resolve `clientConfigFile` to `../client/config.js` (published path)
 - Modify: `package.json` scripts if Task 1 left placeholders incomplete
 
 **Interfaces:**
 - Consumes: `tsc` emit under `dist/` mirroring `src/**/*.ts`; Vue SFCs and CSS under `src/client/`
-- Produces: `dist/` containing `index.js` + `.d.ts`, `dist/client/**` including `.vue` / `.css` / fonts, and `clientConfigFile` pointing at `dist/client/config.js` when the theme loads from `dist/node/theme.js`
+- Produces: `dist/` containing `index.js` + `.d.ts`, `dist/client/**` including `.vue` / `.css` / fonts, and `clientConfigFile` pointing at `dist/client/config.js` when the theme loads from `dist/compiler/theme.js`
 
 - [ ] **Step 1: Write the failing build-artifact tests**
 
@@ -276,7 +276,7 @@ describe('dist package artifacts', () => {
   it('emits node entry and theme factory types', () => {
     expect(existsSync(dist('index.js'))).toBe(true)
     expect(existsSync(dist('index.d.ts'))).toBe(true)
-    expect(existsSync(dist('node', 'theme.js'))).toBe(true)
+    expect(existsSync(dist('compiler', 'theme.js'))).toBe(true)
     const indexJs = readFileSync(dist('index.js'), 'utf8')
     expect(indexJs).toMatch(/synctrolTheme/)
   })
@@ -293,7 +293,7 @@ describe('dist package artifacts', () => {
   })
 
   it('points clientConfigFile at the published config.js path', () => {
-    const themeJs = readFileSync(dist('node', 'theme.js'), 'utf8')
+    const themeJs = readFileSync(dist('compiler', 'theme.js'), 'utf8')
     expect(themeJs).toMatch(/client\/config\.js/)
     expect(themeJs).not.toMatch(/client\/config\.ts/)
   })
@@ -398,7 +398,7 @@ import './shell.css'
 // …existing Plan 08/09 feature CSS imports remain below
 ```
 
-In `src/node/theme.ts`, set:
+In `src/compiler/theme.ts`, set:
 
 ```ts
 clientConfigFile: path.resolve(__dirname, '../client/config.js'),
@@ -424,7 +424,7 @@ Expected: PASS; console shows `copy-package-assets: copied N files into dist/`.
 ```bash
 git add scripts/copy-package-assets.mjs tests/publish/build-artifacts.test.ts \
   src/client/styles/fonts.css src/client/styles/index.ts \
-  src/client/assets/fonts/archivo-black.woff2 src/node/theme.ts package.json
+  src/client/assets/fonts/archivo-black.woff2 src/compiler/theme.ts package.json
 git commit -m "build: emit dist with client vue, css, and fonts"
 ```
 
@@ -1136,7 +1136,7 @@ Expected: PASS within timeout; temp dirs cleaned; no leftover `*.tgz` in repo ro
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/e2e/publish/consumer-smoke.test.ts src/node/theme.ts
+git add tests/e2e/publish/consumer-smoke.test.ts src/compiler/theme.ts
 git commit -m "test: smoke consumer install from npm pack tarball"
 ```
 

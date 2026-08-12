@@ -4,7 +4,7 @@
 
 **Goal:** Emit per-page SEO metadata (title, description, canonical, Open Graph, `lang`, real-translation-only `hreflang`, JSON-LD) and locale RSS / site Sitemap artifacts from compiled Synctrol pages and theme `seo` / `feeds` options.
 
-**Architecture:** Pure Node modules under `src/node/seo/` and `src/node/feeds/` compute a `PageSeo` record and XML strings from Plan 03 `CompiledPage` data plus Plan 01 `ResolvedSynctrolThemeOptions`. Collection titles are resolved here from `seo.collections` and locale `messages` (Plan 03 left placeholder identity strings). Feed writers honor `feeds.rss` / `feeds.sitemap` toggles without affecting head meta. A thin emit orchestrator serializes head tags and writes `/{locale}/rss.xml` plus `/sitemap.xml` under the VuePress destination.
+**Architecture:** Pure Node modules under `src/compiler/seo/` and `src/compiler/feeds/` compute a `PageSeo` record and XML strings from Plan 03 `CompiledPage` data plus Plan 01 `ResolvedSynctrolThemeOptions`. Collection titles are resolved here from `seo.collections` and locale `messages` (Plan 03 left placeholder identity strings). Feed writers honor `feeds.rss` / `feeds.sitemap` toggles without affecting head meta. A thin emit orchestrator serializes head tags and writes `/{locale}/rss.xml` plus `/sitemap.xml` under the VuePress destination.
 
 **Tech Stack:** TypeScript, Vitest, VuePress 2 theme package `vuepress-theme-synctrolling`, Plan 01 options/messages, Plan 02 Book/definitions types, Plan 03 `CompiledPage` / `UrlLayers`, Plan 04 absolute asset URLs (consumed via an injected `SeoAssetContext`).
 
@@ -26,7 +26,7 @@
 - RSS includes News and Release detail items only; excludes drafts, fallback pages, collections, Home, and Page
 - Sitemap is a single `/sitemap.xml` containing locale-specific absolute URL entries; excludes drafts and fallback
 - Collection index titles/descriptions come from `seo.collections`; paginated titles use `messages.paginatedTitle`; tag archives use `messages.tagArchiveTitle` with localized tag title + News collection title; pagination/tag descriptions remain the collection description
-- Tests run with `pnpm exec vitest run <path>`
+- Tests run with `npm test -- <path>`
 - Plans 01–09 are assumed complete for types, content, routes, assets, Release Book, and News pages; this plan does not reimplement discovery, routing, or layouts
 
 ## File Structure
@@ -35,22 +35,22 @@
 | --- | --- |
 | `src/shared/seo/types.ts` | `PageSeo`, `HeadTag`, `SeoAssetContext`, `JsonLdNode`, feed item types |
 | `src/shared/seo/format-message.ts` | Substitute `{title}`, `{page}`, `{tag}` in locale message templates |
-| `src/node/seo/collection-copy.ts` | Resolve collection / paginated / tag-archive title + description |
-| `src/node/seo/resolve-description.ts` | Page description with site-locale fallback |
-| `src/node/seo/resolve-og-image.ts` | Cover-or-default OG image; never artwork |
-| `src/node/seo/resolve-alternates.ts` | Canonical URL, `lang`, robots, real-translation `hreflang` |
-| `src/node/seo/open-graph.ts` | Build Open Graph fields from resolved SEO pieces |
-| `src/node/seo/json-ld.ts` | `WebSite`, `Organization`, `Article`, `MusicAlbum`, `MusicRecording` builders |
-| `src/node/seo/build-page-seo.ts` | Orchestrate one `PageSeo` per `CompiledPage` |
-| `src/node/seo/serialize-head.ts` | Turn `PageSeo` into ordered `HeadTag[]` |
-| `src/node/feeds/rss.ts` | Locale RSS 2.0 XML for News + Release |
-| `src/node/feeds/sitemap.ts` | Single sitemap XML of locale page absolute URLs |
-| `src/node/seo/emit-seo-and-feeds.ts` | Build all page SEO + write feed files when toggles allow |
+| `src/compiler/seo/collection-copy.ts` | Resolve collection / paginated / tag-archive title + description |
+| `src/compiler/seo/resolve-description.ts` | Page description with site-locale fallback |
+| `src/compiler/seo/resolve-og-image.ts` | Cover-or-default OG image; never artwork |
+| `src/compiler/seo/resolve-alternates.ts` | Canonical URL, `lang`, robots, real-translation `hreflang` |
+| `src/compiler/seo/open-graph.ts` | Build Open Graph fields from resolved SEO pieces |
+| `src/compiler/seo/json-ld.ts` | `WebSite`, `Organization`, `Article`, `MusicAlbum`, `MusicRecording` builders |
+| `src/compiler/seo/build-page-seo.ts` | Orchestrate one `PageSeo` per `CompiledPage` |
+| `src/compiler/seo/serialize-head.ts` | Turn `PageSeo` into ordered `HeadTag[]` |
+| `src/compiler/feeds/rss.ts` | Locale RSS 2.0 XML for News + Release |
+| `src/compiler/feeds/sitemap.ts` | Single sitemap XML of locale page absolute URLs |
+| `src/compiler/seo/emit-seo-and-feeds.ts` | Build all page SEO + write feed files when toggles allow |
 | `tests/helpers/seo-fixtures.ts` | Minimal options, pages, assets, books for SEO/feed tests |
 | `tests/shared/seo/*.test.ts` | `formatMessage` unit tests |
-| `tests/node/seo/*.test.ts` | SEO resolver unit tests |
-| `tests/node/feeds/*.test.ts` | RSS / Sitemap unit tests |
-| `tests/node/seo/emit-seo-and-feeds.test.ts` | Toggle + integration coverage |
+| `tests/compiler/seo/*.test.ts` | SEO resolver unit tests |
+| `tests/compiler/feeds/*.test.ts` | RSS / Sitemap unit tests |
+| `tests/compiler/seo/emit-seo-and-feeds.test.ts` | Toggle + integration coverage |
 
 **Prerequisite types (import; do not redefine):**
 
@@ -357,7 +357,7 @@ export const localeKeys = ['zh', 'en'] as LocaleKey[]
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/shared/seo/format-message.test.ts`
+Run: `npm test -- tests/shared/seo/format-message.test.ts`
 
 Expected: FAIL with module not found for `../../../src/shared/seo/format-message`
 
@@ -445,7 +445,7 @@ export function formatMessage(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm exec vitest run tests/shared/seo/format-message.test.ts`
+Run: `npm test -- tests/shared/seo/format-message.test.ts`
 
 Expected: PASS
 
@@ -461,8 +461,8 @@ git commit -m "feat(seo): add shared SEO types and message formatter"
 ### Task 2: Collection SEO titles and descriptions
 
 **Files:**
-- Create: `src/node/seo/collection-copy.ts`
-- Create: `tests/node/seo/collection-copy.test.ts`
+- Create: `src/compiler/seo/collection-copy.ts`
+- Create: `tests/compiler/seo/collection-copy.test.ts`
 
 **Interfaces:**
 - Consumes: `formatMessage`; `resolveMultilanguage`; `ResolvedSynctrolThemeOptions.seo.collections` and `locales.*.messages`; `CompiledPage.collection` / identity
@@ -479,9 +479,9 @@ Rules:
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/node/seo/collection-copy.test.ts
+// tests/compiler/seo/collection-copy.test.ts
 import { describe, expect, it } from 'vitest'
-import { resolveCollectionCopy } from '../../../src/node/seo/collection-copy'
+import { resolveCollectionCopy } from '../../../src/compiler/seo/collection-copy'
 import { page, resolvedOptions, url } from '../../helpers/seo-fixtures'
 
 const options = resolvedOptions()
@@ -654,17 +654,17 @@ describe('resolveCollectionCopy', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/node/seo/collection-copy.test.ts`
+Run: `npm test -- tests/compiler/seo/collection-copy.test.ts`
 
 Expected: FAIL with module not found for `collection-copy`
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/seo/collection-copy.ts
+// src/compiler/seo/collection-copy.ts
 import { formatMessage } from '../../shared/seo/format-message'
 import type { ContentDefinitions, LocaleKey } from '../../shared/types'
-import type { CompiledPage } from '../../shared/types/routes'
+import type { CompiledPage } from '../../shared/route-types'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
 import { resolveMultilanguage } from '../../shared/multilanguage'
 
@@ -770,14 +770,14 @@ export function resolveCollectionCopy(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm exec vitest run tests/node/seo/collection-copy.test.ts`
+Run: `npm test -- tests/compiler/seo/collection-copy.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/seo/collection-copy.ts tests/node/seo/collection-copy.test.ts
+git add src/compiler/seo/collection-copy.ts tests/compiler/seo/collection-copy.test.ts
 git commit -m "feat(seo): resolve collection, pagination, and tag archive titles"
 ```
 
@@ -786,10 +786,10 @@ git commit -m "feat(seo): resolve collection, pagination, and tag archive titles
 ### Task 3: Description fallback and Open Graph image
 
 **Files:**
-- Create: `src/node/seo/resolve-description.ts`
-- Create: `src/node/seo/resolve-og-image.ts`
-- Create: `tests/node/seo/resolve-description.test.ts`
-- Create: `tests/node/seo/resolve-og-image.test.ts`
+- Create: `src/compiler/seo/resolve-description.ts`
+- Create: `src/compiler/seo/resolve-og-image.ts`
+- Create: `tests/compiler/seo/resolve-description.test.ts`
+- Create: `tests/compiler/seo/resolve-og-image.test.ts`
 
 **Interfaces:**
 - Consumes: `resolveMultilanguage`; `SeoOptions.description`; `CompiledPage.description` / `packagePath` / `contentType`; `SeoAssetContext`
@@ -805,9 +805,9 @@ Rules:
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/seo/resolve-description.test.ts
+// tests/compiler/seo/resolve-description.test.ts
 import { describe, expect, it } from 'vitest'
-import { resolvePageDescription } from '../../../src/node/seo/resolve-description'
+import { resolvePageDescription } from '../../../src/compiler/seo/resolve-description'
 import { page, resolvedOptions, url } from '../../helpers/seo-fixtures'
 
 const options = resolvedOptions()
@@ -877,9 +877,9 @@ describe('resolvePageDescription', () => {
 ```
 
 ```ts
-// tests/node/seo/resolve-og-image.test.ts
+// tests/compiler/seo/resolve-og-image.test.ts
 import { describe, expect, it } from 'vitest'
-import { resolveOgImage } from '../../../src/node/seo/resolve-og-image'
+import { resolveOgImage } from '../../../src/compiler/seo/resolve-og-image'
 import { page, seoContentContext, url } from '../../helpers/seo-fixtures'
 
 describe('resolveOgImage', () => {
@@ -967,16 +967,16 @@ describe('resolveOgImage', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/node/seo/resolve-description.test.ts tests/node/seo/resolve-og-image.test.ts`
+Run: `npm test -- tests/compiler/seo/resolve-description.test.ts tests/compiler/seo/resolve-og-image.test.ts`
 
 Expected: FAIL with modules not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/seo/resolve-description.ts
+// src/compiler/seo/resolve-description.ts
 import type { CollectionCopy } from './collection-copy'
-import type { CompiledPage } from '../../shared/types/routes'
+import type { CompiledPage } from '../../shared/route-types'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
 import { resolveMultilanguage } from '../../shared/multilanguage'
 
@@ -1000,9 +1000,9 @@ export function resolvePageDescription(
 ```
 
 ```ts
-// src/node/seo/resolve-og-image.ts
+// src/compiler/seo/resolve-og-image.ts
 import type { SeoAssetContext } from '../../shared/seo/types'
-import type { CompiledPage } from '../../shared/types/routes'
+import type { CompiledPage } from '../../shared/route-types'
 
 export function resolveOgImage(
   page: CompiledPage,
@@ -1023,14 +1023,14 @@ export function resolveOgImage(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/node/seo/resolve-description.test.ts tests/node/seo/resolve-og-image.test.ts`
+Run: `npm test -- tests/compiler/seo/resolve-description.test.ts tests/compiler/seo/resolve-og-image.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/seo/resolve-description.ts src/node/seo/resolve-og-image.ts tests/node/seo/resolve-description.test.ts tests/node/seo/resolve-og-image.test.ts
+git add src/compiler/seo/resolve-description.ts src/compiler/seo/resolve-og-image.ts tests/compiler/seo/resolve-description.test.ts tests/compiler/seo/resolve-og-image.test.ts
 git commit -m "feat(seo): resolve descriptions and OG images without artwork fallback"
 ```
 
@@ -1039,8 +1039,8 @@ git commit -m "feat(seo): resolve descriptions and OG images without artwork fal
 ### Task 4: Canonical, lang, robots, and real-translation hreflang
 
 **Files:**
-- Create: `src/node/seo/resolve-alternates.ts`
-- Create: `tests/node/seo/resolve-alternates.test.ts`
+- Create: `src/compiler/seo/resolve-alternates.ts`
+- Create: `tests/compiler/seo/resolve-alternates.test.ts`
 
 **Interfaces:**
 - Consumes: `CompiledPage[]` for the same content identity; locale `lang`; `canonicalLocale`; `isFallback`; `noindex`
@@ -1058,14 +1058,14 @@ Rules:
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/node/seo/resolve-alternates.test.ts
+// tests/compiler/seo/resolve-alternates.test.ts
 import { describe, expect, it } from 'vitest'
 import {
   resolveCanonicalUrl,
   resolveHreflang,
   resolveLang,
   resolveRobots,
-} from '../../../src/node/seo/resolve-alternates'
+} from '../../../src/compiler/seo/resolve-alternates'
 import { page, resolvedOptions, url } from '../../helpers/seo-fixtures'
 
 const options = resolvedOptions()
@@ -1170,16 +1170,16 @@ describe('resolveAlternates', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/node/seo/resolve-alternates.test.ts`
+Run: `npm test -- tests/compiler/seo/resolve-alternates.test.ts`
 
 Expected: FAIL with module not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/seo/resolve-alternates.ts
+// src/compiler/seo/resolve-alternates.ts
 import type { HreflangAlternate } from '../../shared/seo/types'
-import type { CompiledPage } from '../../shared/types/routes'
+import type { CompiledPage } from '../../shared/route-types'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
 
 export function resolveLang(
@@ -1232,14 +1232,14 @@ export function resolveHreflang(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm exec vitest run tests/node/seo/resolve-alternates.test.ts`
+Run: `npm test -- tests/compiler/seo/resolve-alternates.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/seo/resolve-alternates.ts tests/node/seo/resolve-alternates.test.ts
+git add src/compiler/seo/resolve-alternates.ts tests/compiler/seo/resolve-alternates.test.ts
 git commit -m "feat(seo): resolve canonical, lang, robots, and real-translation hreflang"
 ```
 
@@ -1248,10 +1248,10 @@ git commit -m "feat(seo): resolve canonical, lang, robots, and real-translation 
 ### Task 5: Open Graph fields and head tag serialization
 
 **Files:**
-- Create: `src/node/seo/open-graph.ts`
-- Create: `src/node/seo/serialize-head.ts`
-- Create: `tests/node/seo/open-graph.test.ts`
-- Create: `tests/node/seo/serialize-head.test.ts`
+- Create: `src/compiler/seo/open-graph.ts`
+- Create: `src/compiler/seo/serialize-head.ts`
+- Create: `tests/compiler/seo/open-graph.test.ts`
+- Create: `tests/compiler/seo/serialize-head.test.ts`
 
 **Interfaces:**
 - Consumes: title, description, canonical, lang, image, page content type
@@ -1275,9 +1275,9 @@ Head tag order:
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/seo/open-graph.test.ts
+// tests/compiler/seo/open-graph.test.ts
 import { describe, expect, it } from 'vitest'
-import { buildOpenGraph } from '../../../src/node/seo/open-graph'
+import { buildOpenGraph } from '../../../src/compiler/seo/open-graph'
 
 describe('buildOpenGraph', () => {
   it('uses article type for news details and website otherwise', () => {
@@ -1314,9 +1314,9 @@ describe('buildOpenGraph', () => {
 ```
 
 ```ts
-// tests/node/seo/serialize-head.test.ts
+// tests/compiler/seo/serialize-head.test.ts
 import { describe, expect, it } from 'vitest'
-import { serializeHeadTags } from '../../../src/node/seo/serialize-head'
+import { serializeHeadTags } from '../../../src/compiler/seo/serialize-head'
 import type { PageSeo } from '../../../src/shared/seo/types'
 
 const seo: PageSeo = {
@@ -1393,16 +1393,16 @@ describe('serializeHeadTags', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm exec vitest run tests/node/seo/open-graph.test.ts tests/node/seo/serialize-head.test.ts`
+Run: `npm test -- tests/compiler/seo/open-graph.test.ts tests/compiler/seo/serialize-head.test.ts`
 
 Expected: FAIL with modules not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/seo/open-graph.ts
+// src/compiler/seo/open-graph.ts
 import type { OpenGraphData } from '../../shared/seo/types'
-import type { CompiledPage } from '../../shared/types/routes'
+import type { CompiledPage } from '../../shared/route-types'
 
 export function buildOpenGraph(input: {
   contentType: CompiledPage['contentType']
@@ -1424,7 +1424,7 @@ export function buildOpenGraph(input: {
 ```
 
 ```ts
-// src/node/seo/serialize-head.ts
+// src/compiler/seo/serialize-head.ts
 import type { HeadTag, PageSeo } from '../../shared/seo/types'
 
 export function serializeHeadTags(seo: PageSeo): HeadTag[] {
@@ -1496,14 +1496,14 @@ export function serializeHeadTags(seo: PageSeo): HeadTag[] {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm exec vitest run tests/node/seo/open-graph.test.ts tests/node/seo/serialize-head.test.ts`
+Run: `npm test -- tests/compiler/seo/open-graph.test.ts tests/compiler/seo/serialize-head.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/seo/open-graph.ts src/node/seo/serialize-head.ts tests/node/seo/open-graph.test.ts tests/node/seo/serialize-head.test.ts
+git add src/compiler/seo/open-graph.ts src/compiler/seo/serialize-head.ts tests/compiler/seo/open-graph.test.ts tests/compiler/seo/serialize-head.test.ts
 git commit -m "feat(seo): build Open Graph data and serialize head tags"
 ```
 
@@ -1512,8 +1512,8 @@ git commit -m "feat(seo): build Open Graph data and serialize head tags"
 ### Task 6: JSON-LD builders (WebSite, Organization, Article, MusicAlbum, MusicRecording; no Product)
 
 **Files:**
-- Create: `src/node/seo/json-ld.ts`
-- Create: `tests/node/seo/json-ld.test.ts`
+- Create: `src/compiler/seo/json-ld.ts`
+- Create: `tests/compiler/seo/json-ld.test.ts`
 
 **Interfaces:**
 - Consumes: `SeoOptions.organization`, `siteUrl`, page fields, `Book`, `resolveMultilanguage`, OG image URL
@@ -1530,14 +1530,14 @@ Rules:
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/node/seo/json-ld.test.ts
+// tests/compiler/seo/json-ld.test.ts
 import { describe, expect, it } from 'vitest'
 import {
   buildAlbumJsonLd,
   buildArticleJsonLd,
   buildPageJsonLd,
   secondsToIsoDuration,
-} from '../../../src/node/seo/json-ld'
+} from '../../../src/compiler/seo/json-ld'
 import {
   page,
   resolvedOptions,
@@ -1773,20 +1773,20 @@ describe('buildPageJsonLd', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/node/seo/json-ld.test.ts`
+Run: `npm test -- tests/compiler/seo/json-ld.test.ts`
 
 Expected: FAIL with module not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/seo/json-ld.ts
+// src/compiler/seo/json-ld.ts
 import type { JsonLdNode, SeoContentContext } from '../../shared/seo/types'
 import type {
   AlbumBook,
   LocaleKey,
 } from '../../shared/types'
-import type { CompiledPage } from '../../shared/types/routes'
+import type { CompiledPage } from '../../shared/route-types'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
 import { resolveMultilanguage } from '../../shared/multilanguage'
 
@@ -1990,14 +1990,14 @@ export function buildPageJsonLd(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm exec vitest run tests/node/seo/json-ld.test.ts`
+Run: `npm test -- tests/compiler/seo/json-ld.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/seo/json-ld.ts tests/node/seo/json-ld.test.ts
+git add src/compiler/seo/json-ld.ts tests/compiler/seo/json-ld.test.ts
 git commit -m "feat(seo): add JSON-LD for Article, MusicAlbum, WebSite, Organization"
 ```
 
@@ -2006,8 +2006,8 @@ git commit -m "feat(seo): add JSON-LD for Article, MusicAlbum, WebSite, Organiza
 ### Task 7: `buildPageSeo` orchestrator
 
 **Files:**
-- Create: `src/node/seo/build-page-seo.ts`
-- Create: `tests/node/seo/build-page-seo.test.ts`
+- Create: `src/compiler/seo/build-page-seo.ts`
+- Create: `tests/compiler/seo/build-page-seo.test.ts`
 
 **Interfaces:**
 - Consumes: all Task 2–6 resolvers; `CompiledSite.pages`; `ResolvedSynctrolThemeOptions`; `SeoContentContext`
@@ -2021,9 +2021,9 @@ Title resolution:
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/node/seo/build-page-seo.test.ts
+// tests/compiler/seo/build-page-seo.test.ts
 import { describe, expect, it } from 'vitest'
-import { buildPageSeo } from '../../../src/node/seo/build-page-seo'
+import { buildPageSeo } from '../../../src/compiler/seo/build-page-seo'
 import {
   page,
   resolvedOptions,
@@ -2147,16 +2147,16 @@ describe('buildPageSeo', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/node/seo/build-page-seo.test.ts`
+Run: `npm test -- tests/compiler/seo/build-page-seo.test.ts`
 
 Expected: FAIL with module not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/seo/build-page-seo.ts
+// src/compiler/seo/build-page-seo.ts
 import type { PageSeo, SeoContentContext } from '../../shared/seo/types'
-import type { CompiledPage, CompiledSite } from '../../shared/types/routes'
+import type { CompiledPage, CompiledSite } from '../../shared/route-types'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
 import { resolveCollectionCopy } from './collection-copy'
 import { resolvePageDescription } from './resolve-description'
@@ -2231,14 +2231,14 @@ export function buildSiteSeo(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm exec vitest run tests/node/seo/build-page-seo.test.ts`
+Run: `npm test -- tests/compiler/seo/build-page-seo.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/seo/build-page-seo.ts tests/node/seo/build-page-seo.test.ts
+git add src/compiler/seo/build-page-seo.ts tests/compiler/seo/build-page-seo.test.ts
 git commit -m "feat(seo): orchestrate per-page SEO metadata"
 ```
 
@@ -2247,8 +2247,8 @@ git commit -m "feat(seo): orchestrate per-page SEO metadata"
 ### Task 8: Locale RSS feed (`/{locale}/rss.xml`)
 
 **Files:**
-- Create: `src/node/feeds/rss.ts`
-- Create: `tests/node/feeds/rss.test.ts`
+- Create: `src/compiler/feeds/rss.ts`
+- Create: `tests/compiler/feeds/rss.test.ts`
 
 **Interfaces:**
 - Consumes: `CompiledPage[]`; `ResolvedSynctrolThemeOptions.seo` name/description; `dateByPackagePath`; `feeds.rss`
@@ -2268,13 +2268,13 @@ Rules:
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/node/feeds/rss.test.ts
+// tests/compiler/feeds/rss.test.ts
 import { describe, expect, it } from 'vitest'
 import {
   generateLocaleRssXml,
   rssOutputPath,
   selectRssItems,
-} from '../../../src/node/feeds/rss'
+} from '../../../src/compiler/feeds/rss'
 import {
   page,
   resolvedOptions,
@@ -2421,17 +2421,17 @@ describe('generateLocaleRssXml', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/node/feeds/rss.test.ts`
+Run: `npm test -- tests/compiler/feeds/rss.test.ts`
 
 Expected: FAIL with module not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/feeds/rss.ts
+// src/compiler/feeds/rss.ts
 import type { RssItem, SeoContentContext } from '../../shared/seo/types'
 import type { LocaleKey } from '../../shared/types'
-import type { CompiledPage } from '../../shared/types/routes'
+import type { CompiledPage } from '../../shared/route-types'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
 import { resolveMultilanguage } from '../../shared/multilanguage'
 import { joinPublicPath, normalizeBase } from '../../shared/url/normalize-path'
@@ -2548,14 +2548,14 @@ ${itemXml}
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm exec vitest run tests/node/feeds/rss.test.ts`
+Run: `npm test -- tests/compiler/feeds/rss.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/feeds/rss.ts tests/node/feeds/rss.test.ts
+git add src/compiler/feeds/rss.ts tests/compiler/feeds/rss.test.ts
 git commit -m "feat(feeds): generate per-locale RSS for news and releases"
 ```
 
@@ -2564,8 +2564,8 @@ git commit -m "feat(feeds): generate per-locale RSS for news and releases"
 ### Task 9: Sitemap generation
 
 **Files:**
-- Create: `src/node/feeds/sitemap.ts`
-- Create: `tests/node/feeds/sitemap.test.ts`
+- Create: `src/compiler/feeds/sitemap.ts`
+- Create: `tests/compiler/feeds/sitemap.test.ts`
 
 **Interfaces:**
 - Consumes: `CompiledPage[]`; `feeds.sitemap`
@@ -2582,13 +2582,13 @@ Rules:
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/node/feeds/sitemap.test.ts
+// tests/compiler/feeds/sitemap.test.ts
 import { describe, expect, it } from 'vitest'
 import {
   generateSitemapXml,
   selectSitemapUrls,
   sitemapOutputPath,
-} from '../../../src/node/feeds/sitemap'
+} from '../../../src/compiler/feeds/sitemap'
 import { page, url } from '../../helpers/seo-fixtures'
 
 describe('sitemapOutputPath', () => {
@@ -2677,15 +2677,15 @@ describe('generateSitemapXml', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/node/feeds/sitemap.test.ts`
+Run: `npm test -- tests/compiler/feeds/sitemap.test.ts`
 
 Expected: FAIL with module not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/feeds/sitemap.ts
-import type { CompiledPage } from '../../shared/types/routes'
+// src/compiler/feeds/sitemap.ts
+import type { CompiledPage } from '../../shared/route-types'
 import { joinPublicPath, normalizeBase } from '../../shared/url/normalize-path'
 
 function escapeXml(value: string): string {
@@ -2735,14 +2735,14 @@ ${body}
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm exec vitest run tests/node/feeds/sitemap.test.ts`
+Run: `npm test -- tests/compiler/feeds/sitemap.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/feeds/sitemap.ts tests/node/feeds/sitemap.test.ts
+git add src/compiler/feeds/sitemap.ts tests/compiler/feeds/sitemap.test.ts
 git commit -m "feat(feeds): generate sitemap excluding drafts and fallbacks"
 ```
 
@@ -2751,9 +2751,9 @@ git commit -m "feat(feeds): generate sitemap excluding drafts and fallbacks"
 ### Task 10: Emit orchestrator, feed toggles, and integration verification
 
 **Files:**
-- Create: `src/node/seo/emit-seo-and-feeds.ts`
-- Create: `src/node/seo/index.ts`
-- Create: `tests/node/seo/emit-seo-and-feeds.test.ts`
+- Create: `src/compiler/seo/emit-seo-and-feeds.ts`
+- Create: `src/compiler/seo/index.ts`
+- Create: `tests/compiler/seo/emit-seo-and-feeds.test.ts`
 - Modify: `src/index.ts` (re-export SEO/feed entrypoints)
 
 **Interfaces:**
@@ -2765,10 +2765,10 @@ git commit -m "feat(feeds): generate sitemap excluding drafts and fallbacks"
 - [ ] **Step 1: Write the failing integration test**
 
 ```ts
-// tests/node/seo/emit-seo-and-feeds.test.ts
+// tests/compiler/seo/emit-seo-and-feeds.test.ts
 import { describe, expect, it } from 'vitest'
-import { emitSeoAndFeeds } from '../../../src/node/seo/emit-seo-and-feeds'
-import type { CompiledSite } from '../../../src/shared/types/routes'
+import { emitSeoAndFeeds } from '../../../src/compiler/seo/emit-seo-and-feeds'
+import type { CompiledSite } from '../../../src/shared/route-types'
 import type { AlbumBook } from '../../../src/shared/types'
 import {
   page,
@@ -3021,16 +3021,16 @@ describe('emitSeoAndFeeds', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm exec vitest run tests/node/seo/emit-seo-and-feeds.test.ts`
+Run: `npm test -- tests/compiler/seo/emit-seo-and-feeds.test.ts`
 
 Expected: FAIL with module not found
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/seo/emit-seo-and-feeds.ts
+// src/compiler/seo/emit-seo-and-feeds.ts
 import type { HeadTag, PageSeo, SeoContentContext } from '../../shared/seo/types'
-import type { CompiledSite } from '../../shared/types/routes'
+import type { CompiledSite } from '../../shared/route-types'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options'
 import { buildSiteSeo } from './build-page-seo'
 import { serializeHeadTags } from './serialize-head'
@@ -3114,7 +3114,7 @@ export function emitSeoAndFeeds(input: {
 ```
 
 ```ts
-// src/node/seo/index.ts
+// src/compiler/seo/index.ts
 export { buildPageSeo, buildSiteSeo } from './build-page-seo'
 export { emitSeoAndFeeds } from './emit-seo-and-feeds'
 export { serializeHeadTags } from './serialize-head'
@@ -3140,7 +3140,7 @@ export type {
 Run:
 
 ```bash
-pnpm exec vitest run tests/shared/seo tests/node/seo tests/node/feeds
+npm test -- tests/shared/seo tests/compiler/seo tests/compiler/feeds
 ```
 
 Expected: PASS (all tasks in this plan)
@@ -3148,7 +3148,7 @@ Expected: PASS (all tasks in this plan)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/seo src/node/feeds src/shared/seo src/index.ts tests/helpers/seo-fixtures.ts tests/shared/seo tests/node/seo tests/node/feeds
+git add src/compiler/seo src/compiler/feeds src/shared/seo src/index.ts tests/helpers/seo-fixtures.ts tests/shared/seo tests/compiler/seo tests/compiler/feeds
 git commit -m "feat(seo): emit page SEO head tags with optional RSS and sitemap"
 ```
 

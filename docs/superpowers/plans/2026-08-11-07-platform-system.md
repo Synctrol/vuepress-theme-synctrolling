@@ -41,7 +41,7 @@
 | `src/platforms/builtins/soundcloud-player.ts` | `soundcloud_player` type registration |
 | `src/platforms/builtins/netease-player.ts` | `netease_player` type registration |
 | `src/platforms/collect-csp.ts` | Walk compiled Books; call `cspOrigins` for every visible entry |
-| `src/node/platforms/write-csp-artifact.ts` | Write `<dest>/synctrol-csp.json`; never emit CSP meta |
+| `src/compiler/platforms/write-csp-artifact.ts` | Write `<dest>/synctrol-csp.json`; never emit CSP meta |
 | `src/compiler/platform-entry.ts` | Modify: validate via registry (built-in + custom) |
 | `src/shared/options.ts` | Modify: runtime-reject invalid `loadStrategy`; type `component` as Vue `Component` |
 | `src/shared/types.ts` | Modify: export typed built-in entry interfaces used by renderers |
@@ -51,7 +51,7 @@
 | `tests/platforms/*.test.ts` | Unit tests for formatters, URLs, CSP, registry |
 | `tests/compiler/platform-entry-registry.test.ts` | Custom type + category constraint tests through registry |
 | `tests/client/platforms/*.test.ts` | Component tests (lazy load, failure, a11y) with `happy-dom` |
-| `tests/node/platforms/write-csp-artifact.test.ts` | Artifact write + no meta injection |
+| `tests/compiler/platforms/write-csp-artifact.test.ts` | Artifact write + no meta injection |
 | `vitest.config.ts` | Modify: `happy-dom` for `tests/client/**` |
 | `package.json` | Modify: add `happy-dom`, `@vue/test-utils` |
 
@@ -1654,10 +1654,10 @@ git commit -m "feat(platforms): wire type registry into entry validation and CSP
 ### Task 6: Write `synctrol-csp.json` audit artifact (no meta injection)
 
 **Files:**
-- Create: `src/node/platforms/write-csp-artifact.ts`
-- Create: `src/node/platforms/collect-visible-platform-entries.ts`
-- Test: `tests/node/platforms/write-csp-artifact.test.ts`
-- Test: `tests/node/platforms/collect-visible-platform-entries.test.ts`
+- Create: `src/compiler/platforms/write-csp-artifact.ts`
+- Create: `src/compiler/platforms/collect-visible-platform-entries.ts`
+- Test: `tests/compiler/platforms/write-csp-artifact.test.ts`
+- Test: `tests/compiler/platforms/collect-visible-platform-entries.test.ts`
 
 **Interfaces:**
 - Consumes: `collectCspFromEntries`, compiled Book data (`AlbumBook` / `GiftBook`), `resolvePlatformTypes`
@@ -1666,7 +1666,7 @@ git commit -m "feat(platforms): wire type registry into entry validation and CSP
 - [ ] **Step 1: Write the failing artifact tests**
 
 ```ts
-// tests/node/platforms/write-csp-artifact.test.ts
+// tests/compiler/platforms/write-csp-artifact.test.ts
 import { describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -1674,7 +1674,7 @@ import { tmpdir } from 'node:os'
 import {
   assertNoCspMetaInjection,
   writeSynctrolCspJson,
-} from '../../../src/node/platforms/write-csp-artifact'
+} from '../../../src/compiler/platforms/write-csp-artifact'
 
 describe('writeSynctrolCspJson', () => {
   it('writes merged directive arrays to dest/synctrol-csp.json', () => {
@@ -1705,9 +1705,9 @@ describe('writeSynctrolCspJson', () => {
 ```
 
 ```ts
-// tests/node/platforms/collect-visible-platform-entries.test.ts
+// tests/compiler/platforms/collect-visible-platform-entries.test.ts
 import { describe, expect, it } from 'vitest'
-import { collectVisiblePlatformEntries } from '../../../src/node/platforms/collect-visible-platform-entries'
+import { collectVisiblePlatformEntries } from '../../../src/compiler/platforms/collect-visible-platform-entries'
 import type { AlbumBook, GiftBook } from '../../../src/shared/types'
 
 describe('collectVisiblePlatformEntries', () => {
@@ -1763,7 +1763,7 @@ describe('collectVisiblePlatformEntries', () => {
 Run:
 
 ```bash
-npm test -- tests/node/platforms/write-csp-artifact.test.ts tests/node/platforms/collect-visible-platform-entries.test.ts
+npm test -- tests/compiler/platforms/write-csp-artifact.test.ts tests/compiler/platforms/collect-visible-platform-entries.test.ts
 ```
 
 Expected: FAIL with module not found
@@ -1771,7 +1771,7 @@ Expected: FAIL with module not found
 - [ ] **Step 3: Implement writers and collectors**
 
 ```ts
-// src/node/platforms/write-csp-artifact.ts
+// src/compiler/platforms/write-csp-artifact.ts
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { SynctrolCspJson } from '../../platforms/csp.js'
@@ -1790,7 +1790,7 @@ export function assertNoCspMetaInjection(html: string): void {
 ```
 
 ```ts
-// src/node/platforms/collect-visible-platform-entries.ts
+// src/compiler/platforms/collect-visible-platform-entries.ts
 import type { Book, NormalizedPlatformEntry } from '../../shared/types.js'
 import type { CspCollectable } from '../../platforms/collect-csp.js'
 
@@ -1847,7 +1847,7 @@ writeSynctrolCspJson(app.dir.dest(), csp)
 Run:
 
 ```bash
-npm test -- tests/node/platforms/write-csp-artifact.test.ts tests/node/platforms/collect-visible-platform-entries.test.ts
+npm test -- tests/compiler/platforms/write-csp-artifact.test.ts tests/compiler/platforms/collect-visible-platform-entries.test.ts
 ```
 
 Expected: PASS
@@ -1855,7 +1855,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/platforms/write-csp-artifact.ts src/node/platforms/collect-visible-platform-entries.ts tests/node/platforms/write-csp-artifact.test.ts tests/node/platforms/collect-visible-platform-entries.test.ts
+git add src/compiler/platforms/write-csp-artifact.ts src/compiler/platforms/collect-visible-platform-entries.ts tests/compiler/platforms/write-csp-artifact.test.ts tests/compiler/platforms/collect-visible-platform-entries.test.ts
 git commit -m "feat(platforms): write synctrol-csp.json audit artifact without CSP meta"
 ```
 
@@ -2825,12 +2825,12 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { resolvePlatformTypes } from '../../src/platforms/registry'
 import { validatePlatformEntry } from '../../src/compiler/platform-entry'
-import { collectVisiblePlatformEntries } from '../../src/node/platforms/collect-visible-platform-entries'
+import { collectVisiblePlatformEntries } from '../../src/compiler/platforms/collect-visible-platform-entries'
 import { collectCspFromEntries } from '../../src/platforms/collect-csp'
 import {
   assertNoCspMetaInjection,
   writeSynctrolCspJson,
-} from '../../src/node/platforms/write-csp-artifact'
+} from '../../src/compiler/platforms/write-csp-artifact'
 import type { AlbumBook, ContentDefinitions, GiftBook } from '../../src/shared/types'
 import { resolveThemeOptions } from '../../src/shared/options'
 
@@ -2976,7 +2976,7 @@ Do not add any `head` / markdown HTML that inserts `Content-Security-Policy` met
 Run:
 
 ```bash
-npm test -- tests/platforms tests/client/platforms tests/node/platforms tests/compiler/platform-entry.test.ts tests/compiler/platform-entry-registry.test.ts tests/shared/options.test.ts
+npm test -- tests/platforms tests/client/platforms tests/compiler/platforms tests/compiler/platform-entry.test.ts tests/compiler/platform-entry-registry.test.ts tests/shared/options.test.ts
 ```
 
 Expected: PASS for every platform-system test file
@@ -3008,4 +3008,4 @@ git commit -m "feat(platforms): export platform API and verify CSP audit pipelin
 ---
 
 **Task count:** 11  
-**Key files:** `src/platforms/registry.ts`, `src/platforms/builtins/`, `src/platforms/csp.ts`, `src/platforms/urls.ts`, `src/compiler/platform-entry.ts`, `src/node/platforms/write-csp-artifact.ts`, `src/client/components/platforms/PlatformEmbed.ts`, `src/client/components/platforms/PlatformLinks.ts`, `src/client/components/platforms/renderers/`
+**Key files:** `src/platforms/registry.ts`, `src/platforms/builtins/`, `src/platforms/csp.ts`, `src/platforms/urls.ts`, `src/compiler/platform-entry.ts`, `src/compiler/platforms/write-csp-artifact.ts`, `src/client/components/platforms/PlatformEmbed.ts`, `src/client/components/platforms/PlatformLinks.ts`, `src/client/components/platforms/renderers/`

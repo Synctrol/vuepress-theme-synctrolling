@@ -1559,8 +1559,8 @@ import { describe, expect, it } from 'vitest'
 import { resolveThemeOptions } from '../../../src/shared/options'
 import { zhMessages, enMessages } from '../../../src/shared/messages'
 import { exampleBackgrounds } from '../../fixtures/backgrounds/theme-config-example'
-import { generateRootRouterHtml } from '../../../src/node/routes/root-router'
-import { parseManifest } from '../../../src/node/content/parse-manifest'
+import { generateRootRouterHtml } from '../../../src/compiler/root-router-html'
+import { parseContentManifest } from '../../../src/compiler/manifest'
 import { BackgroundRuntime } from '../../../src/client/background/runtime'
 import type { ContentType } from '../../../src/shared/types'
 
@@ -1613,7 +1613,7 @@ describe('background theme config and exclusions', () => {
 
   it('rejects background in content.yml via Plan 02 schema', () => {
     expect(() =>
-      parseManifest({
+      parseContentManifest({
         path: 'content/pages/about/content.yml',
         raw: 'type: page\nbackground: ./bg.ts\n',
         mainLocale: 'zh',
@@ -1655,13 +1655,13 @@ describe('background theme config and exclusions', () => {
 })
 ```
 
-If Plan 02 exports a different parse entry than `parseManifest`, call the real Plan 02 API that surfaces `ILLEGAL_BACKGROUND` (for example the compile helper used in `tests/compiler/manifest.test.ts`). If `generateRootRouterHtml` lives at a different Plan 03 path, import that exact module. Do not reimplement either.
+If Plan 02 exports a different parse entry than `parseContentManifest`, call the real Plan 02 API that surfaces `ILLEGAL_BACKGROUND` (for example the compile helper used in `tests/compiler/manifest.test.ts`). If `generateRootRouterHtml` lives at a different Plan 03 path, import that exact module. Do not reimplement either.
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- tests/client/background/config-and-root.test.ts`
 
-Expected: FAIL until README/example fixture wiring is complete and imports resolve. If `parseManifest` / `generateRootRouterHtml` already exist from Plans 02–03, failures should be limited to the missing example fixture / README assertion targets rather than those compilers.
+Expected: FAIL until README/example fixture wiring is complete and imports resolve. If `parseContentManifest` / `generateRootRouterHtml` already exist from Plans 02–03, failures should be limited to the missing example fixture / README assertion targets rather than those compilers.
 
 - [ ] **Step 3: Add README backgrounds section and ensure exports**
 

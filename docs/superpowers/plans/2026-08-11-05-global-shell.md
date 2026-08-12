@@ -53,7 +53,7 @@
 | `src/client/styles/shell.css` | Grid, dock, mobile, overlay, focus-visible rules |
 | `src/client/config.ts` | VuePress client config: layouts + styles |
 | `src/client/index.ts` | Client package export |
-| `src/node/theme.ts` | Theme factory registering client + Layout (extend Plan 01) |
+| `src/compiler/theme.ts` | Theme factory registering client + Layout (extend Plan 01) |
 | `tests/shared/format-message.test.ts` | Message interpolation |
 | `tests/client/color-mode/*.test.ts` | Cycle, storage, resolve, boot script |
 | `tests/client/navigation/*.test.ts` | Href resolution |
@@ -284,7 +284,7 @@ Create injection keys early so the harness compiles:
 import type { InjectionKey, Ref } from 'vue'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
 import type { LocaleKey } from '../../shared/types.js'
-import type { PageIdentity } from '../../shared/types/routes.js'
+import type { PageIdentity } from '../../shared/route-types.js'
 
 export interface LocaleAlternateLink {
   locale: LocaleKey
@@ -565,7 +565,7 @@ git commit -m "feat: add color-mode helpers and message formatter"
 **Files:**
 - Create: `src/client/color-mode/boot-script.ts`
 - Create: `tests/client/color-mode/boot-script.test.ts`
-- Modify: `src/node/theme.ts` (or Plan 01 `src/index.ts` theme factory) to inject the script into `head`
+- Modify: `src/compiler/theme.ts` (or Plan 01 `src/index.ts` theme factory) to inject the script into `head`
 
 **Interfaces:**
 - Consumes: `COLOR_MODE_STORAGE_KEY`, `defaultColorMode`
@@ -617,10 +617,10 @@ export function buildColorModeBootScript(
 }
 ```
 
-Create `src/node/theme.ts` and re-export it from `src/index.ts` as `synctrolTheme` (keeps Plan 01 smoke tests working). Inject the boot script into `app.siteData.head` during `onInitialized` so it runs before paint:
+Create `src/compiler/theme.ts` and re-export it from `src/index.ts` as `synctrolTheme` (keeps Plan 01 smoke tests working). Inject the boot script into `app.siteData.head` during `onInitialized` so it runs before paint:
 
 ```ts
-// src/node/theme.ts
+// src/compiler/theme.ts
 import type { Theme } from 'vuepress'
 import { getDirname, path } from '@vuepress/utils'
 import type { SynctrolThemeOptions } from '../shared/options.js'
@@ -665,7 +665,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/client/color-mode/boot-script.ts src/node/theme.ts src/index.ts \
+git add src/client/color-mode/boot-script.ts src/compiler/theme.ts src/index.ts \
   tests/client/color-mode/boot-script.test.ts
 git commit -m "feat: inject color-mode boot script to prevent FOUC"
 ```
@@ -2506,7 +2506,7 @@ git commit -m "feat: add golden-ratio ShellLayout and responsive dock CSS"
 - Create: `src/client/layouts/Layout.vue`
 - Create: `src/client/config.ts`
 - Create: `src/client/index.ts`
-- Modify: `src/node/theme.ts`
+- Modify: `src/compiler/theme.ts`
 - Modify: `src/index.ts`
 - Create: `tests/client/layouts/Layout.test.ts`
 
@@ -2685,7 +2685,7 @@ export { default as Layout } from './layouts/Layout.vue'
 export * from './composables/keys.js'
 ```
 
-`src/node/theme.ts` already points `clientConfigFile` at `src/client/config.ts` from Task 3.
+`src/compiler/theme.ts` already points `clientConfigFile` at `src/client/config.ts` from Task 3.
 
 - [ ] **Step 4: Run Layout test**
 
@@ -2697,7 +2697,7 @@ Expected: PASS
 
 ```bash
 git add src/client/layouts/Layout.vue src/client/config.ts src/client/index.ts \
-  src/node/theme.ts src/index.ts tests/client/layouts/Layout.test.ts
+  src/compiler/theme.ts src/index.ts tests/client/layouts/Layout.test.ts
 git commit -m "feat: wire VuePress Layout to Synctrol ShellLayout"
 ```
 
@@ -2881,4 +2881,4 @@ If already green, no extra commit.
 ---
 
 **Task count:** 15  
-**Key files:** `src/client/components/ShellLayout.vue`, `src/client/layouts/Layout.vue`, `src/client/styles/shell.css`, `src/client/components/ThemeMode.vue`, `src/client/components/Navigation.vue`, `src/client/components/HeaderBar.vue`, `src/client/components/NavDrawer.vue`, `src/client/components/SocialLinks.vue`, `src/client/components/LanguageSwitcher.vue`, `src/client/components/SiteFooter.vue`, `src/client/color-mode/*`, `src/client/navigation/resolve-nav-href.ts`, `src/client/a11y/focus-trap.ts`, `src/client/config.ts`, `src/node/theme.ts`
+**Key files:** `src/client/components/ShellLayout.vue`, `src/client/layouts/Layout.vue`, `src/client/styles/shell.css`, `src/client/components/ThemeMode.vue`, `src/client/components/Navigation.vue`, `src/client/components/HeaderBar.vue`, `src/client/components/NavDrawer.vue`, `src/client/components/SocialLinks.vue`, `src/client/components/LanguageSwitcher.vue`, `src/client/components/SiteFooter.vue`, `src/client/color-mode/*`, `src/client/navigation/resolve-nav-href.ts`, `src/client/a11y/focus-trap.ts`, `src/client/config.ts`, `src/compiler/theme.ts`

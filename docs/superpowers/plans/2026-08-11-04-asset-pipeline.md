@@ -4,7 +4,7 @@
 
 **Goal:** Build the Synctrol theme asset pipeline that hashes content, global, and theme assets into locale-free public URLs, resolves Markdown and config-relative references, rejects unsafe relative HTML attributes, and exposes `resolveContentAsset` for Vue components.
 
-**Architecture:** Pure Node modules under `src/node/assets/` take Plan 02 packages (manifest/book paths + locale Markdown) plus theme options and VuePress `base`/`siteUrl`/`configDir`, then emit a deterministic `AssetManifest` of content-hashed files. Content assets land at `/assets/content/{type}/{slug}/…` (Home omits slug). Config-relative social/SEO/placeholder icons and `.vuepress/assets` files land at `/assets/global/…`. Theme static files land at `/assets/theme/…`; Background module resource imports remain bundler-owned theme assets. A small client helper reads the per-package public-path map injected into page data. Plans 05+ consume the manifest; this plan does not build UI.
+**Architecture:** Pure Node modules under `src/compiler/assets/` take Plan 02 packages (manifest/book paths + locale Markdown) plus theme options and VuePress `base`/`siteUrl`/`configDir`, then emit a deterministic `AssetManifest` of content-hashed files. Content assets land at `/assets/content/{type}/{slug}/…` (Home omits slug). Config-relative social/SEO/placeholder icons and `.vuepress/assets` files land at `/assets/global/…`. Theme static files land at `/assets/theme/…`; Background module resource imports remain bundler-owned theme assets. A small client helper reads the per-package public-path map injected into page data. Plans 05+ consume the manifest; this plan does not build UI.
 
 **Tech Stack:** TypeScript 5.x, Node `fs`/`path`/`crypto`, Vitest, package `vuepress-theme-synctrolling` from Plan 01; diagnostics from Plan 02 (`SynctrolDiagnosticError`); URL `base`/`siteUrl` conventions from Plan 03.
 
@@ -32,20 +32,20 @@
 | File | Responsibility |
 | --- | --- |
 | `src/shared/types/assets.ts` | `ResolvedAsset`, `AssetKind`, `AssetManifest`, compile input types |
-| `src/node/assets/hash.ts` | Content hash from file bytes |
-| `src/node/assets/emit-url.ts` | Public path + absolute URL with VuePress `base` and `siteUrl` |
-| `src/node/assets/safe-path.ts` | Resolve relative refs inside a root; reject escapes; case-sensitive existence |
-| `src/node/assets/content-path.ts` | Build `/assets/content/{type}/[slug/]…name.[hash].ext` |
-| `src/node/assets/collect-package-refs.ts` | Gather cover/artwork/book covers/`audio_player.src` refs |
-| `src/node/assets/markdown-assets.ts` | Extract Markdown image/download refs; reject raw HTML relative attrs |
-| `src/node/assets/global-pipeline.ts` | Config-relative global refs → `/assets/global/…` |
-| `src/node/assets/theme-pipeline.ts` | Explicit theme static files → `/assets/theme/…` |
-| `src/node/assets/registry.ts` | In-memory source→`ResolvedAsset` map + lookup helpers |
-| `src/node/assets/compile-assets.ts` | Orchestrate collect → resolve → hash → write → manifest |
-| `src/node/assets/index.ts` | Public Node asset exports |
+| `src/compiler/assets/hash.ts` | Content hash from file bytes |
+| `src/compiler/assets/emit-url.ts` | Public path + absolute URL with VuePress `base` and `siteUrl` |
+| `src/compiler/assets/safe-path.ts` | Resolve relative refs inside a root; reject escapes; case-sensitive existence |
+| `src/compiler/assets/content-path.ts` | Build `/assets/content/{type}/[slug/]…name.[hash].ext` |
+| `src/compiler/assets/collect-package-refs.ts` | Gather cover/artwork/book covers/`audio_player.src` refs |
+| `src/compiler/assets/markdown-assets.ts` | Extract Markdown image/download refs; reject raw HTML relative attrs |
+| `src/compiler/assets/global-pipeline.ts` | Config-relative global refs → `/assets/global/…` |
+| `src/compiler/assets/theme-pipeline.ts` | Explicit theme static files → `/assets/theme/…` |
+| `src/compiler/assets/registry.ts` | In-memory source→`ResolvedAsset` map + lookup helpers |
+| `src/compiler/assets/compile-assets.ts` | Orchestrate collect → resolve → hash → write → manifest |
+| `src/compiler/assets/index.ts` | Public Node asset exports |
 | `src/client/assets/resolve-content-asset.ts` | Client `resolveContentAsset('./assets/x')` against injected map |
 | `src/client/assets/index.ts` | Client asset exports |
-| `tests/node/assets/*.test.ts` | Unit tests for each Node module |
+| `tests/compiler/assets/*.test.ts` | Unit tests for each Node module |
 | `tests/client/assets/*.test.ts` | Client helper tests |
 | `tests/helpers/asset-fixtures.ts` | Theme options + package builders for this plan |
 | `tests/fixtures/assets/**` | On-disk binary/text fixtures for hash/write/integration tests |
@@ -174,10 +174,10 @@ export interface LocaleMarkdown {
 
 **Files:**
 - Create: `src/shared/types/assets.ts`
-- Create: `src/node/assets/hash.ts`
-- Create: `src/node/assets/emit-url.ts`
-- Create: `tests/node/assets/hash.test.ts`
-- Create: `tests/node/assets/emit-url.test.ts`
+- Create: `src/compiler/assets/hash.ts`
+- Create: `src/compiler/assets/emit-url.ts`
+- Create: `tests/compiler/assets/hash.test.ts`
+- Create: `tests/compiler/assets/emit-url.test.ts`
 - Create: `tests/helpers/asset-fixtures.ts`
 
 **Interfaces:**
@@ -187,9 +187,9 @@ export interface LocaleMarkdown {
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/assets/hash.test.ts
+// tests/compiler/assets/hash.test.ts
 import { describe, expect, it } from 'vitest'
-import { hashFileContents, insertContentHash } from '../../../src/node/assets/hash'
+import { hashFileContents, insertContentHash } from '../../../src/compiler/assets/hash'
 
 describe('hashFileContents', () => {
   it('returns a stable 8-character lowercase hex digest for the same bytes', () => {
@@ -227,12 +227,12 @@ describe('insertContentHash', () => {
 ```
 
 ```ts
-// tests/node/assets/emit-url.test.ts
+// tests/compiler/assets/emit-url.test.ts
 import { describe, expect, it } from 'vitest'
 import {
   buildAssetAbsoluteUrl,
   buildAssetPublicPath,
-} from '../../../src/node/assets/emit-url'
+} from '../../../src/compiler/assets/emit-url'
 
 describe('buildAssetPublicPath', () => {
   it('applies root VuePress base', () => {
@@ -373,7 +373,7 @@ export function typedSlug(
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `npm test -- tests/node/assets/hash.test.ts tests/node/assets/emit-url.test.ts`
+Run: `npm test -- tests/compiler/assets/hash.test.ts tests/compiler/assets/emit-url.test.ts`
 
 Expected: FAIL because the modules do not exist yet.
 
@@ -453,7 +453,7 @@ export interface CompileAssetsOptions {
 ```
 
 ```ts
-// src/node/assets/hash.ts
+// src/compiler/assets/hash.ts
 import { createHash } from 'node:crypto'
 
 export function hashFileContents(buffer: Buffer): string {
@@ -473,7 +473,7 @@ export function insertContentHash(filename: string, hash: string): string {
 ```
 
 ```ts
-// src/node/assets/emit-url.ts
+// src/compiler/assets/emit-url.ts
 function normalizeBase(base: string): string {
   if (!base || base === '/') return '/'
   const withLead = base.startsWith('/') ? base : `/${base}`
@@ -499,14 +499,14 @@ export function buildAssetAbsoluteUrl(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npm test -- tests/node/assets/hash.test.ts tests/node/assets/emit-url.test.ts`
+Run: `npm test -- tests/compiler/assets/hash.test.ts tests/compiler/assets/emit-url.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/types/assets.ts src/node/assets/hash.ts src/node/assets/emit-url.ts tests/node/assets/hash.test.ts tests/node/assets/emit-url.test.ts tests/helpers/asset-fixtures.ts
+git add src/shared/types/assets.ts src/compiler/assets/hash.ts src/compiler/assets/emit-url.ts tests/compiler/assets/hash.test.ts tests/compiler/assets/emit-url.test.ts tests/helpers/asset-fixtures.ts
 git commit -m "feat(assets): add content hashing and base-aware asset URL builders"
 ```
 
@@ -515,8 +515,8 @@ git commit -m "feat(assets): add content hashing and base-aware asset URL builde
 ### Task 2: Safe path resolution with escape prevention and case-sensitive existence
 
 **Files:**
-- Create: `src/node/assets/safe-path.ts`
-- Create: `tests/node/assets/safe-path.test.ts`
+- Create: `src/compiler/assets/safe-path.ts`
+- Create: `tests/compiler/assets/safe-path.test.ts`
 - Create fixtures under `tests/fixtures/assets/safe-path/`
 
 **Interfaces:**
@@ -536,12 +536,12 @@ tests/fixtures/assets/safe-path/package/
 ```
 
 ```ts
-// tests/node/assets/safe-path.test.ts
+// tests/compiler/assets/safe-path.test.ts
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
-import { resolveSafePath } from '../../../src/node/assets/safe-path'
+import { resolveSafePath } from '../../../src/compiler/assets/safe-path'
 
 const packageRoot = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -612,14 +612,14 @@ describe('resolveSafePath', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/node/assets/safe-path.test.ts`
+Run: `npm test -- tests/compiler/assets/safe-path.test.ts`
 
 Expected: FAIL because `resolveSafePath` is not defined.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/assets/safe-path.ts
+// src/compiler/assets/safe-path.ts
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { isAbsolute, join, normalize, relative, resolve, sep } from 'node:path'
 import { fail } from '../../compiler/diagnostics'
@@ -732,14 +732,14 @@ printf 'art' > tests/fixtures/assets/safe-path/package/assets/nested/art.webp
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/node/assets/safe-path.test.ts`
+Run: `npm test -- tests/compiler/assets/safe-path.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/assets/safe-path.ts tests/node/assets/safe-path.test.ts tests/fixtures/assets/safe-path
+git add src/compiler/assets/safe-path.ts tests/compiler/assets/safe-path.test.ts tests/fixtures/assets/safe-path
 git commit -m "feat(assets): reject escaping, missing, and case-mismatched asset paths"
 ```
 
@@ -748,8 +748,8 @@ git commit -m "feat(assets): reject escaping, missing, and case-mismatched asset
 ### Task 3: Content asset emit-path builder (typed slug and Home)
 
 **Files:**
-- Create: `src/node/assets/content-path.ts`
-- Create: `tests/node/assets/content-path.test.ts`
+- Create: `src/compiler/assets/content-path.ts`
+- Create: `tests/compiler/assets/content-path.test.ts`
 
 **Interfaces:**
 - Consumes: `insertContentHash`, `ContentType`
@@ -758,9 +758,9 @@ git commit -m "feat(assets): reject escaping, missing, and case-mismatched asset
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/assets/content-path.test.ts
+// tests/compiler/assets/content-path.test.ts
 import { describe, expect, it } from 'vitest'
-import { buildContentAssetPath } from '../../../src/node/assets/content-path'
+import { buildContentAssetPath } from '../../../src/compiler/assets/content-path'
 
 describe('buildContentAssetPath', () => {
   it('emits typed content paths with slug and content hash', () => {
@@ -811,14 +811,14 @@ describe('buildContentAssetPath', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/node/assets/content-path.test.ts`
+Run: `npm test -- tests/compiler/assets/content-path.test.ts`
 
 Expected: FAIL because `buildContentAssetPath` is not defined.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/assets/content-path.ts
+// src/compiler/assets/content-path.ts
 import type { ContentType } from '../../shared/types'
 import { insertContentHash } from './hash'
 
@@ -864,14 +864,14 @@ export function buildContentAssetPath(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/node/assets/content-path.test.ts`
+Run: `npm test -- tests/compiler/assets/content-path.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/assets/content-path.ts tests/node/assets/content-path.test.ts
+git add src/compiler/assets/content-path.ts tests/compiler/assets/content-path.test.ts
 git commit -m "feat(assets): build hashed content asset paths for typed and home packages"
 ```
 
@@ -880,8 +880,8 @@ git commit -m "feat(assets): build hashed content asset paths for typed and home
 ### Task 4: Collect package asset references from manifest, Book, and audio entries
 
 **Files:**
-- Create: `src/node/assets/collect-package-refs.ts`
-- Create: `tests/node/assets/collect-package-refs.test.ts`
+- Create: `src/compiler/assets/collect-package-refs.ts`
+- Create: `tests/compiler/assets/collect-package-refs.test.ts`
 
 **Interfaces:**
 - Consumes: Plan 02 `CompiledContentPackage` / `Book` / platform entries with `src`
@@ -890,10 +890,10 @@ git commit -m "feat(assets): build hashed content asset paths for typed and home
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/assets/collect-package-refs.test.ts
+// tests/compiler/assets/collect-package-refs.test.ts
 import { describe, expect, it } from 'vitest'
 import type { Book, CompiledContentPackage } from '../../../src/shared/types'
-import { collectPackageDeclaredPaths } from '../../../src/node/assets/collect-package-refs'
+import { collectPackageDeclaredPaths } from '../../../src/compiler/assets/collect-package-refs'
 
 function releasePackage(): CompiledContentPackage {
   const book = {
@@ -991,14 +991,14 @@ describe('collectPackageDeclaredPaths', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/node/assets/collect-package-refs.test.ts`
+Run: `npm test -- tests/compiler/assets/collect-package-refs.test.ts`
 
 Expected: FAIL because `collectPackageDeclaredPaths` is not defined.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/assets/collect-package-refs.ts
+// src/compiler/assets/collect-package-refs.ts
 import type { Book, CompiledContentPackage } from '../../shared/types'
 
 function isRelativeAssetRef(value: unknown): value is string {
@@ -1047,14 +1047,14 @@ export function collectPackageDeclaredPaths(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/node/assets/collect-package-refs.test.ts`
+Run: `npm test -- tests/compiler/assets/collect-package-refs.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/assets/collect-package-refs.ts tests/node/assets/collect-package-refs.test.ts
+git add src/compiler/assets/collect-package-refs.ts tests/compiler/assets/collect-package-refs.test.ts
 git commit -m "feat(assets): collect package-relative refs from manifests and books"
 ```
 
@@ -1063,8 +1063,8 @@ git commit -m "feat(assets): collect package-relative refs from manifests and bo
 ### Task 5: Markdown image/download extraction and raw HTML relative-attribute rejection
 
 **Files:**
-- Create: `src/node/assets/markdown-assets.ts`
-- Create: `tests/node/assets/markdown-assets.test.ts`
+- Create: `src/compiler/assets/markdown-assets.ts`
+- Create: `tests/compiler/assets/markdown-assets.test.ts`
 
 **Interfaces:**
 - Consumes: Plan 02 diagnostics; locale Markdown `filePath` + `body`
@@ -1073,13 +1073,13 @@ git commit -m "feat(assets): collect package-relative refs from manifests and bo
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/assets/markdown-assets.test.ts
+// tests/compiler/assets/markdown-assets.test.ts
 import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
 import {
   assertNoRawHtmlRelativeAssets,
   extractMarkdownAssetRefs,
-} from '../../../src/node/assets/markdown-assets'
+} from '../../../src/compiler/assets/markdown-assets'
 
 describe('extractMarkdownAssetRefs', () => {
   it('extracts Markdown image refs', () => {
@@ -1160,14 +1160,14 @@ describe('assertNoRawHtmlRelativeAssets', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/node/assets/markdown-assets.test.ts`
+Run: `npm test -- tests/compiler/assets/markdown-assets.test.ts`
 
 Expected: FAIL because the Markdown asset helpers are not defined.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/assets/markdown-assets.ts
+// src/compiler/assets/markdown-assets.ts
 import { fail } from '../../compiler/diagnostics'
 
 const MARKDOWN_LINK_RE =
@@ -1220,14 +1220,14 @@ export function assertNoRawHtmlRelativeAssets(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/node/assets/markdown-assets.test.ts`
+Run: `npm test -- tests/compiler/assets/markdown-assets.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/assets/markdown-assets.ts tests/node/assets/markdown-assets.test.ts
+git add src/compiler/assets/markdown-assets.ts tests/compiler/assets/markdown-assets.test.ts
 git commit -m "feat(assets): extract Markdown asset refs and reject raw HTML relatives"
 ```
 
@@ -1236,8 +1236,8 @@ git commit -m "feat(assets): extract Markdown asset refs and reject raw HTML rel
 ### Task 6: Global asset pipeline for config-relative options and `.vuepress/assets`
 
 **Files:**
-- Create: `src/node/assets/global-pipeline.ts`
-- Create: `tests/node/assets/global-pipeline.test.ts`
+- Create: `src/compiler/assets/global-pipeline.ts`
+- Create: `tests/compiler/assets/global-pipeline.test.ts`
 - Create fixtures under `tests/fixtures/assets/global/`
 
 **Interfaces:**
@@ -1259,7 +1259,7 @@ tests/fixtures/assets/global/.vuepress/
 ```
 
 ```ts
-// tests/node/assets/global-pipeline.test.ts
+// tests/compiler/assets/global-pipeline.test.ts
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -1269,8 +1269,8 @@ import {
   buildGlobalAssetPath,
   collectGlobalOptionRefs,
   resolveGlobalAsset,
-} from '../../../src/node/assets/global-pipeline'
-import { hashFileContents } from '../../../src/node/assets/hash'
+} from '../../../src/compiler/assets/global-pipeline'
+import { hashFileContents } from '../../../src/compiler/assets/hash'
 
 const configDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -1333,7 +1333,7 @@ describe('resolveGlobalAsset', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/node/assets/global-pipeline.test.ts`
+Run: `npm test -- tests/compiler/assets/global-pipeline.test.ts`
 
 Expected: FAIL because global pipeline modules are missing.
 
@@ -1350,7 +1350,7 @@ printf 'nested' > tests/fixtures/assets/global/.vuepress/assets/icons/nested.svg
 ```
 
 ```ts
-// src/node/assets/global-pipeline.ts
+// src/compiler/assets/global-pipeline.ts
 import { readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import type { ResolvedAsset } from '../../shared/types/assets'
@@ -1427,14 +1427,14 @@ export function resolveGlobalAsset(input: {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/node/assets/global-pipeline.test.ts`
+Run: `npm test -- tests/compiler/assets/global-pipeline.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/assets/global-pipeline.ts tests/node/assets/global-pipeline.test.ts tests/fixtures/assets/global
+git add src/compiler/assets/global-pipeline.ts tests/compiler/assets/global-pipeline.test.ts tests/fixtures/assets/global
 git commit -m "feat(assets): hash config-relative social and SEO files into /assets/global"
 ```
 
@@ -1443,8 +1443,8 @@ git commit -m "feat(assets): hash config-relative social and SEO files into /ass
 ### Task 7: Theme asset path builder and bundler-import convention
 
 **Files:**
-- Create: `src/node/assets/theme-pipeline.ts`
-- Create: `tests/node/assets/theme-pipeline.test.ts`
+- Create: `src/compiler/assets/theme-pipeline.ts`
+- Create: `tests/compiler/assets/theme-pipeline.test.ts`
 - Create fixtures under `tests/fixtures/assets/theme-assets/`
 
 **Interfaces:**
@@ -1462,16 +1462,16 @@ tests/fixtures/assets/theme-assets/
 ```
 
 ```ts
-// tests/node/assets/theme-pipeline.test.ts
+// tests/compiler/assets/theme-pipeline.test.ts
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { hashFileContents } from '../../../src/node/assets/hash'
+import { hashFileContents } from '../../../src/compiler/assets/hash'
 import {
   buildThemeAssetPath,
   resolveThemeAsset,
-} from '../../../src/node/assets/theme-pipeline'
+} from '../../../src/compiler/assets/theme-pipeline'
 
 const themeAssetsRoot = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -1525,7 +1525,7 @@ describe('resolveThemeAsset', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/node/assets/theme-pipeline.test.ts`
+Run: `npm test -- tests/compiler/assets/theme-pipeline.test.ts`
 
 Expected: FAIL because theme pipeline helpers are missing.
 
@@ -1538,7 +1538,7 @@ printf 'noise' > tests/fixtures/assets/theme-assets/textures/noise.png
 ```
 
 ```ts
-// src/node/assets/theme-pipeline.ts
+// src/compiler/assets/theme-pipeline.ts
 import { readFileSync } from 'node:fs'
 import { relative } from 'node:path'
 import type { ResolvedAsset } from '../../shared/types/assets'
@@ -1589,14 +1589,14 @@ export function resolveThemeAsset(input: {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/node/assets/theme-pipeline.test.ts`
+Run: `npm test -- tests/compiler/assets/theme-pipeline.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/assets/theme-pipeline.ts tests/node/assets/theme-pipeline.test.ts tests/fixtures/assets/theme-assets
+git add src/compiler/assets/theme-pipeline.ts tests/compiler/assets/theme-pipeline.test.ts tests/fixtures/assets/theme-assets
 git commit -m "feat(assets): hash explicit theme static files under /assets/theme"
 ```
 
@@ -1605,10 +1605,10 @@ git commit -m "feat(assets): hash explicit theme static files under /assets/them
 ### Task 8: Asset registry and `resolveContentAsset` helper
 
 **Files:**
-- Create: `src/node/assets/registry.ts`
+- Create: `src/compiler/assets/registry.ts`
 - Create: `src/client/assets/resolve-content-asset.ts`
 - Create: `src/client/assets/index.ts`
-- Create: `tests/node/assets/registry.test.ts`
+- Create: `tests/compiler/assets/registry.test.ts`
 - Create: `tests/client/assets/resolve-content-asset.test.ts`
 
 **Interfaces:**
@@ -1621,9 +1621,9 @@ git commit -m "feat(assets): hash explicit theme static files under /assets/them
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// tests/node/assets/registry.test.ts
+// tests/compiler/assets/registry.test.ts
 import { describe, expect, it } from 'vitest'
-import { AssetRegistry } from '../../../src/node/assets/registry'
+import { AssetRegistry } from '../../../src/compiler/assets/registry'
 import type { ResolvedAsset } from '../../../src/shared/types/assets'
 
 function asset(partial: Partial<ResolvedAsset> & Pick<ResolvedAsset, 'sourcePath' | 'publicPath'>): ResolvedAsset {
@@ -1701,14 +1701,14 @@ describe('resolveContentAsset', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `npm test -- tests/node/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts`
+Run: `npm test -- tests/compiler/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts`
 
 Expected: FAIL because registry/client helpers are missing.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/assets/registry.ts
+// src/compiler/assets/registry.ts
 import type { ResolvedAsset } from '../../shared/types/assets'
 
 function normalizeRef(ref: string): string {
@@ -1844,14 +1844,14 @@ export {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npm test -- tests/node/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts`
+Run: `npm test -- tests/compiler/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/node/assets/registry.ts src/client/assets/resolve-content-asset.ts src/client/assets/index.ts tests/node/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts
+git add src/compiler/assets/registry.ts src/client/assets/resolve-content-asset.ts src/client/assets/index.ts tests/compiler/assets/registry.test.ts tests/client/assets/resolve-content-asset.test.ts
 git commit -m "feat(assets): add asset registry and resolveContentAsset helper"
 ```
 
@@ -1860,9 +1860,9 @@ git commit -m "feat(assets): add asset registry and resolveContentAsset helper"
 ### Task 9: `compileAssets` orchestrator with write-out and public reservation rules
 
 **Files:**
-- Create: `src/node/assets/compile-assets.ts`
-- Create: `src/node/assets/index.ts`
-- Create: `tests/node/assets/compile-assets.test.ts`
+- Create: `src/compiler/assets/compile-assets.ts`
+- Create: `src/compiler/assets/index.ts`
+- Create: `tests/compiler/assets/compile-assets.test.ts`
 - Create fixtures under `tests/fixtures/assets/compile/`
 - Modify: `src/index.ts` (re-export Node asset API and client helper path note only — no shell)
 
@@ -1942,7 +1942,7 @@ cover: ./assets/cover.webp
 ```
 
 ```ts
-// tests/node/assets/compile-assets.test.ts
+// tests/compiler/assets/compile-assets.test.ts
 import { existsSync, readFileSync } from 'node:fs'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -1950,7 +1950,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
-import { compileAssets } from '../../../src/node/assets/compile-assets'
+import { compileAssets } from '../../../src/compiler/assets/compile-assets'
 import { themeOptions } from '../../helpers/asset-fixtures'
 import type { AssetPackageSource } from '../../../src/shared/types/assets'
 
@@ -2080,14 +2080,14 @@ describe('compileAssets', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/node/assets/compile-assets.test.ts`
+Run: `npm test -- tests/compiler/assets/compile-assets.test.ts`
 
 Expected: FAIL because `compileAssets` is not defined.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/node/assets/compile-assets.ts
+// src/compiler/assets/compile-assets.ts
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import type {
@@ -2261,7 +2261,7 @@ export interface CompileAssetsOptions {
 ```
 
 ```ts
-// src/node/assets/index.ts
+// src/compiler/assets/index.ts
 export { hashFileContents, insertContentHash } from './hash'
 export {
   buildAssetAbsoluteUrl,
@@ -2300,14 +2300,14 @@ Create fixture files with the tree above (small text payloads are fine for `webp
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/node/assets/compile-assets.test.ts`
+Run: `npm test -- tests/compiler/assets/compile-assets.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/types/assets.ts src/node/assets/compile-assets.ts src/node/assets/index.ts src/index.ts tests/node/assets/compile-assets.test.ts tests/fixtures/assets/compile
+git add src/shared/types/assets.ts src/compiler/assets/compile-assets.ts src/compiler/assets/index.ts src/index.ts tests/compiler/assets/compile-assets.test.ts tests/fixtures/assets/compile
 git commit -m "feat(assets): compile and write hashed content, global, and theme assets"
 ```
 
@@ -2316,7 +2316,7 @@ git commit -m "feat(assets): compile and write hashed content, global, and theme
 ### Task 10: Integration coverage for base, failures, Home paths, and helper wiring
 
 **Files:**
-- Create: `tests/node/assets/asset-pipeline.integration.test.ts`
+- Create: `tests/compiler/assets/asset-pipeline.integration.test.ts`
 - Modify: `tests/helpers/asset-fixtures.ts` (add `compiledPackageToAssetSource` helper if needed)
 
 **Interfaces:**
@@ -2326,15 +2326,15 @@ git commit -m "feat(assets): compile and write hashed content, global, and theme
 - [ ] **Step 1: Write the failing integration tests**
 
 ```ts
-// tests/node/assets/asset-pipeline.integration.test.ts
+// tests/compiler/assets/asset-pipeline.integration.test.ts
 import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
-import { collectPackageDeclaredPaths } from '../../../src/node/assets/collect-package-refs'
-import { compileAssets } from '../../../src/node/assets/compile-assets'
+import { collectPackageDeclaredPaths } from '../../../src/compiler/assets/collect-package-refs'
+import { compileAssets } from '../../../src/compiler/assets/compile-assets'
 import { createResolveContentAsset } from '../../../src/client/assets/resolve-content-asset'
 import { themeOptions } from '../../helpers/asset-fixtures'
 import type { CompiledContentPackage } from '../../../src/shared/types'
@@ -2533,20 +2533,20 @@ describe('asset pipeline integration', () => {
 
 - [ ] **Step 2: Run the integration test**
 
-Run: `npm test -- tests/node/assets/asset-pipeline.integration.test.ts`
+Run: `npm test -- tests/compiler/assets/asset-pipeline.integration.test.ts`
 
 Expected: PASS (depends on Tasks 1–9)
 
 - [ ] **Step 3: Run the full Plan 04 suite**
 
-Run: `npm test -- tests/node/assets tests/client/assets`
+Run: `npm test -- tests/compiler/assets tests/client/assets`
 
 Expected: PASS for all Task 1–10 asset tests
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add tests/node/assets/asset-pipeline.integration.test.ts tests/helpers/asset-fixtures.ts
+git add tests/compiler/assets/asset-pipeline.integration.test.ts tests/helpers/asset-fixtures.ts
 git commit -m "test(assets): add asset pipeline integration coverage for base and failures"
 ```
 
