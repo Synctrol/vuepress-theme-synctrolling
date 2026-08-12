@@ -151,6 +151,55 @@ export interface PlatformEntryBase {
 export type NormalizedPlatformEntry = PlatformEntryBase &
   Record<string, unknown>
 
+export type LinkEntry = PlatformEntryBase & {
+  url: string
+}
+
+export type AudioPlayerEntry = PlatformEntryBase & {
+  src: string
+  mime?: string
+  autoplay?: boolean
+}
+
+export type YouTubePlayerEntry = PlatformEntryBase & {
+  videoId: string
+  start?: number
+  autoplay?: boolean
+}
+
+export type BilibiliPlayerEntry = PlatformEntryBase & {
+  bvid: string
+  page?: number
+  autoplay?: boolean
+}
+
+export type AppleMusicPlayerEntry = PlatformEntryBase & {
+  url: string
+}
+
+export type SpotifyPlayerEntry = PlatformEntryBase & {
+  uri: string
+}
+
+export type SoundCloudPlayerEntry = PlatformEntryBase & {
+  url: string
+}
+
+export type NeteasePlayerEntry = PlatformEntryBase & {
+  id: string
+  resourceType: 'song' | 'album' | 'playlist'
+}
+
+export type BuiltInPlatformEntry =
+  | LinkEntry
+  | AudioPlayerEntry
+  | YouTubePlayerEntry
+  | BilibiliPlayerEntry
+  | AppleMusicPlayerEntry
+  | SpotifyPlayerEntry
+  | SoundCloudPlayerEntry
+  | NeteasePlayerEntry
+
 export interface BookBase {
   title: Multilanguage
   desc?: Multilanguage
