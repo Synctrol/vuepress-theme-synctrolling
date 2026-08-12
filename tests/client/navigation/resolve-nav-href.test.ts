@@ -94,4 +94,17 @@ describe('resolveNavHref', () => {
       }),
     ).toThrow(/\.\./)
   })
+
+  it('rejects bare and trailing . / .. path segments (segment-based)', () => {
+    for (const href of ['/..', '/foo/..', '/.', '/foo/.', '/foo/./bar', '/a/../b']) {
+      expect(() =>
+        resolveNavHref({
+          href,
+          locale: 'zh',
+          base: '/',
+          mainLocale: 'zh',
+        }),
+      ).toThrow(/relative segments forbidden/)
+    }
+  })
 })

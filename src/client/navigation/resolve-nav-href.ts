@@ -16,6 +16,12 @@ export interface ResolvedNavHref {
   external: boolean
 }
 
+/** True when any `/`-separated segment is exactly `.` or `..` (including bare/trailing). */
+function hasRelativePathSegments(href: string): boolean {
+  const pathOnly = href.split(/[?#]/, 1)[0] ?? href
+  return pathOnly.split('/').some((segment) => segment === '.' || segment === '..')
+}
+
 export function resolveNavHref(input: ResolveNavHrefInput): ResolvedNavHref {
   const { text } = resolveMultilanguage(
     input.href,
@@ -23,12 +29,7 @@ export function resolveNavHref(input: ResolveNavHrefInput): ResolvedNavHref {
     input.mainLocale,
   )
 
-  if (
-    text.startsWith('./') ||
-    text.startsWith('../') ||
-    text.includes('/../') ||
-    text.includes('/./')
-  ) {
+  if (hasRelativePathSegments(text)) {
     throw new Error(
       `Invalid navigation href (relative segments forbidden): ${text}`,
     )
