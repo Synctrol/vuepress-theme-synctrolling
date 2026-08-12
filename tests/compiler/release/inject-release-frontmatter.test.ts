@@ -110,6 +110,100 @@ describe('buildReleaseFrontmatterForPage', () => {
     }
   })
 
+  it('filters index detail pages by collection locale so later locales cannot overwrite tiles', () => {
+    const zhDetail = releaseDetailPage({
+      identity: 'release:first-release',
+      locale: 'zh',
+      slug: 'first-release',
+      title: '第一张专辑',
+      url: {
+        routePath: '/zh/releases/first-release/',
+        outputPath: 'zh/releases/first-release/index.html',
+        publicPath: '/zh/releases/first-release/',
+        absoluteUrl: 'https://synctrol.com/zh/releases/first-release/',
+      },
+    })
+    // Same identity, later in allPages — without locale filtering this overwrites zh.
+    const enDetail = releaseDetailPage({
+      identity: 'release:first-release',
+      locale: 'en',
+      slug: 'first-release',
+      title: 'First Album',
+      bodyLocale: 'en',
+      canonicalLocale: 'en',
+      url: {
+        routePath: '/en/releases/first-release/',
+        outputPath: 'en/releases/first-release/index.html',
+        publicPath: '/en/releases/first-release/',
+        absoluteUrl: 'https://synctrol.com/en/releases/first-release/',
+      },
+    })
+    const pkg: RouteContentPackage = {
+      dir: '/content/releases/first-release',
+      identity: 'release:first-release',
+      type: 'release',
+      slug: 'first-release',
+      date: '2026-08-11',
+      draft: false,
+      tags: [],
+      artwork: './assets/album-entry.webp',
+      locales: {},
+    }
+    const manifest: AssetManifest = {
+      assets: [
+        asset('/assets/content/release/first-release/album-entry.hash.webp'),
+      ],
+      bySourcePath: {},
+      contentPublicPaths: {
+        'release:first-release': {
+          './assets/album-entry.webp':
+            '/assets/content/release/first-release/album-entry.hash.webp',
+        },
+      },
+      globalPublicPaths: {},
+    }
+
+    const result = buildReleaseFrontmatterForPage({
+      compiled: collection(['release:first-release']),
+      allPages: [
+        collection(['release:first-release']),
+        zhDetail,
+        enDetail,
+      ],
+      packages: [pkg],
+      compiledPackages: [
+        {
+          dir: pkg.dir,
+          identity: pkg.identity,
+          manifest: {
+            type: 'release',
+            slug: 'first-release',
+            date: '2026-08-11',
+            draft: false,
+          },
+          book: albumBook(),
+        } as CompiledContentPackage,
+      ],
+      assetManifest: manifest,
+      releaseOptions,
+      showDrafts: false,
+      mainLocale: 'zh',
+      messages: zhMessages,
+      collectionTitle: '作品',
+      formatDate: (d) => d,
+      releaseIndexHrefForLocale: () => '/zh/releases/',
+    })
+
+    expect(result).toMatchObject({ kind: 'index' })
+    if (result?.kind === 'index') {
+      expect(result.model.tiles).toHaveLength(1)
+      expect(result.model.tiles[0].href).toBe('/zh/releases/first-release/')
+      expect(result.model.tiles[0].title).toBe('第一张专辑')
+      expect(result.model.tiles[0].href).not.toBe('/en/releases/first-release/')
+      expect(result.model.tiles[0].title).not.toBe('First Album')
+    }
+  })
+
   it('looks up book from compiledPackages for detail pages', () => {
     const detail = releaseDetailPage()
     const pkg: RouteContentPackage = {

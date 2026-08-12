@@ -74,7 +74,9 @@ export function buildReleaseFrontmatterForPage(
   if (compiled.contentType === 'release-collection') {
     const model = buildReleaseIndexModel({
       collectionPage: compiled,
-      detailPages: input.allPages.filter((p) => p.contentType === 'release'),
+      detailPages: input.allPages.filter(
+        (p) => p.contentType === 'release' && p.locale === compiled.locale,
+      ),
       packages: input.packages,
       releaseOptions: input.releaseOptions,
       resolveArtwork: (pkg) =>

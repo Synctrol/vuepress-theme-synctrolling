@@ -643,6 +643,31 @@ album:
     expect(indexSynctrol.release.model.tiles.length).toBeGreaterThan(0)
     expect(indexSynctrol.release.model.pageCount).toBeGreaterThan(1)
     expect(indexSynctrol.release.collectionTitle).toBe('Releases')
+    // Index tiles must use same-locale detail hrefs (not overwritten by en pages).
+    const zhIndexTiles = indexSynctrol.release.model.tiles as Array<{
+      href: string
+      title: string
+    }>
+    for (const tile of zhIndexTiles) {
+      expect(tile.href.startsWith('/zh/')).toBe(true)
+      expect(tile.href.startsWith('/en/')).toBe(false)
+    }
+
+    const enIndex = app.pages.find(
+      (candidate: Page) => candidate.path === '/en/releases/',
+    )
+    expect(enIndex).toBeDefined()
+    const enIndexSynctrol = enIndex!.frontmatter.synctrol as {
+      release: {
+        kind: string
+        model: { tiles: Array<{ href: string; title: string }> }
+      }
+    }
+    expect(enIndexSynctrol.release.kind).toBe('index')
+    for (const tile of enIndexSynctrol.release.model.tiles) {
+      expect(tile.href.startsWith('/en/')).toBe(true)
+      expect(tile.href.startsWith('/zh/')).toBe(false)
+    }
 
     const home = app.pages.find((candidate: Page) => candidate.path === '/zh/')
     expect(home).toBeDefined()
