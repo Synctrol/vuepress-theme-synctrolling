@@ -1703,6 +1703,7 @@ export function emitSeoAndFeeds(input: {
 export { buildPageSeo, buildSiteSeo } from './build-page-seo.js'
 export { buildSeoContentContext } from './content-context.js'
 export { emitSeoAndFeeds } from './emit-seo-and-feeds.js'
+export type { EmitSeoAndFeedsResult } from './emit-seo-and-feeds.js'
 export { serializeHeadTags } from './serialize-head.js'
 export { resolveCollectionCopy } from './collection-copy.js'
 export * from '../feeds/rss.js'
