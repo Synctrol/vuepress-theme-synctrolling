@@ -24,6 +24,14 @@ This plan was rewritten after a pre-execution consistency audit against the ship
 10. **Error-severity diagnostics fail the build.** `compileSiteRoutes` throws `SynctrolDiagnosticError` with every collected error, matching spec §31 and Plan 02's `fail()` convention.
 11. **Root router lands before the orchestrator** (Task 9 → Task 10) so `compileSiteRoutes` is written once with its final return shape.
 
+A second review pass added:
+
+12. **Task 12 wires the compiler into a real VuePress build.** Without it the plan produced a `CompiledSite` nothing consumed. It registers the locale-prefixed pages on `app.pages`, drops the content tree VuePress would otherwise publish at `/content/**`, writes `rootRouterHtml` to `<dest>/index.html` in `onGenerated`, and merges Plan 02 warnings into the site diagnostics.
+13. **`encodePathSegment` is strict RFC 3986** (`!'()*` escaped too), paired with `assertRoutableSegment`, which rejects exactly the characters where that encoding would disagree with the route VuePress actually serves.
+14. **`outputPath` is percent-decoded.** VuePress derives `htmlFilePathRelative` from `decodeURI(page.path)`; the previous definition would have written encoded slugs to the wrong file.
+15. **Fallback pages inherit their source's draft state**, so `showDrafts: true` cannot publish a non-draft-looking fallback of a draft body.
+16. **Edge cases that were only checked in a scratch harness are now real tests**: BOM, CRLF, `---` inside the body, `&` / U+2028 / U+2029 script serialization, and aggregation of a Home error together with route collisions.
+
 ## Global Constraints
 
 - Package name: `vuepress-theme-synctrolling`
@@ -31,6 +39,8 @@ This plan was rewritten after a pre-execution consistency audit against the ship
 - Tests mirror their source directory: `tests/shared/*.test.ts` for `src/shared/`, `tests/compiler/*.test.ts` for `src/compiler/`; the shared fixture helper is `tests/helpers/route-fixtures.ts`
 - Every relative import inside `src/` ends in `.js`; test imports are extensionless
 - Do **not** add anything to `src/compiler/index.ts`. `tests/public-exports.test.ts` pins that barrel's exact export list; later plans import these modules by path
+- Public export contract: the package root (`src/index.ts`) exports exactly `synctrolTheme` plus the existing `shared/*` and `compiler/index` re-exports. Task 12 moves `synctrolTheme` into `src/compiler/theme.ts` and re-exports it; `name` and the `define.__SYNCTROL_THEME_OPTIONS__` payload must not change
+- Only `src/compiler/theme.ts` may import from `vuepress` (type-only plus `createPage`); every other module stays framework-free and unit-testable
 - Diagnostics are `SynctrolDiagnostic` from `src/compiler/diagnostics.ts`; hard failures use `fail()`; recoverable conditions are returned as warnings
 - `mainLocale` is required; every content route includes a locale prefix; no content page is emitted without one
 - `siteUrl` is required, and is stored without a trailing slash
@@ -63,6 +73,9 @@ This plan was rewritten after a pre-execution consistency audit against the ship
 | `src/compiler/root-router-html.ts` | Root language router markup + inline script |
 | `src/compiler/detect-collisions.ts` | Duplicate final `routePath` detection |
 | `src/compiler/compile-site-routes.ts` | `CompiledSite`; orchestrate availability → details → collections → collisions → root HTML |
+| `src/compiler/build-site.ts` | Production wiring: `compileContent` → `buildRoutePackages` → `compileSiteRoutes`, merging Plan 02 warnings |
+| `src/compiler/theme.ts` | `synctrolTheme`: VuePress `onInitialized` page registration + `onGenerated` root router |
+| `src/index.ts` | **Modify:** re-export `synctrolTheme` from `./compiler/theme.js` |
 | `tests/helpers/route-fixtures.ts` | Resolved theme options + route package fixtures |
 | `tests/shared/*.test.ts` | Tests for the `src/shared/` modules above |
 | `tests/compiler/*.test.ts` | Tests for the `src/compiler/` modules above |
@@ -269,6 +282,41 @@ describe('readPackageLocaleMarkdown', () => {
     expect(readPackageLocaleMarkdown(dir, 'page', ['zh']).zh?.body).toBe(
       'above\n\n---\n\nbelow\n',
     )
+  })
+
+  it('accepts a UTF-8 BOM before the frontmatter delimiter', () => {
+    const dir = writePackage({
+      'zh.md': '\uFEFF---\ntitle: 带 BOM\n---\n\n正文\n',
+    })
+
+    const markdown = readPackageLocaleMarkdown(dir, 'page', ['zh']).zh
+    expect(markdown?.title).toBe('带 BOM')
+    expect(markdown?.body).toBe('正文\n')
+  })
+
+  it('accepts CRLF line endings', () => {
+    const dir = writePackage({
+      'zh.md': '---\r\ntitle: CRLF\r\ndraft: true\r\n---\r\n\r\nBody\r\n',
+    })
+
+    const markdown = readPackageLocaleMarkdown(dir, 'page', ['zh']).zh
+    expect(markdown?.title).toBe('CRLF')
+    expect(markdown?.draft).toBe(true)
+    expect(markdown?.body).toBe('Body\r\n')
+  })
+
+  it('accepts a BOM together with CRLF', () => {
+    const dir = writePackage({
+      'zh.md': '\uFEFF---\r\ntitle: Both\r\n---\r\nBody\r\n',
+    })
+
+    expect(readPackageLocaleMarkdown(dir, 'page', ['zh']).zh?.title).toBe('Both')
+  })
+
+  it('accepts a frontmatter block with no body', () => {
+    const dir = writePackage({ 'zh.md': '---\ntitle: Empty\n---' })
+
+    expect(readPackageLocaleMarkdown(dir, 'page', ['zh']).zh?.body).toBe('')
   })
 
   it('rejects a missing frontmatter block', () => {
@@ -1160,6 +1208,35 @@ describe('buildUrlLayers', () => {
     expect(layers.routePath).toBe('/zh/news/tags/')
     expect(layers.absoluteUrl).toBe('https://synctrol.com/zh/news/tags/')
   })
+
+  it('keeps routePath encoded but decodes outputPath to match VuePress', () => {
+    const encoded = encodeURIComponent('作品')
+    const layers = buildUrlLayers({
+      locale: 'zh',
+      pathSuffix: `/releases/${encoded}/`,
+      base: '/docs/',
+      siteUrl: 'https://synctrol.com',
+    })
+
+    expect(layers.routePath).toBe(`/zh/releases/${encoded}/`)
+    expect(layers.publicPath).toBe(`/docs/zh/releases/${encoded}/`)
+    expect(layers.absoluteUrl).toBe(
+      `https://synctrol.com/docs/zh/releases/${encoded}/`,
+    )
+    expect(layers.outputPath).toBe('zh/releases/作品/index.html')
+  })
+
+  it('decodes a percent-encoded space in outputPath only', () => {
+    const layers = buildUrlLayers({
+      locale: 'zh',
+      pathSuffix: '/news/tags/a%20b/',
+      base: '/',
+      siteUrl: 'https://synctrol.com',
+    })
+
+    expect(layers.routePath).toBe('/zh/news/tags/a%20b/')
+    expect(layers.outputPath).toBe('zh/news/tags/a b/index.html')
+  })
 })
 ```
 
@@ -1176,9 +1253,15 @@ Expected: FAIL with unresolved modules `src/shared/route-path`, `src/compiler/si
 import type { ContentType, LocaleKey } from './types.js'
 
 export interface UrlLayers {
-  /** Locale-prefixed router path without origin or VuePress base. */
+  /** Locale-prefixed router path without origin or VuePress base, percent-encoded. */
   routePath: string
-  /** File path below VuePress dest; directory routes use index.html. */
+  /**
+   * File path below VuePress dest; directory routes use index.html.
+   *
+   * Percent-DECODED, because VuePress derives `Page.htmlFilePathRelative` with
+   * `removeLeadingSlash(decodeURI(page.path) + 'index.html')`. Task 12 asserts
+   * the two agree.
+   */
   outputPath: string
   /** VuePress base + routePath, used by browser links. */
   publicPath: string
@@ -1321,10 +1404,13 @@ export function buildUrlLayers(input: BuildUrlLayersInput): UrlLayers {
   const routePath =
     pathSuffix === '/' ? `/${input.locale}/` : `/${input.locale}${pathSuffix}`
   const publicPath = joinPublicPath(input.base, routePath)
+  // VuePress computes htmlFilePathRelative from decodeURI(page.path), so the
+  // output layer must be decoded or encoded slugs would write to the wrong file.
+  const decodedRoutePath = decodeURI(routePath)
 
   return {
     routePath,
-    outputPath: `${routePath.slice(1)}index.html`,
+    outputPath: `${decodedRoutePath.slice(1)}index.html`,
     publicPath,
     absoluteUrl: `${siteUrl}${publicPath}`,
   }
@@ -1354,7 +1440,7 @@ git commit -m "feat(compiler): add four-layer URL builder and siteUrl validation
 
 **Interfaces:**
 - Consumes: `RouteContentPackage`, `LocalePath`, `ResolvedSynctrolThemeOptions['release' | 'news']`, `assertRouteSegment`, `normalizePathSuffix`
-- Produces: `encodePathSegment(value: string): string`; `resolveDetailPathSuffix(pkg, locale, options): string`
+- Produces: `encodePathSegment(value: string): string`; `assertRoutableSegment(value, field, dir?): string`; `encodeRouteSegment(value, field, dir?): string`; `resolveDetailPathSuffix(pkg, locale, options): string`
 
 Rules (spec §8, lines 491–520):
 
@@ -1362,6 +1448,15 @@ Rules (spec §8, lines 491–520):
 - Page-specific paths must begin and end with `/`, cannot carry a query or hash, cannot contain empty segments, and cannot be `/` (Home owns the locale root).
 - Each segment is validated by the shipped `assertRouteSegment`, which already rejects `.`, `..`, `\`, control characters, and percent-encoded traversal.
 - `release.urlSegment`, `news.urlSegment`, and `news.tags.urlSegment` are validated by `resolveThemeOptions`, so they are not re-validated here.
+- Every author-supplied segment (slug, tag key, page-specific path segment) is encoded with strict RFC 3986 percent-encoding, so route paths are stable regardless of locale or host.
+
+**Encoding and routability.** `encodeURIComponent` is not RFC 3986: it leaves `!`, `'`, `(`, `)`, and `*` unescaped. `encodePathSegment` escapes those five as well.
+
+Strict encoding alone is not sufficient, because VuePress owns the final route. `createPage` resolves a page path with `encodeURI(path.split('/').map(sanitizeFileName).join('/'))` (`@vuepress/core` `resolvePagePath`), and `sanitizeFileName` (`@vuepress/utils`) replaces `[\u0000-\u001F"#$%&*+,:;<=>?[\]^`{|}\u007F]` with `_` and strips leading underscores. For some characters our strict encoding and VuePress's result disagree, and VuePress silently wins — a slug `a*b` would be served at `/a_b/` while the compiler advertised `/a%2Ab/`.
+
+`assertRoutableSegment` therefore rejects exactly the characters where the two disagree. The set below was derived by sweeping every ASCII code point against `encodeURI(sanitizeFileName(segment))` in the installed `vuepress@2.0.0-rc.24`; it produces zero disagreements. Unreserved characters, spaces, and all non-ASCII (CJK, accented Latin, astral symbols) pass and round-trip identically. A segment starting with `_` is also rejected, because `sanitizeFileName` strips leading underscores.
+
+Task 12 re-checks this equivalence against the real VuePress functions, so the gate cannot silently rot if VuePress changes its sanitizer.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1370,7 +1465,9 @@ Rules (spec §8, lines 491–520):
 import { describe, expect, it } from 'vitest'
 import { isDiagnosticError } from '../../src/compiler/diagnostics'
 import {
+  assertRoutableSegment,
   encodePathSegment,
+  encodeRouteSegment,
   resolveDetailPathSuffix,
 } from '../../src/compiler/path-suffix'
 import {
@@ -1396,6 +1493,86 @@ describe('encodePathSegment', () => {
   it('percent-encodes a value as a single path segment', () => {
     expect(encodePathSegment('作品发布')).toBe(encodeURIComponent('作品发布'))
     expect(encodePathSegment('a/b')).toBe('a%2Fb')
+  })
+
+  it('encodes the five characters encodeURIComponent leaves unescaped', () => {
+    expect(encodePathSegment('!')).toBe('%21')
+    expect(encodePathSegment("'")).toBe('%27')
+    expect(encodePathSegment('(')).toBe('%28')
+    expect(encodePathSegment(')')).toBe('%29')
+    expect(encodePathSegment('*')).toBe('%2A')
+    expect(encodePathSegment("a!'()*b")).toBe('a%21%27%28%29%2Ab')
+  })
+
+  it('leaves RFC 3986 unreserved characters alone', () => {
+    for (const value of ['a', 'Z', '0', '9', '-', '.', '_', '~']) {
+      expect(encodePathSegment(value)).toBe(value)
+    }
+    expect(encodePathSegment('A-B_c.d~e9')).toBe('A-B_c.d~e9')
+  })
+
+  it('encodes reserved, space, and non-ASCII characters', () => {
+    expect(encodePathSegment(' ')).toBe('%20')
+    expect(encodePathSegment('#')).toBe('%23')
+    expect(encodePathSegment('?')).toBe('%3F')
+    expect(encodePathSegment('&')).toBe('%26')
+    expect(encodePathSegment('=')).toBe('%3D')
+    expect(encodePathSegment('+')).toBe('%2B')
+    expect(encodePathSegment('%')).toBe('%25')
+    expect(encodePathSegment('作')).toBe('%E4%BD%9C')
+    expect(encodePathSegment('é')).toBe('%C3%A9')
+  })
+
+  it('uses uppercase hexadecimal for every escape', () => {
+    const encoded = encodePathSegment("!'()*作é 空")
+    const escapes = encoded.match(/%../g) ?? []
+
+    expect(escapes.length).toBeGreaterThan(0)
+    for (const escape of escapes) {
+      expect(escape).toBe(escape.toUpperCase())
+    }
+  })
+})
+
+describe('assertRoutableSegment', () => {
+  it('accepts unreserved, space, and non-ASCII segments', () => {
+    for (const value of [
+      'first-release',
+      'A-B_c.d~e',
+      'a b',
+      '作品发布',
+      'café',
+      'ünïcode',
+      'x_y',
+    ]) {
+      expect(assertRoutableSegment(value, 'slug')).toBe(value)
+    }
+  })
+
+  it('rejects every character where strict encoding and VuePress disagree', () => {
+    for (const char of [
+      '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',',
+      ':', ';', '<', '=', '>', '?', '@', '[', ']', '^', '`', '{', '|', '}',
+      '\u0000', '\u001f', '\u007f',
+    ]) {
+      expectCode(
+        () => assertRoutableSegment(`a${char}b`, 'slug'),
+        'UNROUTABLE_SEGMENT',
+      )
+    }
+  })
+
+  it('rejects a leading underscore because VuePress strips it', () => {
+    expectCode(() => assertRoutableSegment('_lead', 'slug'), 'UNROUTABLE_SEGMENT')
+    expectCode(() => assertRoutableSegment('__lead', 'slug'), 'UNROUTABLE_SEGMENT')
+    expect(assertRoutableSegment('lead_', 'slug')).toBe('lead_')
+  })
+})
+
+describe('encodeRouteSegment', () => {
+  it('gates then encodes', () => {
+    expect(encodeRouteSegment('作品', 'slug')).toBe('%E4%BD%9C%E5%93%81')
+    expectCode(() => encodeRouteSegment('a(b)', 'slug'), 'UNROUTABLE_SEGMENT')
   })
 })
 
@@ -1481,6 +1658,21 @@ describe('resolveDetailPathSuffix', () => {
     }
   })
 
+  it('rejects page-specific path segments VuePress would rewrite', () => {
+    for (const bad of ['/a(b)/', '/a*b/', '/a!b/', '/_lead/', '/ok/a,b/']) {
+      expectCode(
+        () => resolveDetailPathSuffix(releasePackage({ path: bad }), 'zh', options),
+        'UNROUTABLE_SEGMENT',
+      )
+    }
+  })
+
+  it('encodes page-specific path segments', () => {
+    expect(
+      resolveDetailPathSuffix(releasePackage({ path: '/作品/合集/' }), 'zh', options),
+    ).toBe(`/${encodeURIComponent('作品')}/${encodeURIComponent('合集')}/`)
+  })
+
   it('forbids remapping home', () => {
     expectCode(
       () => resolveDetailPathSuffix(homePackage({ path: '/anywhere/' }), 'zh', options),
@@ -1521,23 +1713,66 @@ import type {
   LocalePath,
   RouteContentPackage,
 } from '../shared/types.js'
-import { fail } from './diagnostics.js'
+import { fail, type SynctrolDiagnostic } from './diagnostics.js'
 
 export type PathSuffixOptions = Pick<
   ResolvedSynctrolThemeOptions,
   'release' | 'news'
 >
 
-/** RFC 3986 percent-encoding for a single path segment (slug or tag). */
+/** `encodeURIComponent` leaves these five unescaped; RFC 3986 does not. */
+const RFC3986_EXTRA = /[!'()*]/g
+
+/**
+ * Characters where strict RFC 3986 encoding disagrees with the path VuePress
+ * produces via `encodeURI(segment.map(sanitizeFileName))`. Swept against every
+ * ASCII code point in vuepress@2.0.0-rc.24; Task 12 re-checks the equivalence.
+ */
+const UNROUTABLE_SEGMENT_CHAR =
+  /[\u0000-\u001F\u007F!"#$%&'()*+,:;<=>?@[\]^`{|}]/
+
+/** Strict RFC 3986 percent-encoding for a single path segment (slug or tag). */
 export function encodePathSegment(value: string): string {
-  return encodeURIComponent(value)
+  return encodeURIComponent(value).replace(
+    RFC3986_EXTRA,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  )
+}
+
+/**
+ * Rejects segments VuePress would rewrite, so `routePath` always equals the
+ * route VuePress finally serves.
+ */
+export function assertRoutableSegment(
+  value: string,
+  field: string,
+  dir?: string,
+): string {
+  if (UNROUTABLE_SEGMENT_CHAR.test(value) || value.startsWith('_')) {
+    const diagnostic: SynctrolDiagnostic = {
+      severity: 'error',
+      code: 'UNROUTABLE_SEGMENT',
+      message: `${field} "${value}" contains characters VuePress would rewrite in a route; use letters, digits, spaces, "-", ".", "_", "~", or non-ASCII text`,
+    }
+    if (dir !== undefined) diagnostic.path = dir
+    fail(diagnostic)
+  }
+  return value
+}
+
+export function encodeRouteSegment(
+  value: string,
+  field: string,
+  dir?: string,
+): string {
+  return encodePathSegment(assertRoutableSegment(value, field, dir))
 }
 
 function invalidPath(message: string, dir: string): never {
   fail({ severity: 'error', code: 'INVALID_PATH', message, path: dir })
 }
 
-function assertPageSpecificPath(value: string, dir: string): string {
+function encodePageSpecificPath(value: string, dir: string): string {
   if (!value.startsWith('/') || !value.endsWith('/')) {
     invalidPath(
       `Page-specific paths must begin and end with /: ${value}`,
@@ -1556,7 +1791,7 @@ function assertPageSpecificPath(value: string, dir: string): string {
     invalidPath('Page-specific paths cannot target the locale root', dir)
   }
 
-  for (const segment of inner.split('/')) {
+  const encoded = inner.split('/').map((segment) => {
     try {
       assertRouteSegment(segment, 'path segment')
     } catch {
@@ -1565,9 +1800,10 @@ function assertPageSpecificPath(value: string, dir: string): string {
         dir,
       )
     }
-  }
+    return encodeRouteSegment(segment, 'path segment', dir)
+  })
 
-  return value
+  return `/${encoded.join('/')}/`
 }
 
 function localePathEntry(
@@ -1594,7 +1830,7 @@ function typeDefaultSuffix(
   }
 
   // urlSegment values were route-segment validated by resolveThemeOptions.
-  const slug = encodePathSegment(pkg.slug)
+  const slug = encodeRouteSegment(pkg.slug, 'slug', pkg.dir)
   if (pkg.type === 'release') return `/${options.release.urlSegment}/${slug}/`
   if (pkg.type === 'news') return `/${options.news.urlSegment}/${slug}/`
   return `/${slug}/`
@@ -1620,7 +1856,7 @@ export function resolveDetailPathSuffix(
   if (pkg.path !== undefined) {
     const entry = localePathEntry(pkg.path, locale)
     if (entry !== undefined) {
-      return normalizePathSuffix(assertPageSpecificPath(entry, pkg.dir))
+      return normalizePathSuffix(encodePageSpecificPath(entry, pkg.dir))
     }
   }
 
@@ -1840,6 +2076,9 @@ Rules (spec §9.1–9.2, Home excluded):
 | Main-locale Markdown absent or draft (and not shown via `showDrafts`) | Warn `MAIN_LOCALE_UNAVAILABLE` and skip the package |
 | Non-main Markdown absent or draft (and not shown) | Warn `LOCALE_FALLBACK` and emit the target-locale route with the main-locale body |
 | `showDrafts: true` | Generate drafts; a locale draft displays its own body, not fallback |
+| Fallback whose source is draft (`showDrafts: true`) | Fallback is also `isDraft: true`, because it renders that draft body |
+
+A fallback never invents publication state. It renders the main-locale body, so it carries that body's draft flag. Without this, `showDrafts: true` would emit an indexable-looking fallback of a draft source in every non-main locale.
 
 Spec's "all locales unavailable" row is the main-locale row: a usable main locale guarantees at least one page, and an unusable one already skips the package. No separate branch is emitted.
 
@@ -1978,6 +2217,60 @@ describe('decidePackageAvailability', () => {
     })
   })
 
+  it('marks a fallback as draft when the manifest is draft and showDrafts is true', () => {
+    const result = decidePackageAvailability(
+      releasePackage({
+        draft: true,
+        locales: { zh: localeMarkdown({ title: 'ZH' }) },
+      }),
+      { ...ctx, showDrafts: true },
+    )
+
+    expect(result.locales.en).toMatchObject({
+      kind: 'fallback',
+      bodyLocale: 'zh',
+      isDraft: true,
+    })
+  })
+
+  it('marks a fallback as draft when the main Markdown is draft and showDrafts is true', () => {
+    const result = decidePackageAvailability(
+      releasePackage({
+        locales: { zh: localeMarkdown({ title: 'ZH', draft: true }) },
+      }),
+      { ...ctx, showDrafts: true },
+    )
+
+    expect(result.locales.zh).toMatchObject({ kind: 'publish', isDraft: true })
+    expect(result.locales.en).toMatchObject({
+      kind: 'fallback',
+      bodyLocale: 'zh',
+      isDraft: true,
+    })
+  })
+
+  it('keeps a fallback undrafted when neither source is draft', () => {
+    const result = decidePackageAvailability(
+      releasePackage({ locales: { zh: localeMarkdown({ title: 'ZH' }) } }),
+      { ...ctx, showDrafts: true },
+    )
+
+    expect(result.locales.en).toMatchObject({ kind: 'fallback', isDraft: false })
+  })
+
+  it('still skips an unpublishable main locale when showDrafts is false', () => {
+    const result = decidePackageAvailability(
+      releasePackage({
+        draft: true,
+        locales: { zh: localeMarkdown({ title: 'ZH', draft: true }) },
+      }),
+      ctx,
+    )
+
+    expect(result.packageDecision).toBe('skip-package')
+    expect(result.locales).toEqual({})
+  })
+
   it('refuses home packages', () => {
     expect(() => decidePackageAvailability(homePackage(), ctx)).toThrow(/home/i)
   })
@@ -2039,11 +2332,15 @@ export function publishedAvailability(
 export function fallbackAvailability(
   mainLocale: LocaleKey,
   main: { title: string; description?: string },
+  isDraft: boolean,
 ): LocaleAvailability {
   const availability: LocaleAvailability = {
     kind: 'fallback',
     bodyLocale: mainLocale,
-    isDraft: false,
+    // A fallback renders the main-locale body, so it inherits that body's
+    // draft state; otherwise showDrafts would publish an indexable fallback
+    // of a draft source.
+    isDraft,
     title: main.title,
   }
   if (main.description !== undefined) {
@@ -2116,7 +2413,11 @@ export function decidePackageAvailability(
       message: `Generating fallback page for locale "${locale}" from "${ctx.mainLocale}"`,
       path: pkg.dir,
     })
-    locales[locale] = fallbackAvailability(ctx.mainLocale, mainMarkdown)
+    locales[locale] = fallbackAvailability(
+      ctx.mainLocale,
+      mainMarkdown,
+      manifestDraft || mainMarkdown.draft,
+    )
   }
 
   return { packageDecision: 'publish', locales, diagnostics }
@@ -2158,7 +2459,7 @@ Home matrix (spec §9.3). Unpublishable Home yields **error-severity** diagnosti
 | `true` | `false` or `true` | Published or draft | Build Home; draft flag when either source is draft |
 | `true` | Any | Missing | Error `HOME_ABSENT` |
 
-With a usable main Home, missing non-main Markdown generates the normal fallback Home; a present non-main draft displays its actual draft when `showDrafts` is enabled.
+With a usable main Home, missing non-main Markdown generates the normal fallback Home; a present non-main draft displays its actual draft when `showDrafts` is enabled. As in Task 5, a fallback Home inherits the draft state of the main-locale Home it renders.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2280,6 +2581,49 @@ describe('decideHomeAvailability', () => {
     })
   })
 
+  it('marks a fallback Home as draft when its source is draft', () => {
+    const manifestDraft = decideHomeAvailability(
+      homePackage({
+        draft: true,
+        locales: {
+          zh: localeMarkdown({ title: '首页', description: '主页' }),
+        },
+      }),
+      { ...ctx, showDrafts: true },
+    )
+    expect(manifestDraft.locales.en).toMatchObject({
+      kind: 'fallback',
+      bodyLocale: 'zh',
+      isDraft: true,
+    })
+
+    const mainDraft = decideHomeAvailability(
+      homePackage({
+        locales: {
+          zh: localeMarkdown({ title: '首页', description: '主页', draft: true }),
+        },
+      }),
+      { ...ctx, showDrafts: true },
+    )
+    expect(mainDraft.locales.en).toMatchObject({
+      kind: 'fallback',
+      isDraft: true,
+    })
+  })
+
+  it('keeps a fallback Home undrafted when its source is published', () => {
+    const result = decideHomeAvailability(
+      homePackage({
+        locales: {
+          zh: localeMarkdown({ title: '首页', description: '主页' }),
+        },
+      }),
+      { ...ctx, showDrafts: true },
+    )
+
+    expect(result.locales.en).toMatchObject({ kind: 'fallback', isDraft: false })
+  })
+
   it('refuses non-home packages', () => {
     expect(() => decideHomeAvailability(releasePackage(), ctx)).toThrow(/home/i)
   })
@@ -2377,7 +2721,11 @@ export function decideHomeAvailability(
       message: `Generating fallback Home for locale "${locale}" from "${ctx.mainLocale}"`,
       path: pkg.dir,
     })
-    locales[locale] = fallbackAvailability(ctx.mainLocale, main)
+    locales[locale] = fallbackAvailability(
+      ctx.mainLocale,
+      main,
+      manifestDraft || main.draft,
+    )
   }
 
   return { packageDecision: 'publish', locales, diagnostics }
@@ -2960,7 +3308,7 @@ import type {
   GeneratedCollectionIdentity,
 } from '../shared/route-types.js'
 import type { LocaleKey, RouteContentPackage } from '../shared/types.js'
-import { encodePathSegment } from './path-suffix.js'
+import { encodeRouteSegment } from './path-suffix.js'
 import { buildUrlLayers } from './url-layers.js'
 
 export interface CollectionCompileInput {
@@ -3182,7 +3530,7 @@ export function compileCollectionRoutes(
         .map((pkg) => `news:${pkg.slug}` as ContentIdentity)
       if (identities.length === 0) continue
 
-      const encoded = encodePathSegment(tag)
+      const encoded = encodeRouteSegment(tag, 'tag')
       pages.push(
         ...emitPaged({
           locale,
@@ -3395,6 +3743,49 @@ describe('generateRootRouterHtml', () => {
     expect(html).not.toContain('<img src=x')
     expect(html).toContain('\\u003c/script\\u003e')
     expect(html).toContain('&lt;img src=x')
+  })
+
+  it('escapes ampersands and the U+2028/U+2029 line terminators in the inline JSON', () => {
+    const html = generateRootRouterHtml({
+      options: themeOptions({
+        locales: {
+          zh: { lang: 'zh-CN', label: '中文' },
+          en: { lang: 'en-US&x\u2028y\u2029z', label: 'English' },
+        },
+      }),
+      base: '/',
+    })
+
+    const config = html.slice(
+      html.indexOf('__SYNCTROL_ROOT_ROUTER__'),
+      html.indexOf('</script>'),
+    )
+    expect(config).toContain('\\u0026')
+    expect(config).toContain('\\u2028')
+    expect(config).toContain('\\u2029')
+    expect(config).not.toContain('\u2028')
+    expect(config).not.toContain('\u2029')
+  })
+
+  it('keeps the serialized config parseable back to the original values', () => {
+    const hostile = 'en-US</script>&\u2028<b>'
+    const html = generateRootRouterHtml({
+      options: themeOptions({
+        locales: {
+          zh: { lang: 'zh-CN', label: '中文' },
+          en: { lang: hostile, label: 'English' },
+        },
+      }),
+      base: '/',
+    })
+
+    const start = html.indexOf('{', html.indexOf('__SYNCTROL_ROOT_ROUTER__'))
+    const end = html.indexOf('};</script>', start)
+    const parsed = JSON.parse(html.slice(start, end + 1)) as {
+      locales: { key: string; lang: string }[]
+    }
+
+    expect(parsed.locales.find((entry) => entry.key === 'en')?.lang).toBe(hostile)
   })
 })
 ```
@@ -3702,6 +4093,23 @@ describe('compileSiteRoutes', () => {
 
     expect(diagnostics).toHaveLength(1)
     expect(diagnostics[0]?.code).toBe('HOME_UNPUBLISHABLE')
+  })
+
+  it('aggregates a Home error and route collisions into one thrown error', () => {
+    const diagnostics = collectDiagnostics(() =>
+      compileSiteRoutes({
+        packages: [homePackage({ draft: true }), pagePackage({ slug: 'releases' })],
+        options: themeOptions({ release: { index: { pagination: false } } }),
+        base: '/',
+        declaredTags: [],
+      }),
+    )
+
+    // Proves collect-then-throw rather than fail-fast: the Home matrix error
+    // and the collisions it did not prevent are reported together.
+    expect(diagnostics.filter((d) => d.code === 'HOME_UNPUBLISHABLE')).toHaveLength(1)
+    expect(diagnostics.filter((d) => d.code === 'ROUTE_COLLISION')).toHaveLength(2)
+    expect(diagnostics.every((d) => d.severity === 'error')).toBe(true)
   })
 
   it('keeps fallback warnings in the successful result', () => {
@@ -4071,18 +4479,572 @@ git commit -m "test(compiler): add locale and route compiler integration coverag
 
 ---
 
+### Task 12: VuePress production integration
+
+Everything above is pure and unit-tested, but nothing is wired into a build. This task connects the real `synctrolTheme` to the real VuePress lifecycle so the compiled routes become generated files.
+
+**Files:**
+- Create: `src/compiler/build-site.ts`
+- Create: `src/compiler/theme.ts`
+- Modify: `src/index.ts` — re-export `synctrolTheme` from `./compiler/theme.js` instead of defining it inline
+- Create: `tests/compiler/build-site.test.ts`
+- Create: `tests/compiler/theme.integration.test.ts`
+
+**Interfaces:**
+- Consumes: `compileContent` (Plan 02), `buildRoutePackages`, `compileSiteRoutes`, `resolveThemeOptions` / `toClientThemeOptions` (Plan 01), and `vuepress/core` (`App`, `Page`, `ThemeObject`, `createPage`)
+- Produces: `BuiltSite`, `buildSite(input)`, `mergeSiteDiagnostics(...)`, `SYNCTROL_CONTENT_DIR`; `synctrolTheme(options)` returning an object that `satisfies ThemeObject`
+
+`vuepress` is already both a `peerDependency` and a `devDependency` at `2.0.0-rc.24`, so no dependency change is needed. Import VuePress types from `vuepress/core`.
+
+**Measured VuePress contracts.** Each of the following was verified against the installed `vuepress@2.0.0-rc.24`; do not substitute assumptions.
+
+1. `@vuepress/cli` builds with exactly `app.init()` → `app.prepare()` → `app.build()` → `app.pluginApi.hooks.onGenerated.process(app)`. `app.init()` assigns `app.pages` and *then* runs `onInitialized`, so `onInitialized` is the correct place to add pages.
+2. VuePress's default `pagePatterns` glob every `**/*.md` under the source directory, which **includes the theme's `content/` tree**. Left alone, `content/home/zh.md` is published at `/content/home/zh.html`. The theme must drop those auto-resolved pages. Match them on `page.filePathRelative` being `content` or starting with `content/`, and keep pages whose `filePathRelative` is `null` — that is how the automatic `/404.html` page is represented.
+3. `createPage` computes the final route with `encodeURI(path.split('/').map(sanitizeFileName).join('/'))`. Pass it `decodeURI(page.url.routePath)`; Task 3's `assertRoutableSegment` guarantees VuePress re-encodes that to exactly `routePath`.
+4. `Page.htmlFilePathRelative` is `removeLeadingSlash(decodeURI(page.path) + 'index.html')` for directory routes, which is exactly `url.outputPath` (Task 2). `Page.htmlFilePath` is that path resolved under `app.dir.dest()`, and it is the path bundlers write.
+5. `app.options.base` supplies the VuePress base for `compileSiteRoutes`.
+
+**Plan 01 contract preserved.** `synctrolTheme` keeps `name` and the `define.__SYNCTROL_THEME_OPTIONS__` payload built by `toClientThemeOptions`, as a plain object rather than a function, so `tests/smoke.test.ts` and `tests/shared/client-options.test.ts` keep passing. The returned object uses `satisfies ThemeObject` rather than a `Theme` return annotation: an annotation would widen `define` to `Record<string, unknown> | function` and break the existing `theme.define.__SYNCTROL_THEME_OPTIONS__` property access.
+
+**Extension seam for later plans.** Plans 05–11 extend this same module rather than creating their own: Plan 05 adds `clientConfigFile` and the color-mode boot script, Plans 08/09 attach page data, Plan 10 emits SEO/feeds in `onGenerated`. `buildSite` returns the compiled packages and definitions alongside the site so those plans have their inputs without recompiling.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+// tests/compiler/build-site.test.ts
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { buildSite, mergeSiteDiagnostics } from '../../src/compiler/build-site'
+import type { SynctrolDiagnostic } from '../../src/compiler/diagnostics'
+import { themeOptions } from '../helpers/route-fixtures'
+
+let root: string
+
+function write(relativePath: string, contents: string): void {
+  const absolute = join(root, relativePath)
+  mkdirSync(dirname(absolute), { recursive: true })
+  writeFileSync(absolute, contents, 'utf8')
+}
+
+beforeEach(() => {
+  root = mkdtempSync(join(tmpdir(), 'synctrol-buildsite-'))
+  write('content/definitions.yml', 'tags:\n  release:\n    title:\n      zh: 作品\n      en: Releases\n')
+  write('content/home/content.yml', 'type: home\n')
+  write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n首页正文\n')
+  write('content/news/launch/content.yml', 'type: news\nslug: launch\ndate: 2026-08-10\ntags:\n  - release\n')
+  write('content/news/launch/zh.md', '---\ntitle: 发布\n---\n发布正文\n')
+})
+
+afterEach(() => {
+  rmSync(root, { recursive: true, force: true })
+})
+
+describe('mergeSiteDiagnostics', () => {
+  it('keeps content warnings ahead of route warnings', () => {
+    const content: SynctrolDiagnostic[] = [
+      { severity: 'warning', code: 'CONTENT_WARNING', message: 'from Plan 02' },
+    ]
+    const route: SynctrolDiagnostic[] = [
+      { severity: 'warning', code: 'LOCALE_FALLBACK', message: 'from Plan 03' },
+    ]
+
+    expect(mergeSiteDiagnostics(content, route).map((d) => d.code)).toEqual([
+      'CONTENT_WARNING',
+      'LOCALE_FALLBACK',
+    ])
+  })
+
+  it('returns a fresh array that does not alias its inputs', () => {
+    const content: SynctrolDiagnostic[] = []
+    const merged = mergeSiteDiagnostics(content, [])
+    merged.push({ severity: 'warning', code: 'X', message: 'x' })
+
+    expect(content).toEqual([])
+  })
+})
+
+describe('buildSite', () => {
+  it('wires content compilation, route packages, and route compilation', () => {
+    const built = buildSite({
+      sourceDir: root,
+      configDir: join(root, '.vuepress'),
+      options: themeOptions({ news: { index: { pagination: false } } }),
+      base: '/',
+    })
+
+    const paths = built.site.pages.map((page) => page.url.routePath)
+    expect(paths).toContain('/zh/')
+    expect(paths).toContain('/en/')
+    expect(paths).toContain('/zh/news/launch/')
+    expect(paths).toContain('/zh/news/tags/release/')
+
+    expect(built.packages.map((pkg) => pkg.identity).sort()).toEqual([
+      'home',
+      'news:launch',
+    ])
+    expect(Object.keys(built.definitions.tags)).toEqual(['release'])
+  })
+
+  it('surfaces Plan 02 content warnings through the site diagnostics', () => {
+    const built = buildSite({
+      sourceDir: root,
+      configDir: join(root, '.vuepress'),
+      options: themeOptions({ news: { index: { pagination: false } } }),
+      base: '/',
+    })
+
+    // Plan 02 emits no warnings today; the fallback warning proves the merged
+    // array is the one returned, and mergeSiteDiagnostics covers the ordering.
+    expect(built.site.diagnostics.some((d) => d.code === 'LOCALE_FALLBACK')).toBe(true)
+    expect(built.site.diagnostics.every((d) => d.severity === 'warning')).toBe(true)
+  })
+
+  it('reads definitions from a configured definitionsPath', () => {
+    write('.vuepress/custom-definitions.yml', 'tags:\n  extra:\n    title: Extra\n')
+
+    const built = buildSite({
+      sourceDir: root,
+      configDir: join(root, '.vuepress'),
+      options: themeOptions({ news: { index: { pagination: false } } }),
+      base: '/',
+      definitionsPath: 'custom-definitions.yml',
+    })
+
+    expect(Object.keys(built.definitions.tags)).toEqual(['extra'])
+  })
+})
+```
+
+```ts
+// tests/compiler/theme.integration.test.ts
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createBuildApp } from 'vuepress/core'
+import type { App, Bundler, Page } from 'vuepress/core'
+import { sanitizeFileName } from 'vuepress/utils'
+import { encodePathSegment } from '../../src/compiler/path-suffix'
+import { synctrolTheme } from '../../src/index'
+
+let root: string
+
+function write(relativePath: string, contents: string): void {
+  const absolute = join(root, relativePath)
+  mkdirSync(dirname(absolute), { recursive: true })
+  writeFileSync(absolute, contents, 'utf8')
+}
+
+/**
+ * Honours the same `Page.htmlFilePath` contract the real bundlers use, so the
+ * lifecycle is real VuePress without pulling in a full Vite build.
+ */
+function stubBundler(): Bundler {
+  return {
+    name: 'synctrol-test-bundler',
+    dev: async () => async () => {},
+    build: async (app: App) => {
+      for (const page of app.pages) {
+        mkdirSync(dirname(page.htmlFilePath), { recursive: true })
+        writeFileSync(page.htmlFilePath, `<!--${page.path}-->`, 'utf8')
+      }
+    },
+  }
+}
+
+async function runBuild(base = '/') {
+  const app = createBuildApp({
+    source: root,
+    dest: join(root, '.vuepress/dist'),
+    base,
+    bundler: stubBundler(),
+    theme: synctrolTheme({
+      siteUrl: 'https://synctrol.com',
+      mainLocale: 'zh',
+      copyright: '© Synctrol',
+      locales: {
+        zh: { lang: 'zh-CN', label: '中文' },
+        en: { lang: 'en-US', label: 'English' },
+      },
+      seo: {
+        name: 'Synctrol',
+        description: 'Synctrol releases and news',
+        defaultImage: '/images/og.png',
+        organization: { name: 'Synctrol', logo: '/images/logo.png' },
+        collections: {
+          release: { title: 'Releases', description: 'All releases' },
+          news: { title: 'News', description: 'All news' },
+        },
+      },
+      release: { index: { pagination: false } },
+      news: { index: { pagination: false } },
+    }),
+  })
+
+  await app.init()
+  await app.prepare()
+  await app.build()
+  await app.pluginApi.hooks.onGenerated.process(app)
+  return app
+}
+
+beforeEach(() => {
+  root = mkdtempSync(join(tmpdir(), 'synctrol-theme-'))
+  write('content/definitions.yml', 'tags:\n  release:\n    title:\n      zh: 作品\n      en: Releases\n')
+  write('content/home/content.yml', 'type: home\n')
+  write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n首页正文\n')
+  write('content/home/en.md', '---\ntitle: Home\ndescription: SEO\n---\nHome body\n')
+  write('content/releases/first-release/content.yml', 'type: release\nslug: first-release\ndate: 2026-08-11\n')
+  write('content/releases/first-release/zh.md', '---\ntitle: 第一张专辑\n---\n正文\n')
+  write('content/releases/first-release/en.md', '---\ntitle: First Album\n---\nBody\n')
+  write('content/releases/作品/content.yml', 'type: release\nslug: 作品\ndate: 2026-08-09\n')
+  write('content/releases/作品/zh.md', '---\ntitle: 作品\n---\n正文\n')
+  write('content/releases/作品/en.md', '---\ntitle: Work\n---\nBody\n')
+})
+
+afterEach(() => {
+  rmSync(root, { recursive: true, force: true })
+})
+
+describe('synctrolTheme production integration', () => {
+  it('keeps the Plan 01 theme contract', () => {
+    const theme = synctrolTheme({
+      siteUrl: 'https://synctrol.com',
+      mainLocale: 'zh',
+      copyright: '© Synctrol',
+      locales: { zh: { lang: 'zh-CN', label: '中文' } },
+      seo: {
+        name: 'Synctrol',
+        description: 'd',
+        defaultImage: '/i.png',
+        organization: { name: 'Synctrol', logo: '/l.png' },
+        collections: {
+          release: { title: 'R', description: 'r' },
+          news: { title: 'N', description: 'n' },
+        },
+      },
+    })
+
+    expect(theme.name).toBe('vuepress-theme-synctrolling')
+    expect(theme.define.__SYNCTROL_THEME_OPTIONS__).toMatchObject({
+      siteUrl: 'https://synctrol.com',
+      showDrafts: false,
+    })
+  })
+
+  it('registers locale-prefixed pages and removes the auto-globbed content markdown', async () => {
+    const app = await runBuild()
+    const paths = app.pages.map((page: Page) => page.path)
+
+    expect(paths).toContain('/zh/')
+    expect(paths).toContain('/en/')
+    expect(paths).toContain('/zh/releases/first-release/')
+    expect(paths).toContain('/en/releases/first-release/')
+    expect(paths).toContain('/zh/releases/')
+
+    // The content tree must not leak in as VuePress-inferred pages.
+    expect(paths.some((path: string) => path.startsWith('/content/'))).toBe(false)
+    // The automatic 404 page has a null filePathRelative and must survive.
+    expect(paths).toContain('/404.html')
+  })
+
+  it('agrees with VuePress on every route and output path', async () => {
+    const app = await runBuild()
+    const compiled = app.pages.filter(
+      (page: Page) => page.filePathRelative === null && page.path !== '/404.html',
+    )
+    expect(compiled.length).toBeGreaterThan(0)
+
+    for (const page of compiled) {
+      expect(page.htmlFilePathRelative).toBe(
+        `${decodeURI(page.path).slice(1)}index.html`,
+      )
+    }
+
+    const encoded = app.pages.find(
+      (page: Page) => page.path === `/zh/releases/${encodePathSegment('作品')}/`,
+    )
+    expect(encoded).toBeDefined()
+    expect(encoded?.htmlFilePathRelative).toBe('zh/releases/作品/index.html')
+  })
+
+  it('generates the locale Home and detail files plus the root router', async () => {
+    const app = await runBuild()
+    const dest = app.dir.dest()
+
+    for (const relative of [
+      'index.html',
+      'zh/index.html',
+      'en/index.html',
+      'zh/releases/first-release/index.html',
+      'en/releases/first-release/index.html',
+      'zh/releases/作品/index.html',
+      'zh/releases/index.html',
+    ]) {
+      expect(existsSync(join(dest, relative))).toBe(true)
+    }
+
+    const rootHtml = readFileSync(join(dest, 'index.html'), 'utf8')
+    expect(rootHtml).toContain('location.replace')
+    expect(rootHtml).toContain('synctrol:locale')
+    expect(rootHtml).toContain('href="/zh/"')
+  })
+
+  it('honours a non-root base in the root router links', async () => {
+    const app = await runBuild('/docs/')
+    const rootHtml = readFileSync(join(app.dir.dest(), 'index.html'), 'utf8')
+
+    expect(rootHtml).toContain('href="/docs/zh/"')
+    expect(rootHtml).toContain('"base":"/docs/"')
+    expect(existsSync(join(app.dir.dest(), 'zh/index.html'))).toBe(true)
+  })
+
+  it('keeps the routable-segment gate aligned with the installed VuePress', () => {
+    // If VuePress changes sanitizeFileName, this fails instead of silently
+    // serving routes that differ from the compiled routePath.
+    const safe = ['first-release', '作品', 'café', 'A-B_c.d~e', 'a b']
+    for (const segment of safe) {
+      expect(encodeURI(sanitizeFileName(segment))).toBe(encodePathSegment(segment))
+    }
+
+    const rejected = ['a(b)', 'a*b', 'a!b', 'a,b', '_lead']
+    for (const segment of rejected) {
+      expect(encodeURI(sanitizeFileName(segment))).not.toBe(encodePathSegment(segment))
+    }
+  })
+})
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `npm test -- tests/compiler/build-site.test.ts tests/compiler/theme.integration.test.ts`
+
+Expected: FAIL with unresolved modules `src/compiler/build-site` and `src/compiler/theme`.
+
+- [ ] **Step 3: Write minimal implementation**
+
+```ts
+// src/compiler/build-site.ts
+import { join } from 'node:path'
+import type { ResolvedSynctrolThemeOptions } from '../shared/options.js'
+import type {
+  ContentDefinitions,
+  LocaleKey,
+  RouteContentPackage,
+} from '../shared/types.js'
+import { compileContent } from './compile-content.js'
+import { compileSiteRoutes, type CompiledSite } from './compile-site-routes.js'
+import type { SynctrolDiagnostic } from './diagnostics.js'
+import { buildRoutePackages } from './route-packages.js'
+
+/** Directory below the VuePress source dir that holds content packages. */
+export const SYNCTROL_CONTENT_DIR = 'content'
+
+export interface BuildSiteInput {
+  sourceDir: string
+  configDir: string
+  options: ResolvedSynctrolThemeOptions
+  base: string
+  definitionsPath?: string
+}
+
+export interface BuiltSite {
+  site: CompiledSite
+  packages: RouteContentPackage[]
+  definitions: ContentDefinitions
+}
+
+export function mergeSiteDiagnostics(
+  contentWarnings: readonly SynctrolDiagnostic[],
+  routeDiagnostics: readonly SynctrolDiagnostic[],
+): SynctrolDiagnostic[] {
+  return [...contentWarnings, ...routeDiagnostics]
+}
+
+export function buildSite(input: BuildSiteInput): BuiltSite {
+  const localeKeys = Object.keys(input.options.locales) as LocaleKey[]
+
+  const compiled = compileContent({
+    contentRoot: join(input.sourceDir, SYNCTROL_CONTENT_DIR),
+    sourceDir: input.sourceDir,
+    configDir: input.configDir,
+    mainLocale: input.options.mainLocale,
+    ...(input.definitionsPath === undefined
+      ? {}
+      : { definitionsPath: input.definitionsPath }),
+  })
+
+  const packages = buildRoutePackages({
+    packages: compiled.packages,
+    localeKeys,
+  })
+
+  const site = compileSiteRoutes({
+    packages,
+    options: input.options,
+    base: input.base,
+    declaredTags: Object.keys(compiled.definitions.tags),
+  })
+
+  return {
+    site: {
+      ...site,
+      diagnostics: mergeSiteDiagnostics(compiled.warnings, site.diagnostics),
+    },
+    packages,
+    definitions: compiled.definitions,
+  }
+}
+```
+
+```ts
+// src/compiler/theme.ts
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import { createPage } from 'vuepress/core'
+import type { App, Page, ThemeObject } from 'vuepress/core'
+import { toClientThemeOptions } from '../shared/client-options.js'
+import type { SynctrolThemeOptions } from '../shared/options.js'
+import { resolveThemeOptions } from '../shared/options.js'
+import type { CompiledPage } from '../shared/route-types.js'
+import type { RouteContentPackage } from '../shared/types.js'
+import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
+
+function isContentSourcePage(page: Page): boolean {
+  const relative = page.filePathRelative
+  if (relative === null) return false
+  return (
+    relative === SYNCTROL_CONTENT_DIR ||
+    relative.startsWith(`${SYNCTROL_CONTENT_DIR}/`)
+  )
+}
+
+function bodyFor(
+  compiled: CompiledPage,
+  byDir: Map<string, RouteContentPackage>,
+): string {
+  if (compiled.packagePath === undefined) return ''
+  return byDir.get(compiled.packagePath)?.locales[compiled.bodyLocale]?.body ?? ''
+}
+
+export function synctrolTheme(options: SynctrolThemeOptions) {
+  const resolved = resolveThemeOptions(options)
+  const clientOptions = toClientThemeOptions(resolved)
+  let built: BuiltSite | undefined
+
+  return {
+    name: 'vuepress-theme-synctrolling',
+    define: {
+      __SYNCTROL_THEME_OPTIONS__: clientOptions,
+    },
+    onInitialized: async (app: App): Promise<void> => {
+      built = buildSite({
+        sourceDir: app.dir.source(),
+        configDir: app.dir.source('.vuepress'),
+        options: resolved,
+        base: app.options.base,
+        ...(resolved.definitionsPath === undefined
+          ? {}
+          : { definitionsPath: resolved.definitionsPath }),
+      })
+
+      // VuePress globs every markdown file under the source dir, which would
+      // otherwise publish the content tree at /content/**. Pages with a null
+      // filePathRelative (the automatic 404) are kept.
+      app.pages = app.pages.filter((page) => !isContentSourcePage(page))
+
+      const byDir = new Map(built.packages.map((pkg) => [pkg.dir, pkg]))
+
+      for (const compiled of built.site.pages) {
+        const page = await createPage(app, {
+          // VuePress sanitizes and re-encodes this itself; Task 3's routable
+          // gate guarantees the result equals compiled.url.routePath.
+          path: decodeURI(compiled.url.routePath),
+          content: bodyFor(compiled, byDir),
+          frontmatter: {
+            lang: resolved.locales[compiled.locale]?.lang ?? compiled.locale,
+            title: compiled.title,
+            ...(compiled.description === undefined
+              ? {}
+              : { description: compiled.description }),
+            synctrol: {
+              identity: compiled.identity,
+              locale: compiled.locale,
+              contentType: compiled.contentType,
+              isFallback: compiled.isFallback,
+              isDraft: compiled.isDraft,
+              noindex: compiled.noindex,
+              bodyLocale: compiled.bodyLocale,
+              canonicalLocale: compiled.canonicalLocale,
+            },
+          },
+        })
+        app.pages.push(page)
+      }
+    },
+    onGenerated: (app: App): void => {
+      if (built === undefined) return
+      const target = app.dir.dest('index.html')
+      mkdirSync(dirname(target), { recursive: true })
+      writeFileSync(target, built.site.rootRouterHtml, 'utf8')
+    },
+  } satisfies ThemeObject
+}
+```
+
+```ts
+// src/index.ts — replace the inline factory with the production module
+export { synctrolTheme } from './compiler/theme.js'
+export * from './shared/client-options.js'
+export * from './shared/types.js'
+export * from './shared/messages.js'
+export * from './shared/multilanguage.js'
+export * from './shared/options.js'
+export * from './compiler/index.js'
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `npm test -- tests/compiler/build-site.test.ts tests/compiler/theme.integration.test.ts tests/smoke.test.ts tests/shared/client-options.test.ts tests/public-exports.test.ts`
+
+Expected: PASS, including the untouched Plan 01 theme-contract tests.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/compiler/build-site.ts src/compiler/theme.ts src/index.ts tests/compiler/build-site.test.ts tests/compiler/theme.integration.test.ts
+git commit -m "feat(compiler): wire compiled routes into the VuePress build"
+```
+
+---
+
 ## Downstream Contract Notes
 
-Later plans were written against the previous (uncompilable) layout. Record these when picking them up:
+Plans 04–11 were written against the previous, uncompilable layout. They have been **mechanically updated in place** in the same commit series as this revision, so they now reference the modules this plan actually creates. The canonical mapping is:
 
-| Plan | Stale reference | Correct reference after this plan |
-| --- | --- | --- |
-| 04 | `LocaleMarkdown` described as "Plan 03 shape" to be redeclared | Import from `src/shared/types.js`; Task 1 owns it |
-| 04 | `src/node/assets/*`, `npm test --` paths under `tests/node/assets` | Mirror this plan: `src/compiler/*`, `tests/compiler/*` |
-| 05 | `PageIdentity`, `CompiledPage.url.publicPath` from `src/shared/types/routes` | `src/shared/route-types.js` |
-| 05 | `LOCALE_STORAGE_KEY` must equal the root-router key | Import `LOCALE_STORAGE_KEY` from `src/compiler/root-router-html.js` or redeclare the same literal `synctrol:locale` |
-| 10 | `CompiledPage` from `src/shared/types/routes`; `CompiledSite.diagnostics: unknown[]` | `src/shared/route-types.js`; `CompiledSite` lives in `src/compiler/compile-site-routes.js` with `SynctrolDiagnostic[]` |
-| 10 | "Plan 03 left placeholder identity strings" | Still true: collection `title` is the identity string; Plan 10 resolves real titles |
+| Old reference | Current reference |
+| --- | --- |
+| `src/node/**` | `src/compiler/**` (same subpaths; `src/node/theme.ts` → `src/compiler/theme.ts`) |
+| `tests/node/**` | `tests/compiler/**` |
+| `src/shared/types/routes` | `src/shared/route-types` |
+| `src/node/routes/root-router` | `src/compiler/root-router-html` |
+| `src/node/routes/compile-site-routes` | `src/compiler/compile-site-routes` |
+| `src/node/content/compile-content` | `src/compiler/compile-content` |
+| `src/node/content/parse-manifest`, `parseManifest` | `src/compiler/manifest`, `parseContentManifest` |
+| `ContentPackage` | `RouteContentPackage` from `src/shared/types` (Task 1) |
+| `ContentPackage.packagePath` | `RouteContentPackage.dir` (`CompiledPage.packagePath` is unchanged and still correct) |
+| `CompiledSite.diagnostics: unknown[]` | `SynctrolDiagnostic[]`; `CompiledSite` is exported from `src/compiler/compile-site-routes` |
+| `pnpm exec vitest run …` | `npm test -- …` |
+
+Semantic notes that a rename cannot express:
+
+- Plan 04 must not redeclare `LocaleMarkdown`; Task 1 owns it in `src/shared/types.ts`.
+- Plan 05 extends the Task 12 theme module rather than creating it, and must keep the Plan 01 `define.__SYNCTROL_THEME_OPTIONS__` payload built by `toClientThemeOptions`.
+- Plan 05's `LOCALE_STORAGE_KEY` must equal the root router's; import it from `src/compiler/root-router-html.js`.
+- Plan 10 still resolves the real collection titles; this plan deliberately leaves the identity string as the placeholder `title`.
+- Plan 11's root-router expectation is satisfied by Task 12's `onGenerated`, which writes `<dest>/index.html`.
 
 Out of scope here and unchanged: UI shell, LanguageSwitcher component, platforms, SEO meta / `hreflang` / RSS / Sitemap emission, assets, Release/News visual layouts.
 
@@ -4106,6 +5068,7 @@ Out of scope here and unchanged: UI shell, LanguageSwitcher component, platforms
 | §9.2 `showDrafts` | Tasks 5, 7, 11 |
 | §9.3 Home publishing matrix | Task 6 |
 | §31 build errors versus warnings | Tasks 6, 10, 11 |
+| VuePress page registration and root-router emission | Task 12 |
 
 **Contract checks against the shipped code:**
 
@@ -4114,6 +5077,8 @@ Out of scope here and unchanged: UI shell, LanguageSwitcher component, platforms
 - No file adds exports to `src/compiler/index.ts`; `tests/public-exports.test.ts` stays green.
 - `src/compiler/yaml.ts` is refactored without behavior change; `tests/compiler/yaml.test.ts` is re-run in Task 1 Step 4 to prove it.
 - Every `src/` import carries `.js`; every test import is extensionless.
+- Every VuePress behaviour Task 12 relies on (hook order, `pagePatterns` globbing the content tree, the automatic `/404.html`, `resolvePagePath`, `sanitizeFileName`, `resolvePageHtmlInfo`) was read from the installed `vuepress@2.0.0-rc.24` sources and exercised against a real `createBuildApp` lifecycle, not assumed.
+- The routable-segment set was derived by sweeping every ASCII code point; Task 12 keeps that derivation honest with an equivalence test against the real `sanitizeFileName`.
 
 **Type consistency:** `UrlLayers`, `CompiledPage`, `PageIdentity`, `LocaleAvailability`, `PackageAvailabilityResult`, `CompiledSite`, and `SynctrolDiagnostic` are declared once and imported everywhere. `publishedAvailability` / `fallbackAvailability` are shared by Tasks 5 and 6 so the two matrices cannot diverge. `matchBrowserLocale` is declared once and serialized into the browser script, with a test proving the two agree.
 
