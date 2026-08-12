@@ -1,2 +1,7 @@
-// Plan 05 will replace this placeholder with the VuePress client entry.
-export {}
+export {
+  createResolveContentAsset,
+  normalizeContentAssetRef,
+  resolveContentAsset,
+  setContentAssetMap,
+  type ContentAssetMap,
+} from './assets/resolve-content-asset.js'
