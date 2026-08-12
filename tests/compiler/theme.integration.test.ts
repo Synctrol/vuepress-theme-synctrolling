@@ -540,4 +540,117 @@ album:
     )
     assertNoCspMetaInjection(pageHtml)
   })
+
+  it('injects frontmatter.synctrol.release for detail and index pages', async () => {
+    write(
+      'content/definitions.yml',
+      `tags:
+  release:
+    title:
+      zh: 作品
+      en: Releases
+platforms:
+  youtube:
+    category: digital
+    type: youtube_player
+    name: YouTube
+`,
+    )
+    write(
+      'content/releases/first-release/book.yml',
+      `type: album
+title: First Album
+album:
+  covers:
+    - ./assets/front.webp
+  links:
+    - platform: youtube
+      videoId: dQw4w9WgXcQ
+`,
+    )
+    write('content/releases/first-release/assets/front.webp', 'fake-webp-bytes')
+    write(
+      'content/releases/first-release/content.yml',
+      'type: release\nslug: first-release\ndate: 2026-08-11\nartwork: ./assets/album-entry.webp\n',
+    )
+    write(
+      'content/releases/first-release/assets/album-entry.webp',
+      'fake-artwork-bytes',
+    )
+
+    const app = createBuildApp({
+      source: root,
+      dest: join(root, '.vuepress/dist-release-fm'),
+      base: '/',
+      bundler: stubBundler(),
+      theme: synctrolTheme({
+        siteUrl: 'https://synctrol.com',
+        mainLocale: 'zh',
+        copyright: '© Synctrol',
+        locales: {
+          zh: { lang: 'zh-CN', label: '中文' },
+          en: { lang: 'en-US', label: 'English' },
+        },
+        seo: {
+          name: 'Synctrol',
+          description: 'Synctrol releases and news',
+          defaultImage: '/images/og.png',
+          organization: { name: 'Synctrol', logo: '/images/logo.png' },
+          collections: {
+            release: { title: 'Releases', description: 'All releases' },
+            news: { title: 'News', description: 'All news' },
+          },
+        },
+        // Index enabled with pagination so collection pages are emitted.
+        release: { index: { enabled: true, pagination: 1 } },
+        news: { index: { pagination: false } },
+      } as unknown as SynctrolThemeOptions),
+    })
+
+    await app.init()
+    await app.prepare()
+    await app.build()
+    await app.pluginApi.hooks.onGenerated.process(app)
+
+    const detail = app.pages.find(
+      (candidate: Page) => candidate.path === '/zh/releases/first-release/',
+    )
+    expect(detail).toBeDefined()
+    const detailSynctrol = detail!.frontmatter.synctrol as {
+      platformDefinitions: Record<string, unknown>
+      release: { kind: string; model: { sections: Array<{ kind: string }> } }
+    }
+    expect(detailSynctrol.release.kind).toBe('detail')
+    expect(detailSynctrol.release.model.sections.map((s) => s.kind)).toContain(
+      'album-body',
+    )
+    expect(detailSynctrol.platformDefinitions).toMatchObject({
+      youtube: expect.objectContaining({ type: 'youtube_player' }),
+    })
+
+    const index = app.pages.find(
+      (candidate: Page) => candidate.path === '/zh/releases/',
+    )
+    expect(index).toBeDefined()
+    const indexSynctrol = index!.frontmatter.synctrol as {
+      release: {
+        kind: string
+        model: { tiles: unknown[]; page: number; pageCount: number }
+        collectionTitle: string
+      }
+    }
+    expect(indexSynctrol.release.kind).toBe('index')
+    expect(indexSynctrol.release.model.tiles.length).toBeGreaterThan(0)
+    expect(indexSynctrol.release.model.pageCount).toBeGreaterThan(1)
+    expect(indexSynctrol.release.collectionTitle).toBe('Releases')
+
+    const home = app.pages.find((candidate: Page) => candidate.path === '/zh/')
+    expect(home).toBeDefined()
+    const homeSynctrol = home!.frontmatter.synctrol as {
+      release?: unknown
+      platformDefinitions: Record<string, unknown>
+    }
+    expect(homeSynctrol.release).toBeUndefined()
+    expect(homeSynctrol.platformDefinitions).toEqual(expect.any(Object))
+  })
 })

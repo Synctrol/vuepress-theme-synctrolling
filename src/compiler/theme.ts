@@ -7,6 +7,7 @@ import { buildColorModeBootScript } from '../client/color-mode/boot-script.js'
 import { collectCspFromEntries } from '../platforms/collect-csp.js'
 import { resolvePlatformTypes } from '../platforms/registry.js'
 import { toClientThemeOptions } from '../shared/client-options.js'
+import { resolveMultilanguage } from '../shared/multilanguage.js'
 import type { SynctrolThemeOptions } from '../shared/options.js'
 import { resolveThemeOptions } from '../shared/options.js'
 import type { CompiledPage } from '../shared/route-types.js'
@@ -17,6 +18,7 @@ import { createSynctrolBackgroundsVitePlugin } from './backgrounds/vite-plugin.j
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 import { collectVisiblePlatformEntries } from './platforms/collect-visible-platform-entries.js'
 import { writeSynctrolCspJson } from './platforms/write-csp-artifact.js'
+import { buildReleaseFrontmatterForPage } from './release/inject-release-frontmatter.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -88,16 +90,60 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       app.pages = app.pages.filter((page) => !isContentSourcePage(page))
 
       const byDir = new Map(built.packages.map((pkg) => [pkg.dir, pkg]))
+      const allPages = built.site.pages
+      const packages = built.packages
+      const compiledPackages = built.compiledPackages
+      const platformDefinitions = built.definitions.platforms
 
-      for (const compiled of built.site.pages) {
+      for (const compiled of allPages) {
         const contentAssets =
           assetManifest.contentPublicPaths[compiled.identity] ?? {}
-        const alternates = built.site.pages
+        const alternates = allPages
           .filter((p) => p.identity === compiled.identity)
           .map((p) => ({
             locale: p.locale,
             publicPath: p.url.publicPath,
           }))
+
+        const localeMessages =
+          resolved.locales[compiled.locale]?.messages ??
+          resolved.locales[resolved.mainLocale].messages
+
+        const collectionTitle = resolveMultilanguage(
+          resolved.seo.collections.release.title,
+          compiled.locale,
+          resolved.mainLocale,
+        ).text
+
+        const release = buildReleaseFrontmatterForPage({
+          compiled,
+          allPages,
+          packages,
+          compiledPackages,
+          assetManifest,
+          releaseOptions: resolved.release,
+          showDrafts: resolved.showDrafts,
+          mainLocale: resolved.mainLocale,
+          messages: localeMessages,
+          collectionTitle,
+          formatDate: (yyyyMmDd) => {
+            // minimal stable formatter for v1; locale dateFormat from options may be used
+            return yyyyMmDd
+          },
+          releaseIndexHrefForLocale: (locale) => {
+            const index = allPages.find(
+              (p) =>
+                p.locale === locale &&
+                p.contentType === 'release-collection' &&
+                p.collection?.page === 1,
+            )
+            return (
+              index?.url.publicPath ??
+              `/${locale}/${resolved.release.urlSegment}/`
+            )
+          },
+        })
+
         const page = await createPage(app, {
           // VuePress sanitizes and re-encodes this itself; Task 3's routable
           // gate guarantees the result equals compiled.url.routePath.
@@ -121,6 +167,8 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
               routePath: compiled.url.routePath,
               contentAssets,
               alternates,
+              platformDefinitions,
+              ...(release === null ? {} : { release }),
             },
           },
         })

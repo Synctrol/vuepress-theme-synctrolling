@@ -15,12 +15,20 @@ import { useThemeOptions } from '../composables/useThemeOptions.js'
 import { buildLocaleAlternates } from '../i18n/locale-alternates.js'
 import { encodePathSegment } from '../../shared/encode-path-segment.js'
 import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
+import { resolvePlatformTypes } from '../../platforms/registry.js'
+import type { SynctrolReleaseFrontmatter } from '../../shared/release/types.js'
+import type { ContentDefinitions } from '../../shared/types.js'
+import ReleaseIndex from './ReleaseIndex.vue'
+import ReleaseDetail from './ReleaseDetail.vue'
 
 interface SynctrolFrontmatter {
   identity?: string
   locale?: string
+  contentType?: string
   contentAssets?: Record<string, string>
   alternates?: Array<{ locale: string; publicPath: string }>
+  platformDefinitions?: ContentDefinitions['platforms']
+  release?: SynctrolReleaseFrontmatter
 }
 
 const theme = useThemeOptions()
@@ -100,11 +108,47 @@ watch(
 provide(SYNCTROL_THEME_OPTIONS_KEY, theme)
 provide(SYNCTROL_SHELL_CONTEXT_KEY, shell)
 provide(SYNCTROL_DRAWER_OPEN_KEY, drawerOpen)
+
+const release = computed(() => synctrol.value.release)
+const platformDefinitions = computed(
+  () => synctrol.value.platformDefinitions ?? {},
+)
+const platformTypes = resolvePlatformTypes({})
+const localeMessages = computed(
+  () =>
+    theme.locales[locale.value]?.messages ??
+    theme.locales[theme.mainLocale].messages,
+)
+const platformMessages = computed(() => ({
+  platformLinks: localeMessages.value.platformLinks,
+  activateEmbed: localeMessages.value.activateEmbed,
+  embedFailed: localeMessages.value.embedFailed,
+  openExternal: localeMessages.value.openExternal,
+}))
 </script>
 
 <template>
   <BackgroundHost :runtime="runtime" :sync-input="syncInput" />
   <ShellLayout>
-    <Content />
+    <ReleaseIndex
+      v-if="release?.kind === 'index'"
+      :model="release.model"
+      :messages="localeMessages"
+      :collection-title="release.collectionTitle"
+      :prev-href="release.prevHref"
+      :next-href="release.nextHref"
+    />
+    <ReleaseDetail
+      v-else-if="release?.kind === 'detail'"
+      :model="release.model"
+      :authors-label="release.authorsLabel"
+      :locale="locale"
+      :main-locale="theme.mainLocale"
+      :definitions="platformDefinitions"
+      :types="platformTypes"
+      :load-strategy="theme.platforms.loadStrategy"
+      :platform-messages="platformMessages"
+    />
+    <Content v-else />
   </ShellLayout>
 </template>
