@@ -256,7 +256,7 @@ body {
 .syn-language__list {
   position: absolute;
   right: 0;
-  bottom: calc(100% + var(--syn-dock-gap));
+  bottom: 40px;
   display: none;
   margin: 0;
   padding: 0;
@@ -313,6 +313,8 @@ body {
 
 .syn-language__option[aria-selected='true'] {
   font-weight: 600;
+  background: white;
+  color: black;
 }
 
 .syn-nav-drawer {
