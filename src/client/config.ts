@@ -1,5 +1,6 @@
 import { defineClientConfig } from 'vuepress/client'
 import Layout from './layouts/Layout.vue'
+import Root from './layouts/Root.vue'
 import './styles/index.js'
 
 declare const __SYNCTROL_THEME_OPTIONS__: {
@@ -9,6 +10,7 @@ declare const __SYNCTROL_THEME_OPTIONS__: {
 export default defineClientConfig({
   layouts: {
     Layout,
+    Root,
     // VuePress core always adds an automatic /404.html page with
     // frontmatter.layout = 'NotFound'. Register the main layout under that
     // name too, otherwise rendering the 404 page throws

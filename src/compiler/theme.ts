@@ -264,6 +264,18 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
         })
         app.pages.push(page)
       }
+
+      // Root language router page: in dev (and anywhere the static
+      // onGenerated index.html is not used) the SPA route "/" renders the
+      // Root layout, which redirects to the negotiated locale home with a
+      // client-side location.replace (never a permanent HTTP redirect).
+      app.pages.push(
+        await createPage(app, {
+          path: '/',
+          content: '',
+          frontmatter: { layout: 'Root' },
+        }),
+      )
     },
     // Vite bundler only for this plan: mutates viteOptions.plugins on the
     // opaque BundlerOptions record (webpack / other bundlers are out of scope).
