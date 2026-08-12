@@ -74,6 +74,18 @@ describe('assertNoRawHtmlRelativeAssets', () => {
     }
   })
 
+  it('rejects bare package asset refs in raw HTML (quoted and unquoted)', () => {
+    const samples = [
+      '<img src=assets/bad.webp>',
+      '<img src="assets/bad.webp">',
+    ]
+    for (const html of samples) {
+      expect(() =>
+        assertNoRawHtmlRelativeAssets(html, '/content/home/zh.md'),
+      ).toThrow(/ASSET_RAW_HTML_RELATIVE|raw HTML/i)
+    }
+  })
+
   it('rejects raw HTML source/href/poster relative attributes', () => {
     const samples = [
       '<audio src="./assets/a.mp3"></audio>',

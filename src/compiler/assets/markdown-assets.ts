@@ -3,9 +3,9 @@ import { fail } from '../diagnostics.js'
 const MARKDOWN_LINK_RE =
   /!?\[(?:[^\]]*)\]\((?<target><[^>]+>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'))?\)/g
 
-// Quoted or unquoted values with relative prefixes ./ ../ /
+// Quoted or unquoted: ./ ../ / relatives, plus bare package assets/ refs
 const RAW_HTML_RELATIVE_ATTR_RE =
-  /\b(?:src|href|poster)\s*=\s*(?:(["'])(?<quoted>(?:\.\.?\/|\/)[^"']*)\1|(?<unquoted>(?:\.\.?\/|\/)[^\s>"']*))/gi
+  /\b(?:src|href|poster)\s*=\s*(?:(["'])(?<quoted>(?:\.\.?\/|\/|assets\/)[^"']*)\1|(?<unquoted>(?:\.\.?\/|\/|assets\/)[^\s>"']*))/gi
 
 function normalizeTarget(raw: string): string {
   const trimmed = raw.trim()
