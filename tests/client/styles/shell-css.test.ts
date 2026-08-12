@@ -97,6 +97,7 @@ describe('shell.css', () => {
     expect(idx).toBeGreaterThan(-1)
     const mobile = css.slice(idx)
     expect(mobile).toMatch(/\.syn-header\s*\{[^}]*font-size:\s*11px/)
+    expect(mobile).toMatch(/\.syn-site-footer\s*\{[^}]*font-size:\s*11px/)
     expect(mobile).toMatch(/\.syn-home-logo h1\s*\{[^}]*font-size:\s*52px/)
     expect(mobile).toMatch(/\.syn-navigation__link\s*\{[^}]*padding:\s*14px 16px/)
     expect(mobile).toMatch(/\.syn-home-logo p\s*\{[^}]*font-size:\s*10px/)
