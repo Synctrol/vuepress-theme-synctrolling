@@ -16,6 +16,7 @@ describe('BackgroundRuntime', () => {
   let host: HTMLElement
 
   beforeEach(() => {
+    document.documentElement.style.setProperty('--syn-bg', 'rgb(10, 20, 30)')
     host = document.createElement('div')
     host.className = 'syn-background'
     document.body.appendChild(host)
@@ -25,6 +26,7 @@ describe('BackgroundRuntime', () => {
 
   afterEach(() => {
     document.body.innerHTML = ''
+    document.documentElement.style.removeProperty('--syn-bg')
   })
 
   function run(
