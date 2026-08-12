@@ -36,7 +36,7 @@ Revised so an implementation worker can execute against shipped Plans 01–05 wi
 
 5. **NodeNext `.js` imports** on every relative import inside `src/**` (including `<script setup>` in `.vue`). Test imports stay extensionless (bundler / `tsconfig.test.json`).
 
-6. **Vitest:** extend the shipped `projects` config only. Do **not** replace it with `environmentMatchGlobs`. Do **not** reinstall `happy-dom` / `@vue/test-utils` / `@vitejs/plugin-vue` (already at HEAD).
+6. **Vitest:** extend the shipped `projects` config only. Do **not** replace it with `environmentMatchGlobs`. Do **not** reinstall `happy-dom` / `@vue/test-utils` / `@vitejs/plugin-vue` (already at HEAD). DOM-using background tests live under `tests/client/**` so HEAD’s node project `exclude: ['tests/client/**']` keeps them out of the node environment — do **not** leave `document`/`HTMLElement` contracts under `tests/shared/` with only a client `include` add (node would dual-run them).
 
 7. **Stale loader race:** increment `loadGeneration` (or equivalent cancel token) on solid fallback too; add test `pending module load → missing-loader solid` so a late resolve cannot remount after solid.
 
@@ -46,7 +46,7 @@ Revised so an implementation worker can execute against shipped Plans 01–05 wi
    - `parseContentManifest(contentYmlPath, packageDir)`
    - `generateRootRouterHtml({ options, base })` with `options` from `themeOptions()` / `resolveThemeOptions`
 
-10. **Shell stacking:** integrate with shipped `shell.css` — make `.syn-shell` background transparent so the fixed host is visible; do not invent a competing global z-index system that overrides Plan 05 dock/drawer rules. Prefer minimal additive rules on `.syn-background` + one transparent-shell tweak.
+10. **Shell stacking:** integrate with shipped `shell.css` — make `.syn-shell` background transparent so the fixed host is visible. Fixed `.syn-background` stays at `z-index: 0`; shell content regions (`.syn-header`, `.syn-main`, `.syn-navigation`, `.syn-site-footer`) get `position: relative; z-index: 1` so content paints above the decorative layer. Do **not** invent a competing global z-index system that overrides Plan 05 dock/drawer rules (`z-index: 20` / drawer `40`). Prefer these minimal additive rules + one transparent-shell tweak.
 
 **Goal:** Implement the client-only Synctrol background runtime that loads type-keyed TypeScript background modules from theme config (via a Vite virtual module), drives their `update`/`dispose` lifecycle, and falls back to an empty solid surface when no module is configured.
 
@@ -85,7 +85,7 @@ Revised so an implementation worker can execute against shipped Plans 01–05 wi
 | `src/client/background/reduced-motion.ts` | Read `prefers-reduced-motion` and subscribe to changes |
 | `src/client/background/runtime.ts` | `BackgroundRuntime`: load, update, dispose-before-replace, solid fallback, generation cancel |
 | `src/client/background/BackgroundHost.vue` | Fixed full-bleed host; Layout-internal only |
-| `src/client/background/background-host.css` | Host layer styles (+ coordinate shell transparency in `shell.css`) |
+| `src/client/background/background-host.css` | Host layer styles + content-above-background stacking (`z-index: 0` host / `z-index: 1` shell content children); coordinate shell transparency in `shell.css` |
 | `src/client/background/use-background-runtime.ts` | Wire route / locale / colorMode / reducedMotion; import virtual map |
 | `src/client/background/virtual-backgrounds.d.ts` | Ambient module for `virtual:synctrol-backgrounds` |
 | `src/client/background/index.ts` | Internal TS barrel (no SFC re-exports required for `./client`) |
@@ -93,9 +93,9 @@ Revised so an implementation worker can execute against shipped Plans 01–05 wi
 | `src/client/composables/useThemeOptions.ts` | Typed as `ClientSynctrolThemeOptions` |
 | `src/client/composables/keys.ts` | Injection key typed as `ClientSynctrolThemeOptions` |
 | `src/client/layouts/Layout.vue` | Mount `BackgroundHost` (Plan 05 shell; this plan inserts the host) |
-| `src/client/styles/shell.css` | Transparent shell background so fixed host is visible |
+| `src/client/styles/shell.css` | Transparent shell background so fixed host is visible (dock/drawer z-index unchanged) |
 | `src/client/index.ts` | Optional pure-TS background helper re-exports only — **no** `.vue` |
-| `tests/shared/background-types.test.ts` | Type/API contract tests (happy-dom via projects include) |
+| `tests/client/background/background-types.test.ts` | Type/API contract tests (DOM/`HTMLElement`; client/happy-dom project — covered by HEAD node `exclude: ['tests/client/**']`) |
 | `tests/compiler/backgrounds/*.test.ts` | Specifier extract, emit, unsupported diagnostics |
 | `tests/client/background/*.test.ts` | Client runtime / host / composable coverage |
 | `tests/fixtures/backgrounds/*` | Probe modules + theme-config example |
@@ -117,10 +117,10 @@ Revised so an implementation worker can execute against shipped Plans 01–05 wi
 
 **Files:**
 - Create: `src/shared/background.ts`
-- Create: `tests/shared/background-types.test.ts`
+- Create: `tests/client/background/background-types.test.ts`
 - Modify: `src/shared/options.ts` (replace loose `BackgroundLoader = () => Promise<unknown>` with the typed export)
 - Modify: `src/index.ts` (re-export background types)
-- Modify: `vitest.config.ts` (extend client project `include` only — do not replace `projects`)
+- Modify: `vitest.config.ts` — **none required for this test path** (HEAD already routes `tests/client/**` → happy-dom and excludes it from the node project)
 
 **Interfaces:**
 - Consumes: `ContentType` from `src/shared/types.ts` (Plan 01)
@@ -128,15 +128,24 @@ Revised so an implementation worker can execute against shipped Plans 01–05 wi
 
 - [ ] **Step 1: Write the failing type-contract tests**
 
+Place the DOM/`document.createElement` contracts under `tests/client/background/` (not `tests/shared/`). HEAD Vitest already has:
+
 ```ts
-// tests/shared/background-types.test.ts
+// node project (shipped) — do not regress
+exclude: ['tests/client/**'],
+```
+
+If a future shared DOM test must stay outside `tests/client/**`, extend the node project exclude to match HEAD’s pattern (e.g. `exclude: ['tests/client/**', 'tests/shared/background-types.test.ts']`) **and** add that file to the client project `include` — never client-include alone (node would dual-run it without `document`).
+
+```ts
+// tests/client/background/background-types.test.ts
 import { describe, expect, it } from 'vitest'
 import type {
   BackgroundContext,
   BackgroundController,
   BackgroundLoader,
   BackgroundModule,
-} from '../../src/shared/background'
+} from '../../../src/shared/background'
 
 describe('background module contracts', () => {
   it('requires BackgroundContext fields from the spec', () => {
@@ -204,7 +213,7 @@ describe('background module contracts', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm test -- tests/shared/background-types.test.ts`
+Run: `npm test -- tests/client/background/background-types.test.ts`
 
 Expected: FAIL because `src/shared/background.ts` does not exist (or exports are missing).
 
@@ -253,36 +262,19 @@ export type {
 } from './shared/background.js'
 ```
 
-Extend Vitest **projects** (do not switch to `environmentMatchGlobs`):
-
-```ts
-// vitest.config.ts — client project include only
-{
-  plugins: [vue()],
-  test: {
-    name: 'client',
-    environment: 'happy-dom',
-    include: [
-      'tests/client/**/*.test.ts',
-      'tests/shared/background-types.test.ts',
-    ],
-  },
-},
-```
-
-Do **not** reinstall happy-dom / Vue test deps (already present).
+Do **not** change `vitest.config.ts` for this task — the test path is already under `tests/client/**` (happy-dom). Do **not** reinstall happy-dom / Vue test deps (already present). Do **not** switch to `environmentMatchGlobs`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm test -- tests/shared/background-types.test.ts`
+Run: `npm test -- tests/client/background/background-types.test.ts`
 
-Expected: PASS
+Expected: PASS (client/happy-dom project only; node project must not pick it up).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/shared/background.ts src/shared/options.ts src/index.ts \
-  tests/shared/background-types.test.ts vitest.config.ts
+  tests/client/background/background-types.test.ts
 git commit -m "feat: add background module type contracts"
 ```
 
@@ -1269,6 +1261,39 @@ describe('BackgroundHost', () => {
     wrapper.unmount()
   })
 
+  it('keeps shell content stacked above the fixed background layer', () => {
+    // Mount minimal shell + host so stacking CSS is asserted (content above z-index:0).
+    const runtime = new BackgroundRuntime({ backgrounds: {} })
+    const root = document.createElement('div')
+    root.innerHTML = `
+      <div class="syn-shell">
+        <header class="syn-header"></header>
+        <main class="syn-main"><div class="syn-main__inner">content</div></main>
+        <nav class="syn-navigation"></nav>
+        <footer class="syn-site-footer"></footer>
+        <div class="syn-shell__dock"></div>
+      </div>
+    `
+    document.body.appendChild(root)
+    const hostMount = document.createElement('div')
+    document.body.appendChild(hostMount)
+    const wrapper = mount(BackgroundHost, {
+      props: { runtime },
+      attachTo: hostMount,
+    })
+
+    const bg = getComputedStyle(wrapper.get('.syn-background').element)
+    const main = getComputedStyle(root.querySelector('.syn-main') as HTMLElement)
+    const header = getComputedStyle(root.querySelector('.syn-header') as HTMLElement)
+    expect(bg.zIndex).toBe('0')
+    expect(Number(main.zIndex)).toBeGreaterThan(Number(bg.zIndex))
+    expect(Number(header.zIndex)).toBeGreaterThan(Number(bg.zIndex))
+    expect(main.position).toMatch(/relative|sticky|absolute|fixed/)
+    wrapper.unmount()
+    root.remove()
+    hostMount.remove()
+  })
+
   it('initializes only after the host element exists (client mount)', async () => {
     solidProbeLog.length = 0
     const runtime = new BackgroundRuntime({
@@ -1316,9 +1341,19 @@ Expected: FAIL because `BackgroundHost.vue` does not exist.
   overflow: hidden;
   background-color: var(--syn-bg);
 }
+
+/* Content above decorative background — do not raise the whole .syn-shell
+   (dock/drawer keep Plan 05 z-index: 20 / 40). */
+.syn-shell > .syn-header,
+.syn-shell > .syn-main,
+.syn-shell > .syn-navigation,
+.syn-shell > .syn-site-footer {
+  position: relative;
+  z-index: 1;
+}
 ```
 
-In `src/client/styles/shell.css`, change `.syn-shell` `background: var(--syn-bg)` → `background: transparent` (host owns the solid fallback). Keep dock/drawer z-index rules from Plan 05 intact — do **not** blanket-set `.syn-shell { position: relative; z-index: 1 }` in a way that fights those rules. If stacking needs a local stacking context, prefer `isolation: isolate` on `.syn-shell` only when tests show docks incorrectly sit under the host.
+In `src/client/styles/shell.css`, change `.syn-shell` `background: var(--syn-bg)` → `background: transparent` (host owns the solid fallback). Keep dock/drawer z-index rules from Plan 05 intact — do **not** blanket-set `.syn-shell { position: relative; z-index: 1 }` in a way that fights those rules. Content-above-background is the explicit `z-index: 1` on shell content children above (asserted in BackgroundHost tests). If stacking still needs a local stacking context, prefer `isolation: isolate` on `.syn-shell` only when tests show docks incorrectly sit under the host.
 
 ```vue
 <!-- src/client/background/BackgroundHost.vue -->
@@ -1947,7 +1982,7 @@ git commit -m "test: lock background config selection and root-router exclusion"
 
 ```bash
 npm test -- \
-  tests/shared/background-types.test.ts \
+  tests/client/background/background-types.test.ts \
   tests/compiler/backgrounds/extract-loader-specifier.test.ts \
   tests/compiler/backgrounds/emit-virtual-module.test.ts \
   tests/compiler/backgrounds/vite-plugin.test.ts \
@@ -1992,7 +2027,7 @@ No empty commit. If verification needed a small fix, commit that fix with a clea
    - `content.yml` cannot set `background` → Task 10 (`parseContentManifest(path, packageDir)`)
    - Empty solid background when missing → Tasks 4, 8, 10
    - API `default(context) => { update, dispose }` → Tasks 1, 4
-   - Client-only init; no layout size ownership; Layout-internal host → Tasks 8–9
+   - Client-only init; no layout size ownership; Layout-internal host; content stacked above fixed background → Tasks 8–9
    - Update on route / locale / colorMode / reducedMotion; dispose before replace → Tasks 4, 9
    - Stale pending→solid race → Task 4
    - Cleanup events / rAF / observers / DOM → Task 4 animating probe
@@ -2010,7 +2045,7 @@ Plan 06 is complete when:
 3. Runtime selects modules solely from resolved content type (including collection pages) via `frontmatter.synctrol`.
 4. Missing loaders yield an empty solid `--syn-bg` host with no module DOM; pending→solid races cannot remount.
 5. Modules follow `default → update/dispose`, dispose before replace, and clean up resources.
-6. Client Layout hosts the background; root language router HTML does not; `./client` does not export `BackgroundHost.vue`.
+6. Client Layout hosts the background; root language router HTML does not; `./client` does not export `BackgroundHost.vue`. Shell content regions stack above `.syn-background` (`z-index: 0`).
 7. ThemeMode and backgrounds share one resolved color-mode surface via `useResolvedColorMode`.
 8. Reduced motion is supplied on every context and honored by the animating fixture.
 9. `npm run test:typecheck` and `npm test` pass including all files listed in Task 11.
