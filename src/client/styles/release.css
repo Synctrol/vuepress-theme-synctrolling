@@ -77,3 +77,26 @@
   background: var(--syn-black);
   color: var(--syn-white);
 }
+
+.syn-album-discs,
+.syn-album-covers,
+.syn-album-links,
+.syn-gift-book-body {
+  border: var(--syn-border-strong);
+  margin-block: 1.5rem;
+  padding: 1rem;
+}
+
+.syn-album-track {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.75rem;
+  border-block-start: var(--syn-border-subtle);
+  padding-block: 0.5rem;
+  list-style: none;
+}
+
+.syn-album-tracks {
+  margin: 0;
+  padding: 0;
+}
