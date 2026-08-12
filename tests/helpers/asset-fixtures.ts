@@ -3,6 +3,12 @@ import type { SynctrolThemeOptions } from '../../src/shared/options'
 import { resolveThemeOptions } from '../../src/shared/options'
 import type { AssetPackageSource } from '../../src/shared/asset-types'
 
+/** Convenience re-exports for Plan 04 asset integration / helper wiring tests. */
+export { collectPackageDeclaredPaths } from '../../src/compiler/assets/collect-package-refs'
+export { compileAssets } from '../../src/compiler/assets/compile-assets'
+export { toAssetPackageSource } from '../../src/compiler/assets/to-asset-package-source'
+export { createResolveContentAsset } from '../../src/client/assets/resolve-content-asset'
+
 export function themeOptions(
   overrides: Partial<SynctrolThemeOptions> = {},
 ) {
