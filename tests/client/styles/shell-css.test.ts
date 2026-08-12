@@ -58,7 +58,13 @@ describe('shell.css', () => {
     expect(css).toContain('var(--syn-dock-gap)')
     expect(css).toContain('var(--syn-dock-control-size)')
     expect(css).not.toContain('var(--syn-dock-content-clearance)')
-    expect(css).toContain('@media (max-width: 360px)')
+  })
+
+  it('keeps the bars at reference height (no p margins, in-bar controls shrink)', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-header__copyright\s*\{[^}]*margin:\s*0/)
+    expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*--syn-dock-control-size:\s*20px/)
+    expect(css).not.toContain('@media (max-width: 360px)')
   })
 
   it('hides fixed docks while the drawer is open', () => {

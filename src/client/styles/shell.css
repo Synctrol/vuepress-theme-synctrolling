@@ -51,6 +51,10 @@ body {
   letter-spacing: 2px;
 }
 
+.syn-header__copyright {
+  margin: 0;
+}
+
 .syn-header__menu {
   display: none;
 }
@@ -139,6 +143,8 @@ body {
   font-size: 13px;
   letter-spacing: 2px;
   min-height: 0;
+  /* In-bar controls must fit the reference bar height (~42px). */
+  --syn-dock-control-size: 20px;
 }
 
 .syn-social-links {
@@ -154,6 +160,7 @@ body {
   display: inline-flex;
   width: var(--syn-dock-control-size);
   height: var(--syn-dock-control-size);
+  box-sizing: border-box;
   border: var(--syn-border-strong);
   border-radius: var(--syn-radius);
   background: var(--syn-bg);
@@ -214,6 +221,8 @@ body {
 .syn-language__toggle {
   min-height: var(--syn-dock-control-size);
   max-width: 40vw;
+  padding: 0 8px;
+  box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -221,7 +230,9 @@ body {
   border-radius: var(--syn-radius);
   background: var(--syn-bg);
   color: var(--syn-fg);
+  font: inherit;
   font-size: 12px;
+  line-height: 1;
   letter-spacing: 1px;
 }
 
@@ -303,17 +314,6 @@ body {
 
   .syn-shell > .syn-navigation {
     display: none;
-  }
-}
-
-@media (max-width: 360px) {
-  .syn-social-links__link {
-    width: 36px;
-    height: 36px;
-  }
-
-  .syn-language__toggle {
-    max-width: 40vw;
   }
 }
 
