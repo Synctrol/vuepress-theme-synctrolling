@@ -1,3 +1,11 @@
+import {
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -12,12 +20,14 @@ const packageRoot = join(
 describe('resolveSafePath', () => {
   it('resolves a package-relative asset inside the root', () => {
     const resolved = resolveSafePath(packageRoot, './assets/Cover.webp')
-    expect(resolved).toBe(join(packageRoot, 'assets/Cover.webp'))
+    expect(resolved).toBe(realpathSync(join(packageRoot, 'assets/Cover.webp')))
   })
 
   it('resolves nested relative paths and retains nesting', () => {
     const resolved = resolveSafePath(packageRoot, './assets/nested/art.webp')
-    expect(resolved).toBe(join(packageRoot, 'assets/nested/art.webp'))
+    expect(resolved).toBe(
+      realpathSync(join(packageRoot, 'assets/nested/art.webp')),
+    )
   })
 
   it('rejects path escape with .. segments', () => {
@@ -41,6 +51,28 @@ describe('resolveSafePath', () => {
       if (isDiagnosticError(error)) {
         expect(error.diagnostics[0]?.code).toBe('ASSET_PATH_ESCAPE')
       }
+    }
+  })
+
+  it('rejects a symlink inside the root that points outside', () => {
+    const outsideDir = mkdtempSync(join(tmpdir(), 'safe-path-outside-'))
+    const outsideFile = join(outsideDir, 'secret.webp')
+    const linkPath = join(packageRoot, 'assets', 'escape-link.webp')
+    writeFileSync(outsideFile, 'secret')
+    symlinkSync(outsideFile, linkPath)
+    try {
+      try {
+        resolveSafePath(packageRoot, './assets/escape-link.webp')
+        expect.unreachable('expected escape failure')
+      } catch (error) {
+        expect(isDiagnosticError(error)).toBe(true)
+        if (isDiagnosticError(error)) {
+          expect(error.diagnostics[0]?.code).toBe('ASSET_PATH_ESCAPE')
+        }
+      }
+    } finally {
+      rmSync(linkPath, { force: true })
+      rmSync(outsideDir, { recursive: true, force: true })
     }
   })
 
