@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { LinkEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { LinkPlatform } from '../../client/components/platforms/renderers/LinkPlatform.js'
 import {
   asEntryMap,
   assertHttpsUrl,
@@ -23,7 +22,7 @@ export const linkType: PlatformTypeRegistration<LinkEntry> = {
       url: assertHttpsUrl(entry.url, 'link.url'),
     }
   },
-  component: createStubRenderer('LinkPlatform') as Component,
+  component: LinkPlatform,
   cspOrigins() {
     return []
   },

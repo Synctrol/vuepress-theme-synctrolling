@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { AudioPlayerEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { AudioPlayerPlatform } from '../../client/components/platforms/renderers/AudioPlayerPlatform.js'
 import {
   asEntryMap,
   assertAudioMime,
@@ -30,7 +29,7 @@ export const audioPlayerType: PlatformTypeRegistration<AudioPlayerEntry> = {
       autoplay: assertAutoplay(entry.autoplay),
     }
   },
-  component: createStubRenderer('AudioPlayerPlatform') as Component,
+  component: AudioPlayerPlatform,
   cspOrigins(entry) {
     // Match assertAudioSource / parseHttpsUrl: scheme comparison is case-insensitive.
     if (/^https:\/\//i.test(entry.src)) {
