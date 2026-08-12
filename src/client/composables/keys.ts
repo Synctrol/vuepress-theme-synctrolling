@@ -1,5 +1,5 @@
 import type { InjectionKey, Ref } from 'vue'
-import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { ClientSynctrolThemeOptions } from '../../shared/client-options.js'
 import type { LocaleKey } from '../../shared/types.js'
 import type { PageIdentity } from '../../shared/route-types.js'
 
@@ -19,7 +19,7 @@ export interface SynctrolShellContext {
   localeAlternates: LocaleAlternateLink[]
 }
 
-export const SYNCTROL_THEME_OPTIONS_KEY: InjectionKey<ResolvedSynctrolThemeOptions> =
+export const SYNCTROL_THEME_OPTIONS_KEY: InjectionKey<ClientSynctrolThemeOptions> =
   Symbol('synctrol-theme-options')
 
 export const SYNCTROL_SHELL_CONTEXT_KEY: InjectionKey<SynctrolShellContext> =

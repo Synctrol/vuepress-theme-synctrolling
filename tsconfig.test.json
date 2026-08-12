@@ -7,5 +7,10 @@
     "module": "ESNext",
     "moduleResolution": "bundler"
   },
-  "include": ["tests/**/*.ts", "src/**/*.ts"]
+  "include": [
+    "tests/**/*.ts",
+    "src/**/*.ts",
+    "src/vue-shim.d.ts",
+    "src/client/background/virtual-backgrounds.d.ts"
+  ]
 }

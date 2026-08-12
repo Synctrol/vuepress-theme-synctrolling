@@ -13,5 +13,9 @@
     "types": ["node"],
     "jsx": "preserve"
   },
-  "include": ["src/**/*.ts", "src/vue-shim.d.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/vue-shim.d.ts",
+    "src/client/background/virtual-backgrounds.d.ts"
+  ]
 }

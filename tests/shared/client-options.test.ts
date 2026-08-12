@@ -89,6 +89,32 @@ describe('client theme options', () => {
     expect(JSON.parse(JSON.stringify(clientOptions))).toEqual(clientOptions)
   })
 
+  it('registers backgrounds via Vite plugin, not define JSON', async () => {
+    const theme = synctrolTheme({
+      ...base,
+      backgrounds: { home: backgroundLoader },
+    })
+
+    expect(theme.define.__SYNCTROL_THEME_OPTIONS__).not.toHaveProperty(
+      'backgrounds',
+    )
+    expect(theme.extendsBundlerOptions).toBeTypeOf('function')
+
+    const bundlerOptions: { viteOptions?: { plugins?: unknown[] } } = {}
+    await theme.extendsBundlerOptions!(bundlerOptions, {
+      dir: {
+        source: (sub?: string) =>
+          sub === undefined ? '/site' : `/site/${sub}`,
+      },
+    } as never)
+
+    expect(bundlerOptions.viteOptions?.plugins).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'synctrol-backgrounds' }),
+      ]),
+    )
+  })
+
   it('rejects retained nested functions instead of dropping them during serialization', () => {
     const resolved = resolveThemeOptions(base)
     ;(

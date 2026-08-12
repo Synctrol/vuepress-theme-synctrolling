@@ -111,6 +111,9 @@ describe('synctrolTheme production integration', () => {
           news: { title: 'N', description: 'n' },
         },
       },
+      backgrounds: {
+        home: (async () => ({})) as never,
+      },
     })
 
     expect(theme.name).toBe('vuepress-theme-synctrolling')
@@ -118,6 +121,88 @@ describe('synctrolTheme production integration', () => {
       siteUrl: 'https://synctrol.com',
       showDrafts: false,
     })
+    expect(theme.define.__SYNCTROL_THEME_OPTIONS__).not.toHaveProperty(
+      'backgrounds',
+    )
+  })
+
+  it('registers the backgrounds Vite plugin via extendsBundlerOptions', async () => {
+    const theme = synctrolTheme({
+      siteUrl: 'https://synctrol.com',
+      mainLocale: 'zh',
+      copyright: '© Synctrol',
+      locales: { zh: { lang: 'zh-CN', label: '中文' } },
+      seo: {
+        name: 'Synctrol',
+        description: 'd',
+        defaultImage: '/i.png',
+        organization: { name: 'Synctrol', logo: '/l.png' },
+        collections: {
+          release: { title: 'R', description: 'r' },
+          news: { title: 'N', description: 'n' },
+        },
+      },
+      backgrounds: {
+        home: (async () => ({})) as never,
+      },
+    })
+
+    expect(theme.extendsBundlerOptions).toBeTypeOf('function')
+
+    const bundlerOptions: { viteOptions?: { plugins?: unknown[] } } = {}
+    const app = {
+      dir: {
+        source: (sub?: string) =>
+          sub === undefined ? root : join(root, sub),
+      },
+    } as unknown as App
+
+    await theme.extendsBundlerOptions!(bundlerOptions, app)
+
+    expect(bundlerOptions.viteOptions?.plugins).toHaveLength(1)
+    expect(
+      (bundlerOptions.viteOptions!.plugins![0] as { name: string }).name,
+    ).toBe('synctrol-backgrounds')
+  })
+
+  it('stamps frontmatter.synctrol.routePath from compiled.url.routePath', async () => {
+    const app = await runBuild()
+    const built = buildSite({
+      sourceDir: root,
+      configDir: join(root, '.vuepress'),
+      options: resolveThemeOptions({
+        siteUrl: 'https://synctrol.com',
+        mainLocale: 'zh',
+        copyright: '© Synctrol',
+        locales: {
+          zh: { lang: 'zh-CN', label: '中文' },
+          en: { lang: 'en-US', label: 'English' },
+        },
+        seo: {
+          name: 'Synctrol',
+          description: 'Synctrol releases and news',
+          defaultImage: '/images/og.png',
+          organization: { name: 'Synctrol', logo: '/images/logo.png' },
+          collections: {
+            release: { title: 'Releases', description: 'All releases' },
+            news: { title: 'News', description: 'All news' },
+          },
+        },
+        release: { index: { pagination: false } },
+        news: { index: { pagination: false } },
+      } as unknown as SynctrolThemeOptions),
+      base: '/',
+    })
+
+    expect(built.site.pages.length).toBeGreaterThan(0)
+    for (const compiled of built.site.pages) {
+      const page = app.pages.find(
+        (candidate: Page) => candidate.path === compiled.url.routePath,
+      )
+      expect(page).toBeDefined()
+      const synctrol = page!.frontmatter.synctrol as { routePath: string }
+      expect(synctrol.routePath).toBe(compiled.url.routePath)
+    }
   })
 
   it('registers locale-prefixed pages and removes the auto-globbed content markdown', async () => {

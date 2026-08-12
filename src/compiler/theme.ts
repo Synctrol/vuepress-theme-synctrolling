@@ -11,6 +11,7 @@ import type { CompiledPage } from '../shared/route-types.js'
 import type { RouteContentPackage } from '../shared/types.js'
 import { compileAssets } from './assets/compile-assets.js'
 import { selectAssetPackageSources } from './assets/select-asset-package-sources.js'
+import { createSynctrolBackgroundsVitePlugin } from './backgrounds/vite-plugin.js'
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -113,6 +114,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
               noindex: compiled.noindex,
               bodyLocale: compiled.bodyLocale,
               canonicalLocale: compiled.canonicalLocale,
+              routePath: compiled.url.routePath,
               contentAssets,
               alternates,
             },
@@ -120,6 +122,21 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
         })
         app.pages.push(page)
       }
+    },
+    // Vite bundler only for this plan: mutates viteOptions.plugins on the
+    // opaque BundlerOptions record (webpack / other bundlers are out of scope).
+    extendsBundlerOptions: (bundlerOptions, app) => {
+      const configDir = app.dir.source('.vuepress')
+      const viteOptions = ((
+        bundlerOptions as { viteOptions?: { plugins?: unknown[] } }
+      ).viteOptions ??= {})
+      viteOptions.plugins ??= []
+      viteOptions.plugins.push(
+        createSynctrolBackgroundsVitePlugin({
+          backgrounds: resolved.backgrounds,
+          configDir,
+        }),
+      )
     },
     onGenerated: (app: App): void => {
       if (built === undefined) return
