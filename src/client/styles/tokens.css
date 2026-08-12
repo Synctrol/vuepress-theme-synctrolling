@@ -23,9 +23,50 @@
     'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
   --syn-font-body: 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei',
     'Noto Sans CJK SC', sans-serif;
+
+  /* Reference site design system (synctrol.com/style.css) */
+  --syn-gray-300: #ddd;
+  --syn-gray-500: #888;
+  --syn-gray-700: #555;
+  --syn-bar-bg: var(--syn-black);
+  --syn-bar-fg: var(--syn-white);
+  --syn-deco-bg: var(--syn-gray-300);
+  --syn-deco-symbol-bg: var(--syn-black);
+  --syn-deco-label-fg: var(--syn-black);
+  --syn-sub-title-fg: var(--syn-gray-700);
+  --syn-status-sub-fg: var(--syn-gray-500);
 }
 
 :root[data-theme='dark'] {
   --syn-fg: var(--syn-white);
   --syn-bg: var(--syn-black);
+
+  --syn-gray-300: #1a1a1a;
+  --syn-gray-500: #999;
+  --syn-gray-700: #aaa;
+  --syn-bar-bg: var(--syn-white);
+  --syn-bar-fg: var(--syn-black);
+  --syn-deco-bg: var(--syn-gray-300);
+  --syn-deco-symbol-bg: var(--syn-white);
+  --syn-deco-label-fg: var(--syn-white);
+  --syn-sub-title-fg: var(--syn-gray-700);
+  --syn-status-sub-fg: var(--syn-gray-500);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --syn-fg: var(--syn-white);
+    --syn-bg: var(--syn-black);
+
+    --syn-gray-300: #1a1a1a;
+    --syn-gray-500: #999;
+    --syn-gray-700: #aaa;
+    --syn-bar-bg: var(--syn-white);
+    --syn-bar-fg: var(--syn-black);
+    --syn-deco-bg: var(--syn-gray-300);
+    --syn-deco-symbol-bg: var(--syn-white);
+    --syn-deco-label-fg: var(--syn-white);
+    --syn-sub-title-fg: var(--syn-gray-700);
+    --syn-status-sub-fg: var(--syn-gray-500);
+  }
 }
