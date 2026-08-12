@@ -819,7 +819,14 @@ describe('resolveThemeOptions', () => {
       cspOrigins,
     }
     const platformTypes = { youtube: registration }
-    const backgroundLoader = async () => ({ default: 'background.webp' })
+    const backgroundLoader = async () => ({
+      default() {
+        return {
+          update() {},
+          dispose() {},
+        }
+      },
+    })
     const backgrounds = { home: backgroundLoader }
     const input: SynctrolThemeOptions = {
       ...base,
@@ -878,7 +885,14 @@ describe('resolveThemeOptions', () => {
       component: { name: 'Replacement' },
       cspOrigins: () => [],
     }
-    backgrounds.home = async () => ({ default: 'changed.webp' })
+    backgrounds.home = async () => ({
+      default() {
+        return {
+          update() {},
+          dispose() {},
+        }
+      },
+    })
 
     expect(resolved.locales.ja.messages.draft).toBe('Draft before mutation')
     expect(resolved.locales.ja.dateFormat.dateStyle).toBe('short')

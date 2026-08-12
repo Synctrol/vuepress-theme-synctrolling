@@ -3,6 +3,7 @@ import {
   assertRouteSegment,
   validateThemeOptions,
 } from './options-validation.js'
+import type { BackgroundLoader } from './background.js'
 import type {
   ContentType,
   LocaleKey,
@@ -11,6 +12,8 @@ import type {
   Multilanguage,
   PlatformEntryBase,
 } from './types.js'
+
+export type { BackgroundLoader } from './background.js'
 
 export type UrlSegment = string
 
@@ -91,8 +94,6 @@ export interface SeoOptions {
     news: SeoCollectionCopy
   }
 }
-
-export type BackgroundLoader = () => Promise<unknown>
 
 export interface SynctrolThemeOptions {
   siteUrl: string

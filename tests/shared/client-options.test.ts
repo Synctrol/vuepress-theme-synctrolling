@@ -39,7 +39,14 @@ const registration = {
   component: () => 'custom-platform-component',
   cspOrigins: () => ['https://platform.example'],
 }
-const backgroundLoader = () => Promise.resolve('background-component')
+const backgroundLoader = async () => ({
+  default() {
+    return {
+      update() {},
+      dispose() {},
+    }
+  },
+})
 
 describe('client theme options', () => {
   it('projects a complete JSON-safe payload without Node-only registrations', () => {
