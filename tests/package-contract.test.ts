@@ -58,4 +58,25 @@ describe('package contract', () => {
     expect(gitignore).toContain('node_modules/')
     expect(gitignore).toContain('dist/')
   })
+
+  it('keeps npm test as the source/unit lane only', () => {
+    expect(packageJson.scripts.test).toBe('npm run test:typecheck && vitest run')
+    expect(packageJson.scripts.test).not.toContain('assert:pack')
+    expect(packageJson.scripts.test).not.toContain('assert:exports')
+    expect(packageJson.scripts.test).not.toContain('consumer-smoke')
+  })
+
+  it('excludes post-build publish tests and fixture sites from pre-build checks', () => {
+    const vitestConfig = readFileSync(
+      new URL('../vitest.config.ts', import.meta.url),
+      'utf8',
+    )
+    const tsconfigTest = JSON.parse(
+      readFileSync(new URL('../tsconfig.test.json', import.meta.url), 'utf8'),
+    ) as { exclude?: string[] }
+
+    expect(vitestConfig).toContain('tests/publish/postbuild/**')
+    expect(vitestConfig).toContain('tests/e2e/publish/**')
+    expect(tsconfigTest.exclude).toContain('tests/fixtures/sites/**')
+  })
 })

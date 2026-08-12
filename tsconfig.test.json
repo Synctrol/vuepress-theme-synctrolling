@@ -12,5 +12,6 @@
     "src/**/*.ts",
     "src/vue-shim.d.ts",
     "src/client/background/virtual-backgrounds.d.ts"
-  ]
+  ],
+  "exclude": ["tests/fixtures/sites/**"]
 }

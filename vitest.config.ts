@@ -30,7 +30,11 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           include: ['tests/**/*.test.ts'],
-          exclude: ['tests/client/**'],
+          exclude: [
+            'tests/client/**',
+            'tests/publish/postbuild/**',
+            'tests/e2e/publish/**',
+          ],
         },
       },
     ],
