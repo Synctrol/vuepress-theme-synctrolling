@@ -3028,6 +3028,7 @@ git commit -m "test(assets): add asset pipeline integration coverage for base an
 | Global option refs | config-relative hashed; `/…` and `http(s):` preserved |
 | Adapter | `toAssetPackageSource(compiled, routed)` joins by `dir`/`identity` |
 | Task 12 | Extended in place; Plan 05+ must keep extending `theme.ts`, not replace it |
+| Plan 05 client entry | Must **extend** `src/client/index.ts` (keep asset helpers); Layout calls `setContentAssetMap(frontmatter.synctrol.contentAssets)` |
 
 ---
 

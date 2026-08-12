@@ -2,9 +2,25 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Revision Notes (executable against Plans 01–04 @ HEAD `a599cc4`)
+
+Revised so an implementation worker can execute against shipped Plans 01–04 without breaking asset/page-data contracts. Binding decisions (do not re-litigate):
+
+1. **Nested page data:** Layout/client reads `page.frontmatter.synctrol.{identity,locale,contentAssets,alternates,…}` — never top-level `synctrolIdentity` / `synctrolLocale`. Call `setContentAssetMap(frontmatter.synctrol.contentAssets ?? {})` on page change.
+2. **Extend client exports:** `src/client/index.ts` **extends** Plan 04 asset helpers (`resolveContentAsset`, `setContentAssetMap`, `createResolveContentAsset`, `normalizeContentAssetRef`, `ContentAssetMap`); never replace with Layout-only exports. Smoke tests must keep asset helpers.
+3. **URL helpers:** Import `joinPublicPath` / `normalizeBase` from `../../shared/route-path.js` (not `url/normalize-path`).
+4. **Encoded locale hrefs:** Navigation locale prefixes and any synthesized locale-home fallbacks use `encodePathSegment` (Plan 03 RFC3986 encoder extracted to shared) / compiled `publicPath` — no raw CJK keys in hrefs. Prefer injected `frontmatter.synctrol.alternates[].publicPath`.
+5. **`LOCALE_STORAGE_KEY` client boundary:** Client must not import `src/compiler/**`. Task 1 prerequisite moves the constant to `src/shared/locale-storage.ts`; `root-router-html.ts` imports from shared (re-export optional). LanguageSwitcher imports from shared. Plan 03 Downstream note synced.
+6. **NodeNext imports:** Every `src/**` relative import ends in `.js` (including `<script setup>` in `.vue` files). Test imports stay extensionless.
+7. **Vue SFC typecheck:** Add `src/vue-shim.d.ts` (`declare module '*.vue'`) and include it in production `tsconfig.json`. Keep `tsc` (do not switch to `vue-tsc`). Do **not** add `src/**/*.vue` to `tsc` `include` — shim is enough for `.ts` importing `.vue`.
+8. **`theme.ts` is a PATCH:** Task 3/13 show additive diffs against current Plan 04 `theme.ts` (assets + `contentAssets` + filter + router). Full-file illustrative replacements are forbidden.
+9. **Alternates leftover fixed:** No raw `` `/${key}/` `` home synthesis; use encoded segment or compiled `publicPath`.
+10. **SocialLinks (Plan 05 scope):** Shell acceptance allows root-absolute, remote `http(s):`, and data-URI icon stubs. Hashed `globalPublicPaths` injection into client options is **out of scope** for this plan (later plans may wire it).
+11. **Deps:** Install Vue test tooling compatible with shipped `vite ^6.4.3` / `vitest ^4.1.10` / Node 20 — do not pin stale `happy-dom@^15` / `@vitejs/plugin-vue@^5.2.0` ranges unless `tests/package-contract.test.ts` is updated intentionally.
+
 **Goal:** Build the Synctrol VuePress theme global shell—Header, Main, Navigation, Footer, SocialLinks, LanguageSwitcher, ThemeMode, desktop golden-ratio CSS grid, mobile hamburger flow, dock clearance, and accessibility behavior—without Background runtime or Release/News content UI.
 
-**Architecture:** Client Vue components under `src/client/` compose a single `Layout.vue` that applies CSS grid areas `header / main / navigation / footer / dock`. Pure TypeScript helpers under `src/client/` and `src/shared/` own color-mode cycling, navigation href resolution, locale alternates, focus trapping, and message interpolation so component tests stay thin. Theme options arrive from Plan 01 `__SYNCTROL_THEME_OPTIONS__`; page identity/locale for LanguageSwitcher comes from VuePress page data stamped by Plan 03 (tests inject fixtures). Social icon URLs may be stubs until Plan 04 hashes them.
+**Architecture:** Client Vue components under `src/client/` compose a single `Layout.vue` that applies CSS grid areas `header / main / navigation / footer / dock`. Pure TypeScript helpers under `src/client/` and `src/shared/` own color-mode cycling, navigation href resolution, locale alternates, focus trapping, and message interpolation so component tests stay thin. Theme options arrive from Plan 01 `__SYNCTROL_THEME_OPTIONS__`; page identity/locale/contentAssets/alternates come from nested `frontmatter.synctrol` stamped by Plans 03–04 (tests inject fixtures). Social icon URLs may be stubs (absolute/remote/data-URI).
 
 **Tech Stack:** Vue 3 SFCs, VuePress 2 theme client API, TypeScript, Vitest + happy-dom + `@vue/test-utils`, CSS custom properties from Plan 01 tokens, package `vuepress-theme-synctrolling`.
 
@@ -15,18 +31,21 @@
 - There is no `contentDir`, full route-template, visual-token, breakpoint, SocialLinks icon-size, or Release artwork-loading option.
 - `defaultColorMode` defaults to `auto`; ThemeMode cycle remains `AUTO → LIGHT → DARK → AUTO`.
 - Navigation is an options object with `externalTarget` defaulting to `'_blank'`; SocialLinks options expose `items` only.
-- Plans 01–03 are assumed complete (types, options, messages, tokens including dock vars, multilanguage resolver, compiled page identities).
-- Asset hashing (Plan 04) may be stubbed: tests pass resolved public URLs or data-URI icons.
+- Plans 01–04 are assumed complete (types, options, messages, tokens including dock vars, multilanguage resolver, compiled page identities, asset pipeline + `frontmatter.synctrol.contentAssets`, client asset helpers on `./client`).
+- Asset hashing (Plan 04) may be stubbed in shell tests: pass resolved public URLs or data-URI icons.
 - No Background runtime (Plan 06). No Release/News content UI beyond shell chrome (Plans 08–09).
 - Desktop breakpoint boundary is `768px` (`max-width: 768px` = mobile).
 - Safe-area dock tokens from Plan 01 must be consumed, not redefined with different values.
+- Every relative import inside `src/` ends in `.js`; test imports are extensionless (Plan 03 convention).
 - All later tasks inherit these constraints.
 
-## Downstream note (Plan 04 contracts)
+## Downstream note (Plan 03/04 contracts)
 
-- Plan 04 exports `resolveContentAsset` / `setContentAssetMap` / `createResolveContentAsset` from `vuepress-theme-synctrolling/client` (via `src/client/index.ts`). This plan's Layout/client enhance must call `setContentAssetMap` from `frontmatter.synctrol.contentAssets` on page change; do not invent a separate `./client/assets` package export.
-- Social icon option refs that are root-absolute (`/…`) or remote `http(s):` are preserved by Plan 04 (not hashed). Config-relative icons are hashed into `/assets/global/…`. Shell stubs remain valid either way.
+- Plan 04 exports `resolveContentAsset` / `setContentAssetMap` / `createResolveContentAsset` / `normalizeContentAssetRef` from `vuepress-theme-synctrolling/client` (via `src/client/index.ts`). This plan's Layout **extends** that file and must call `setContentAssetMap(frontmatter.synctrol.contentAssets ?? {})` on page change; do not invent a separate `./client/assets` package export; do not drop Plan 04 exports.
+- Page data lives under nested **`frontmatter.synctrol`**: `identity`, `locale`, `contentAssets`, plus Plan 05-injected **`alternates`** (`{ locale, publicPath }[]` from `built.site.pages` for the same identity; `publicPath` already encodeRouteSegment'd).
+- Social icon option refs that are root-absolute (`/…`) or remote `http(s):` are preserved by Plan 04 (not hashed). Config-relative icons are hashed into `/assets/global/…`. Plan 05 shell stubs (absolute/remote/data-URI) remain valid; wiring `globalPublicPaths` into client options is out of scope here.
 - Extend Plan 03/04 `theme.ts` in place — do not replace page registration, content-tree filtering, root-router write, or asset compile/inject.
+- `LOCALE_STORAGE_KEY` canonical home after Task 1 prerequisite: `src/shared/locale-storage.ts` (value remains `synctrol:locale`). Compiler root-router and client LanguageSwitcher both import from shared.
 
 ---
 
@@ -34,15 +53,18 @@
 
 | Path | Responsibility |
 | --- | --- |
+| `src/shared/locale-storage.ts` | **Task 1 prerequisite:** canonical `LOCALE_STORAGE_KEY` (`synctrol:locale`) for root router + LanguageSwitcher |
+| `src/shared/encode-path-segment.ts` | **Task 5 prerequisite:** Plan 03 `encodePathSegment` extracted for client-safe locale encoding |
 | `src/shared/format-message.ts` | Interpolate `{name}` placeholders in locale messages |
+| `src/vue-shim.d.ts` | Minimal `declare module '*.vue'` so production `tsc` accepts `.vue` imports |
 | `src/client/color-mode/types.ts` | `ColorModePreference` type |
 | `src/client/color-mode/cycle.ts` | Cycle `auto → light → dark → auto` |
 | `src/client/color-mode/storage.ts` | `localStorage` key `synctrol:color-mode` read/write |
 | `src/client/color-mode/resolve.ts` | Resolve preference + `prefers-color-scheme` → `light \| dark` |
 | `src/client/color-mode/boot-script.ts` | Inline startup script string preventing FOUC |
-| `src/client/navigation/resolve-nav-href.ts` | Internal/external href rules; reject `./` `../` |
+| `src/client/navigation/resolve-nav-href.ts` | Internal/external href rules; reject `./` `../`; encode locale segment |
 | `src/client/navigation/is-external-href.ts` | Detect absolute URL destinations |
-| `src/client/i18n/locale-alternates.ts` | Build LanguageSwitcher targets from page identity |
+| `src/client/i18n/locale-alternates.ts` | Build LanguageSwitcher targets from page identity + encoded publicPaths |
 | `src/client/a11y/focus-trap.ts` | Focus trap activate/deactivate for overlays |
 | `src/client/composables/useThemeOptions.ts` | Read resolved theme options from define/inject |
 | `src/client/composables/useColorMode.ts` | Reactive color-mode preference + computed surface |
@@ -55,11 +77,13 @@
 | `src/client/components/LanguageSwitcher.vue` | Fixed bottom-right upward collapsible |
 | `src/client/components/SiteFooter.vue` | Reserved footer region (empty stub) |
 | `src/client/components/ShellLayout.vue` | Grid shell composing all regions |
-| `src/client/layouts/Layout.vue` | VuePress layout entry wrapping `ShellLayout` |
+| `src/client/layouts/Layout.vue` | VuePress layout entry wrapping `ShellLayout`; wires `setContentAssetMap` |
 | `src/client/styles/shell.css` | Grid, dock, mobile, overlay, focus-visible rules |
 | `src/client/config.ts` | VuePress client config: layouts + styles |
-| `src/client/index.ts` | Client package export |
-| `src/compiler/theme.ts` | **Extend Plan 03 Task 12** — do not replace `synctrolTheme`; add clientConfigFile + color-mode boot script |
+| `src/client/index.ts` | **Extend** Plan 04 client exports; add Layout/keys |
+| `src/compiler/theme.ts` | **PATCH** Plan 04 theme — add clientConfigFile, boot script, `synctrol.alternates`; keep assets + filter + router |
+| `src/compiler/root-router-html.ts` | Import `LOCALE_STORAGE_KEY` from shared after Task 1 prerequisite |
+| `src/compiler/path-suffix.ts` | Re-import `encodePathSegment` from shared after Task 5 prerequisite |
 | `tests/shared/format-message.test.ts` | Message interpolation |
 | `tests/client/color-mode/*.test.ts` | Cycle, storage, resolve, boot script |
 | `tests/client/navigation/*.test.ts` | Href resolution |
@@ -68,16 +92,19 @@
 | `tests/client/components/*.test.ts` | Component + a11y tests |
 | `tests/client/shell/shell-layout.test.ts` | Grid areas, mobile flow, dock clearance |
 | `vitest.config.ts` | Split node vs happy-dom environments |
-| `package.json` | Add `@vue/test-utils`, `happy-dom`, `@vitejs/plugin-vue` |
+| `package.json` | Add `@vue/test-utils`, `happy-dom`, `@vitejs/plugin-vue` (Vite 6–compatible) |
 
-**Assumed from Plans 01–03 (do not redefine):**
+**Assumed from Plans 01–04 (do not redefine):**
 
 - `ResolvedSynctrolThemeOptions`, `NavigationOptions`, `SocialLinksOptions`, `resolveThemeOptions`
 - `resolveMultilanguage`, `LocaleMessages` (`auto`/`light`/`dark`/`menu`/`close`/`language`/`themeModeAnnouncement`)
 - Dock tokens in `src/client/styles/tokens.css`
-- `PageIdentity`, `CompiledPage.url.publicPath`, storage key `synctrol:locale` for root router
+- `PageIdentity`, `CompiledPage.url.publicPath` (locale segment already encodeRouteSegment'd)
+- Nested `frontmatter.synctrol` with `identity`, `locale`, `contentAssets` (Plan 04)
+- Client asset helpers already exported from `src/client/index.ts`
 - `__SYNCTROL_THEME_OPTIONS__` define from `synctrolTheme()` via Plan 01 `toClientThemeOptions`
-- Plan 03 Task 12 owns `src/compiler/theme.ts` (`onInitialized` page registration, content-tree filter, `onGenerated` root router). This plan **extends** that module only.
+- Plan 03/04 own `src/compiler/theme.ts` (`onInitialized` page registration, asset compile, content-tree filter, `onGenerated` root router). This plan **patches** that module only.
+- `joinPublicPath` / `normalizeBase` live in `src/shared/route-path.ts`
 - Locale home / alternate `publicPath` values are encodeRouteSegment'd (ASCII fixtures unchanged; CJK locale keys must not appear raw in hrefs)
 
 ---
@@ -88,13 +115,41 @@
 - Modify: `package.json`
 - Modify: `vitest.config.ts`
 - Modify: `tsconfig.json`
+- Create: `src/vue-shim.d.ts`
+- Create: `src/shared/locale-storage.ts` (**prerequisite — client boundary**)
+- Modify: `src/compiler/root-router-html.ts` — import `LOCALE_STORAGE_KEY` from `../shared/locale-storage.js` (remove local `export const`; re-export from shared if other modules import from root-router today)
 - Create: `tests/client/harness/mount.ts`
 - Create: `tests/client/harness/fixtures.ts`
 - Create: `tests/client/harness/smoke.test.ts`
 
 **Interfaces:**
-- Consumes: Plan 01 Vitest + Vue peer deps
-- Produces: happy-dom environment for `tests/client/**`; `mountShell(component, options)` helper; fixture theme options
+- Consumes: Plan 01 Vitest + Vue peer deps; Plan 03 `LOCALE_STORAGE_KEY` value `synctrol:locale`
+- Produces: happy-dom environment for `tests/client/**`; `mountShell(component, options)` helper; fixture theme options; `*.vue` module shim for `tsc`; shared `LOCALE_STORAGE_KEY`
+
+- [ ] **Step 0: Move `LOCALE_STORAGE_KEY` to shared (client-safe prerequisite)**
+
+Client code must not import `src/compiler/**`. Before LanguageSwitcher (Task 10) or any client consumer:
+
+```ts
+// src/shared/locale-storage.ts
+/** Must stay exactly `synctrol:locale` — shared by root router HTML and LanguageSwitcher. */
+export const LOCALE_STORAGE_KEY = 'synctrol:locale'
+```
+
+```ts
+// src/compiler/root-router-html.ts — change only the constant ownership
+import { LOCALE_STORAGE_KEY } from '../shared/locale-storage.js'
+export { LOCALE_STORAGE_KEY } // keep existing importers working
+// delete: export const LOCALE_STORAGE_KEY = 'synctrol:locale'
+```
+
+Run existing root-router / theme integration tests to confirm no drift:
+
+```bash
+npm test -- tests/compiler/root-router-html.test.ts tests/compiler/theme.integration.test.ts
+```
+
+Expected: PASS (string value unchanged).
 
 - [ ] **Step 1: Write the failing harness smoke test**
 
@@ -123,10 +178,23 @@ Run: `npm test -- tests/client/harness/smoke.test.ts`
 
 Expected: FAIL because `mount` helper / happy-dom / Vue plugin are missing.
 
-- [ ] **Step 3: Install deps and implement harness**
+- [ ] **Step 3: Install deps, vue shim, and implement harness**
+
+Install Vue test tooling compatible with shipped Vite 6 / Vitest 4 (avoid stale major pins):
 
 ```bash
-npm install -D @vue/test-utils@^2.4.6 happy-dom@^15.11.0 @vitejs/plugin-vue@^5.2.0
+npm install -D @vue/test-utils@^2.4.6 happy-dom@^17.0.0 @vitejs/plugin-vue@^5.2.4
+```
+
+(If package-contract later asserts exact ranges, update that test in the same commit. Prefer ranges that resolve cleanly under Node 20 + `vite@^6.4.3`.)
+
+```ts
+// src/vue-shim.d.ts
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue'
+  const component: DefineComponent<object, object, unknown>
+  export default component
+}
 ```
 
 ```ts
@@ -146,7 +214,7 @@ export default defineConfig({
 })
 ```
 
-Update `tsconfig.json` `compilerOptions.types` to `["node", "vite/client"]` and ensure Vue SFCs are allowed by adding:
+Update `tsconfig.json` — keep production `tsc` (no `vue-tsc`). Include the shim; do **not** add `src/**/*.vue` to `include` (tsc must not parse SFCs):
 
 ```json
 {
@@ -161,10 +229,10 @@ Update `tsconfig.json` `compilerOptions.types` to `["node", "vite/client"]` and 
     "skipLibCheck": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["node", "vite/client"],
+    "types": ["node"],
     "jsx": "preserve"
   },
-  "include": ["src/**/*.ts", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/vue-shim.d.ts"]
 }
 ```
 
@@ -321,9 +389,15 @@ export const SYNCTROL_DRAWER_OPEN_KEY: InjectionKey<Ref<boolean>> = Symbol(
 )
 ```
 
-- [ ] **Step 4: Run harness smoke test**
+- [ ] **Step 4: Run harness smoke test + typecheck**
 
 Run: `npm test -- tests/client/harness/smoke.test.ts`
+
+Expected: PASS
+
+Also confirm production typecheck still green with the shim present:
+
+Run: `npm run test:typecheck`
 
 Expected: PASS
 
@@ -331,6 +405,7 @@ Expected: PASS
 
 ```bash
 git add package.json package-lock.json vitest.config.ts tsconfig.json \
+  src/vue-shim.d.ts src/shared/locale-storage.ts src/compiler/root-router-html.ts \
   src/client/composables/keys.ts \
   tests/client/harness/mount.ts tests/client/harness/fixtures.ts \
   tests/client/harness/smoke.test.ts
@@ -573,11 +648,11 @@ git commit -m "feat: add color-mode helpers and message formatter"
 **Files:**
 - Create: `src/client/color-mode/boot-script.ts`
 - Create: `tests/client/color-mode/boot-script.test.ts`
-- Modify: `src/compiler/theme.ts` — **extend** Plan 03 Task 12's `synctrolTheme` (do not create a replacement factory; keep page registration, content-tree filtering, root-router `onGenerated`, and `toClientThemeOptions` define)
+- Modify: `src/compiler/theme.ts` — **PATCH** current Plan 04 `synctrolTheme` (keep `compileAssets`, `frontmatter.synctrol.contentAssets`, content filter, `createPage`, `define`, root-router `onGenerated`)
 
 **Interfaces:**
-- Consumes: `COLOR_MODE_STORAGE_KEY`, `defaultColorMode`; existing Plan 03 `synctrolTheme`
-- Produces: `buildColorModeBootScript(defaultColorMode: ColorModePreference): string` that sets `document.documentElement.dataset.theme` to `light` or `dark` before paint; theme `onInitialized` also injects the boot script into `app.siteData.head` without dropping Task 12 wiring
+- Consumes: `COLOR_MODE_STORAGE_KEY`, `defaultColorMode`; existing Plan 04 `synctrolTheme`
+- Produces: `buildColorModeBootScript(defaultColorMode: ColorModePreference): string` that sets `document.documentElement.dataset.theme` to `light` or `dark` before paint; theme also sets `clientConfigFile` and injects the boot script into `app.siteData.head` without dropping Plan 04 wiring
 
 - [ ] **Step 1: Write the failing boot-script test**
 
@@ -609,7 +684,7 @@ Run: `npm test -- tests/client/color-mode/boot-script.test.ts`
 
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Implement boot script and extend the Plan 03 theme module**
+- [ ] **Step 3: Implement boot script and PATCH Plan 04 theme.ts**
 
 ```ts
 // src/client/color-mode/boot-script.ts
@@ -625,52 +700,114 @@ export function buildColorModeBootScript(
 }
 ```
 
-Extend the existing Plan 03 `src/compiler/theme.ts` — inject the boot script in `onInitialized` **after** Task 12's buildSite / createPage work (or at the start of the same hook), set `clientConfigFile` when Task 13 lands, and keep `define.__SYNCTROL_THEME_OPTIONS__` from `toClientThemeOptions`. Do **not** replace the factory with a Plan-01-style stub that drops route compilation:
+**PATCH only** — do not replace `src/compiler/theme.ts`. Against HEAD Plan 04 theme, apply these additive edits:
 
 ```ts
-// src/compiler/theme.ts — additive changes only (illustrative)
-import { path } from '@vuepress/utils'
-import { getDirname } from '@vuepress/utils'
+// src/compiler/theme.ts — ADDITIVE PATCH against Plan 04 HEAD
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import { getDirname, path } from '@vuepress/utils'
+import { createPage } from 'vuepress/core'
+import type { App, Page, ThemeObject } from 'vuepress/core'
 import { buildColorModeBootScript } from '../client/color-mode/boot-script.js'
-// ...existing Plan 03 imports...
+import { toClientThemeOptions } from '../shared/client-options.js'
+import type { SynctrolThemeOptions } from '../shared/options.js'
+import { resolveThemeOptions } from '../shared/options.js'
+import type { CompiledPage } from '../shared/route-types.js'
+import type { RouteContentPackage } from '../shared/types.js'
+import { compileAssets } from './assets/compile-assets.js'
+import { selectAssetPackageSources } from './assets/select-asset-package-sources.js'
+import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 
 const __dirname = getDirname(import.meta.url)
+
+// ... keep isContentSourcePage + bodyFor unchanged ...
 
 export function synctrolTheme(options: SynctrolThemeOptions) {
   const resolved = resolveThemeOptions(options)
   const clientOptions = toClientThemeOptions(resolved)
-  const boot = buildColorModeBootScript(resolved.defaultColorMode)
+  const boot = buildColorModeBootScript(resolved.defaultColorMode) // ADD
   let built: BuiltSite | undefined
 
   return {
     name: 'vuepress-theme-synctrolling',
-    // Task 13 may set this; keep Task 12 define + hooks intact.
+    // ADD — Task 13 also relies on this path existing
     clientConfigFile: path.resolve(__dirname, '../client/config.ts'),
     define: {
       __SYNCTROL_THEME_OPTIONS__: clientOptions,
     },
     onInitialized: async (app: App): Promise<void> => {
-      app.siteData.head.push(['script', {}, boot])
-      // ...existing Task 12 buildSite / filter / createPage body unchanged...
+      app.siteData.head.push(['script', {}, boot]) // ADD (before or after buildSite; must not remove Plan 04 body)
+
+      built = buildSite({ /* unchanged */ })
+
+      const assetSources = selectAssetPackageSources({ /* unchanged */ })
+      const assetManifest = compileAssets({ /* unchanged */ })
+
+      app.pages = app.pages.filter((page) => !isContentSourcePage(page))
+
+      const byDir = new Map(built.packages.map((pkg) => [pkg.dir, pkg]))
+
+      for (const compiled of built.site.pages) {
+        const contentAssets =
+          assetManifest.contentPublicPaths[compiled.identity] ?? {}
+        // ADD — LanguageSwitcher targets (encoded publicPath from Plan 03)
+        const alternates = built.site.pages
+          .filter((p) => p.identity === compiled.identity)
+          .map((p) => ({
+            locale: p.locale,
+            publicPath: p.url.publicPath,
+          }))
+        const page = await createPage(app, {
+          path: decodeURI(compiled.url.routePath),
+          content: bodyFor(compiled, byDir),
+          frontmatter: {
+            lang: resolved.locales[compiled.locale]?.lang ?? compiled.locale,
+            title: compiled.title,
+            ...(compiled.description === undefined
+              ? {}
+              : { description: compiled.description }),
+            synctrol: {
+              identity: compiled.identity,
+              locale: compiled.locale,
+              contentType: compiled.contentType,
+              isFallback: compiled.isFallback,
+              isDraft: compiled.isDraft,
+              noindex: compiled.noindex,
+              bodyLocale: compiled.bodyLocale,
+              canonicalLocale: compiled.canonicalLocale,
+              contentAssets, // KEEP Plan 04 field
+              alternates, // ADD Plan 05 field
+            },
+          },
+        })
+        app.pages.push(page)
+      }
     },
     onGenerated: (app: App): void => {
-      // ...existing Task 12 root-router write unchanged...
+      // KEEP Plan 04 / Plan 03 root-router write unchanged
+      if (built === undefined) return
+      const target = app.dir.dest('index.html')
+      mkdirSync(dirname(target), { recursive: true })
+      writeFileSync(target, built.site.rootRouterHtml, 'utf8')
     },
   } satisfies ThemeObject
 }
 ```
 
+Forbidden: deleting `compileAssets`, `contentAssets`, content-tree filtering, or root-router `onGenerated`. Forbidden: pasting a Plan-01-style stub factory.
+
 ```ts
-// src/index.ts — already re-exports from ./compiler/theme.js after Plan 03 Task 12;
+// src/index.ts — already re-exports from ./compiler/theme.js after Plan 03/04;
 // do not switch back to an inline factory or ./node/theme.js.
 export { synctrolTheme } from './compiler/theme.js'
 ```
 
 - [ ] **Step 4: Run tests**
 
-Run: `npm test -- tests/client/color-mode/boot-script.test.ts tests/smoke.test.ts`
+Run: `npm test -- tests/client/color-mode/boot-script.test.ts tests/smoke.test.ts tests/compiler/theme.integration.test.ts`
 
-Expected: PASS
+Expected: PASS (theme integration still sees `contentAssets`; boot script tests green).
 
 - [ ] **Step 5: Commit**
 
@@ -875,11 +1012,11 @@ export function useColorMode() {
 <!-- src/client/components/ThemeMode.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { nextColorMode } from '../color-mode/cycle'
-import type { ColorModePreference } from '../color-mode/types'
-import { formatMessage } from '../../shared/format-message'
-import { useColorMode } from '../composables/useColorMode'
-import { useLocaleShell } from '../composables/useLocaleShell'
+import { nextColorMode } from '../color-mode/cycle.js'
+import type { ColorModePreference } from '../color-mode/types.js'
+import { formatMessage } from '../../shared/format-message.js'
+import { useColorMode } from '../composables/useColorMode.js'
+import { useLocaleShell } from '../composables/useLocaleShell.js'
 
 const { preference, cycle } = useColorMode()
 const { messages } = useLocaleShell()
@@ -945,16 +1082,48 @@ git commit -m "feat: add ThemeMode control with persisted cycle"
 ### Task 5: Navigation href resolution
 
 **Files:**
+- Create: `src/shared/encode-path-segment.ts` (**prerequisite** — extract Plan 03 pure encoder)
+- Modify: `src/compiler/path-suffix.ts` — import `encodePathSegment` from shared (keep `encodeRouteSegment` API)
 - Create: `src/client/navigation/is-external-href.ts`
 - Create: `src/client/navigation/resolve-nav-href.ts`
 - Create: `tests/client/navigation/resolve-nav-href.test.ts`
 
 **Interfaces:**
-- Consumes: `Multilanguage` href via `resolveMultilanguage`; VuePress `base`; active `locale`
+- Consumes: `Multilanguage` href via `resolveMultilanguage`; VuePress `base`; active `locale`; shared `encodePathSegment` + `joinPublicPath`/`normalizeBase` from `route-path.js`
 - Produces:
   - `isExternalHref(href: string): boolean`
   - `resolveNavHref({ href, locale, base, mainLocale }): { href: string; external: boolean }`
   - Throws on `./` or `../` paths
+  - Internal hrefs prefix **encoded** locale segment (no raw CJK)
+
+- [ ] **Step 0: Extract `encodePathSegment` to shared (client-safe)**
+
+Move the pure RFC3986 encoder from `src/compiler/path-suffix.ts` into shared so Navigation can encode locale segments without importing compiler:
+
+```ts
+// src/shared/encode-path-segment.ts
+/** `encodeURIComponent` leaves these five unescaped; RFC 3986 does not. */
+const RFC3986_EXTRA = /[!'()*]/g
+
+/** Strict RFC 3986 percent-encoding for a single path segment (slug, tag, or locale). */
+export function encodePathSegment(value: string): string {
+  return encodeURIComponent(value).replace(
+    RFC3986_EXTRA,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  )
+}
+```
+
+```ts
+// src/compiler/path-suffix.ts — re-export / import from shared
+import { encodePathSegment } from '../shared/encode-path-segment.js'
+export { encodePathSegment }
+// delete local RFC3986_EXTRA + encodePathSegment body; keep encodeRouteSegment
+```
+
+Run: `npm test -- tests/compiler/path-suffix.test.ts` (or equivalent path-suffix coverage)
+
+Expected: PASS
 
 - [ ] **Step 1: Write failing tests**
 
@@ -963,6 +1132,7 @@ git commit -m "feat: add ThemeMode control with persisted cycle"
 import { describe, expect, it } from 'vitest'
 import { isExternalHref } from '../../../src/client/navigation/is-external-href'
 import { resolveNavHref } from '../../../src/client/navigation/resolve-nav-href'
+import { encodePathSegment } from '../../../src/shared/encode-path-segment'
 
 describe('isExternalHref', () => {
   it('detects absolute http(s) URLs', () => {
@@ -973,7 +1143,7 @@ describe('isExternalHref', () => {
 })
 
 describe('resolveNavHref', () => {
-  it('prefixes base + locale for internal leading-slash paths', () => {
+  it('prefixes base + encoded locale for internal leading-slash paths', () => {
     expect(
       resolveNavHref({
         href: '/releases/',
@@ -991,6 +1161,27 @@ describe('resolveNavHref', () => {
         mainLocale: 'zh',
       }),
     ).toEqual({ href: '/docs/en/releases/', external: false })
+  })
+
+  it('encodes non-ASCII locale segments (no raw CJK in href)', () => {
+    const locale = '日本語'
+    const encoded = encodePathSegment(locale)
+    expect(
+      resolveNavHref({
+        href: '/releases/',
+        locale,
+        base: '/',
+        mainLocale: 'zh',
+      }),
+    ).toEqual({ href: `/${encoded}/releases/`, external: false })
+    expect(
+      resolveNavHref({
+        href: '/releases/',
+        locale,
+        base: '/',
+        mainLocale: 'zh',
+      }).href,
+    ).not.toContain('日本語')
   })
 
   it('resolves Multilanguage href maps', () => {
@@ -1054,9 +1245,10 @@ export function isExternalHref(href: string): boolean {
 
 ```ts
 // src/client/navigation/resolve-nav-href.ts
+import { encodePathSegment } from '../../shared/encode-path-segment.js'
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
+import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
 import type { LocaleKey, Multilanguage } from '../../shared/types.js'
-import { joinPublicPath, normalizeBase } from '../../shared/url/normalize-path.js'
 import { isExternalHref } from './is-external-href.js'
 
 export interface ResolveNavHrefInput {
@@ -1090,9 +1282,8 @@ export function resolveNavHref(input: ResolveNavHrefInput): ResolvedNavHref {
     throw new Error(`Invalid navigation href (must be leading-slash or absolute URL): ${text}`)
   }
 
-  const routePath = `/${input.locale}${text.startsWith('/') ? text : `/${text}`}`
-    .replace(/\/{2,}/g, '/')
-  // ensure trailing slash preserved from input when present
+  const encodedLocale = encodePathSegment(input.locale)
+  const routePath = `/${encodedLocale}${text}`.replace(/\/{2,}/g, '/')
   const normalized =
     text.endsWith('/') && !routePath.endsWith('/') ? `${routePath}/` : routePath
 
@@ -1112,7 +1303,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/client/navigation tests/client/navigation
+git add src/shared/encode-path-segment.ts src/compiler/path-suffix.ts \
+  src/client/navigation tests/client/navigation
 git commit -m "feat: resolve navigation hrefs with locale and base"
 ```
 
@@ -1195,9 +1387,9 @@ Expected: FAIL because Navigation.vue is missing.
 <!-- src/client/components/Navigation.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { resolveMultilanguage } from '../../shared/multilanguage'
-import { resolveNavHref } from '../navigation/resolve-nav-href'
-import { useLocaleShell } from '../composables/useLocaleShell'
+import { resolveMultilanguage } from '../../shared/multilanguage.js'
+import { resolveNavHref } from '../navigation/resolve-nav-href.js'
+import { useLocaleShell } from '../composables/useLocaleShell.js'
 
 const { theme, shell, locale } = useLocaleShell()
 
@@ -1437,9 +1629,9 @@ export function createFocusTrap(
 <!-- src/client/components/NavDrawer.vue -->
 <script setup lang="ts">
 import { inject, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
-import { createFocusTrap, type FocusTrap } from '../a11y/focus-trap'
-import { SYNCTROL_DRAWER_OPEN_KEY } from '../composables/keys'
-import { useLocaleShell } from '../composables/useLocaleShell'
+import { createFocusTrap, type FocusTrap } from '../a11y/focus-trap.js'
+import { SYNCTROL_DRAWER_OPEN_KEY } from '../composables/keys.js'
+import { useLocaleShell } from '../composables/useLocaleShell.js'
 import Navigation from './Navigation.vue'
 
 const drawerOpen = inject(SYNCTROL_DRAWER_OPEN_KEY) as Ref<boolean>
@@ -1588,8 +1780,8 @@ Expected: FAIL because HeaderBar.vue is missing.
 <!-- src/client/components/HeaderBar.vue -->
 <script setup lang="ts">
 import { inject, type Ref } from 'vue'
-import { SYNCTROL_DRAWER_OPEN_KEY } from '../composables/keys'
-import { useLocaleShell } from '../composables/useLocaleShell'
+import { SYNCTROL_DRAWER_OPEN_KEY } from '../composables/keys.js'
+import { useLocaleShell } from '../composables/useLocaleShell.js'
 import ThemeMode from './ThemeMode.vue'
 
 const drawerOpen = inject(SYNCTROL_DRAWER_OPEN_KEY) as Ref<boolean>
@@ -1646,7 +1838,7 @@ git commit -m "feat: add HeaderBar with copyright ThemeMode and menu"
 - Create: `tests/client/components/SocialLinks.test.ts`
 
 **Interfaces:**
-- Consumes: `theme.socialLinks.items` only (no `iconSize`); stub icon URLs allowed
+- Consumes: `theme.socialLinks.items` only (no `iconSize`); Plan 05 acceptance uses root-absolute, remote `http(s):`, or data-URI icon stubs (hashed `globalPublicPaths` client injection is out of scope)
 - Produces: fixed bottom-left icon `<a>` buttons; `aria-label` from label; decorative icons `aria-hidden="true"`; always `target="_blank"` + `rel="noopener noreferrer"`
 
 - [ ] **Step 1: Write failing SocialLinks tests**
@@ -1692,8 +1884,8 @@ Expected: FAIL because SocialLinks.vue is missing.
 <!-- src/client/components/SocialLinks.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { resolveMultilanguage } from '../../shared/multilanguage'
-import { useLocaleShell } from '../composables/useLocaleShell'
+import { resolveMultilanguage } from '../../shared/multilanguage.js'
+import { useLocaleShell } from '../composables/useLocaleShell.js'
 
 const { theme, locale } = useLocaleShell()
 
@@ -1763,13 +1955,14 @@ git commit -m "feat: add SocialLinks fixed dock control"
 - Create: `tests/client/components/LanguageSwitcher.test.ts`
 
 **Interfaces:**
-- Consumes: `PageIdentity`, locale labels, `publicPath` map; storage key `synctrol:locale` from Plan 03
+- Consumes: `PageIdentity`, locale labels, compiled/encoded `publicPath`s; `LOCALE_STORAGE_KEY` from `src/shared/locale-storage.js` (Task 1 prerequisite)
 - Produces:
   - `buildLocaleAlternates({ locales, identity, pages }): LocaleAlternateLink[]`
   - Collapsible upward switcher showing full current locale label
-  - Escape / outside click / selection close; keyboard listbox pattern; focus restore; persists `synctrol:locale`
+  - Escape / outside click / selection close; keyboard listbox pattern; focus restore; persists via `LOCALE_STORAGE_KEY`
+  - `persistLocalePreference` writes the shared key (does **not** redeclare it)
 
-**Plan 03 publicPath contract:** alternate `href` values must come from compiled `url.publicPath` (locale segment already encodeRouteSegment'd). Do not build home hrefs by concatenating a raw LocaleKey into `/${key}/` when the key may be non-ASCII — use the encoded publicPath Plan 03 already emitted (or `encodeRouteSegment` if synthesizing a home fallback in tests).
+**Plan 03 publicPath contract:** alternate `href` values must come from compiled `url.publicPath` / `frontmatter.synctrol.alternates` (locale segment already encodeRouteSegment'd). Do not build home hrefs by concatenating a raw LocaleKey into `` `/${key}/` ``.
 
 - [ ] **Step 1: Write failing tests**
 
@@ -1836,8 +2029,9 @@ describe('buildLocaleAlternates', () => {
 ```ts
 // tests/client/components/LanguageSwitcher.test.ts
 import { nextTick } from 'vue'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LanguageSwitcher from '../../../src/client/components/LanguageSwitcher.vue'
+import { LOCALE_STORAGE_KEY } from '../../../src/shared/locale-storage'
 import { mountShell } from '../harness/mount'
 
 describe('LanguageSwitcher', () => {
@@ -1851,6 +2045,9 @@ describe('LanguageSwitcher', () => {
   })
 
   it('expands upward, navigates, persists preference, and closes', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign })
+
     const wrapper = mountShell(LanguageSwitcher, {
       locale: 'zh',
       shellContext: {
@@ -1868,9 +2065,9 @@ describe('LanguageSwitcher', () => {
     const en = wrapper.get('a[href="/en/"]')
     expect(en.text()).toBe('English')
 
-    // jsdom/happy-dom: stub location assign via data attribute handler in component tests
     await en.trigger('click')
-    expect(localStorage.getItem('synctrol:locale')).toBe('en')
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en')
+    expect(assign).toHaveBeenCalledWith('/en/')
   })
 
   it('closes on Escape and outside click', async () => {
@@ -1905,10 +2102,9 @@ Expected: FAIL with module not found.
 
 ```ts
 // src/client/i18n/locale-alternates.ts
+import { LOCALE_STORAGE_KEY } from '../../shared/locale-storage.js'
 import type { LocaleKey } from '../../shared/types.js'
 import type { LocaleAlternateLink } from '../composables/keys.js'
-
-export const LOCALE_STORAGE_KEY = 'synctrol:locale'
 
 export interface AlternatePageRef {
   identity: string
@@ -1944,15 +2140,14 @@ export function persistLocalePreference(
 }
 ```
 
+Note: Do **not** redeclare `LOCALE_STORAGE_KEY` here — import from shared (Task 1 prerequisite). Value must remain `synctrol:locale`.
+
 ```vue
 <!-- src/client/components/LanguageSwitcher.vue -->
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import {
-  LOCALE_STORAGE_KEY,
-  persistLocalePreference,
-} from '../i18n/locale-alternates'
-import { useLocaleShell } from '../composables/useLocaleShell'
+import { persistLocalePreference } from '../i18n/locale-alternates.js'
+import { useLocaleShell } from '../composables/useLocaleShell.js'
 
 const { messages, localeLabel, shell, locale } = useLocaleShell()
 const open = ref(false)
@@ -2031,7 +2226,6 @@ onUnmounted(() => {
 </template>
 ```
 
-Note: `LOCALE_STORAGE_KEY` must equal Plan 03 root-router key `synctrol:locale` exactly.
 
 - [ ] **Step 4: Run tests**
 
@@ -2451,7 +2645,7 @@ import './shell.css'
 import { computed, inject, provide, ref, type Ref } from 'vue'
 import {
   SYNCTROL_DRAWER_OPEN_KEY,
-} from '../composables/keys'
+} from '../composables/keys.js'
 import HeaderBar from './HeaderBar.vue'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import NavDrawer from './NavDrawer.vue'
@@ -2517,27 +2711,45 @@ git commit -m "feat: add golden-ratio ShellLayout and responsive dock CSS"
 **Files:**
 - Create: `src/client/layouts/Layout.vue`
 - Create: `src/client/config.ts`
-- Create: `src/client/index.ts`
-- Modify: `src/compiler/theme.ts` — set `clientConfigFile` on the Plan 03 Task 12 theme (do not recreate `synctrolTheme`)
-- Modify: `src/index.ts`
+- Modify: `src/client/index.ts` — **extend** Plan 04 exports (do not replace)
+- Modify: `src/compiler/theme.ts` — ensure `clientConfigFile` + `synctrol.alternates` from Task 3 patch remain
 - Create: `tests/client/layouts/Layout.test.ts`
+- Create: `tests/client/index.exports.test.ts` (optional smoke that Plan 04 helpers remain exported)
 
 **Interfaces:**
-- Consumes: `__SYNCTROL_THEME_OPTIONS__`; VuePress `useRoute`/`useData` stubs in tests
-- Produces: Layout provides shell context (locale, identity, alternates, base) and renders `ShellLayout` around `<Content />`
+- Consumes: `__SYNCTROL_THEME_OPTIONS__`; nested `frontmatter.synctrol`; Plan 04 `setContentAssetMap`
+- Produces: Layout provides shell context (locale, identity, alternates, base), syncs content asset map on page change, renders `ShellLayout` around `<Content />`; `./client` still exports asset helpers
 
-- [ ] **Step 1: Write failing Layout test**
+- [ ] **Step 1: Write failing Layout + export tests**
 
 ```ts
 // tests/client/layouts/Layout.test.ts
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import Layout from '../../../src/client/layouts/Layout.vue'
 import { fixtureThemeOptions } from '../harness/fixtures'
 import { mount } from '@vue/test-utils'
 import {
   SYNCTROL_THEME_OPTIONS_KEY,
 } from '../../../src/client/composables/keys'
+import { resolveContentAsset, setContentAssetMap } from '../../../src/client'
+
+const pageRef = ref({
+  path: '/zh/',
+  frontmatter: {
+    synctrol: {
+      identity: 'home',
+      locale: 'zh',
+      contentAssets: {
+        './assets/cover.webp': '/assets/content/home/cover.abc123.webp',
+      },
+      alternates: [
+        { locale: 'zh', publicPath: '/zh/' },
+        { locale: 'en', publicPath: '/en/' },
+      ],
+    },
+  },
+})
 
 vi.mock('vuepress/client', () => {
   return {
@@ -2547,82 +2759,111 @@ vi.mock('vuepress/client', () => {
     }),
     useRoute: () => ({ path: '/zh/' }),
     useData: () => ({
-      page: {
-        value: {
-          path: '/zh/',
-          frontmatter: {
-            synctrolIdentity: 'home',
-            synctrolLocale: 'zh',
-          },
-        },
-      },
+      page: pageRef,
       siteData: { value: { base: '/' } },
     }),
   }
 })
 
 describe('Layout', () => {
-  it('wraps Content in the Synctrol shell', () => {
+  it('wraps Content in the Synctrol shell using nested synctrol frontmatter', async () => {
+    setContentAssetMap({})
     const theme = fixtureThemeOptions()
     const wrapper = mount(Layout, {
       global: {
         provide: {
           [SYNCTROL_THEME_OPTIONS_KEY as symbol]: theme,
         },
-        stubs: {
-          // Content mocked above
-        },
       },
     })
+    await nextTick()
     expect(wrapper.find('.syn-shell').exists()).toBe(true)
     expect(wrapper.find('.vp-content').text()).toBe('Page body')
     expect(wrapper.find('.syn-header').exists()).toBe(true)
+    expect(
+      resolveContentAsset('./assets/cover.webp'),
+    ).toBe('/assets/content/home/cover.abc123.webp')
   })
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+```ts
+// tests/client/index.exports.test.ts
+import { describe, expect, it } from 'vitest'
+import * as client from '../../src/client'
 
-Run: `npm test -- tests/client/layouts/Layout.test.ts`
+describe('client package exports', () => {
+  it('keeps Plan 04 asset helpers alongside Layout', () => {
+    expect(typeof client.resolveContentAsset).toBe('function')
+    expect(typeof client.createResolveContentAsset).toBe('function')
+    expect(typeof client.setContentAssetMap).toBe('function')
+    expect(typeof client.normalizeContentAssetRef).toBe('function')
+    expect(client.Layout).toBeTruthy()
+  })
+})
+```
 
-Expected: FAIL because Layout / client config are missing.
+- [ ] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement Layout and client wiring**
+Run: `npm test -- tests/client/layouts/Layout.test.ts tests/client/index.exports.test.ts`
+
+Expected: FAIL because Layout / extended client exports are incomplete.
+
+- [ ] **Step 3: Implement Layout and EXTEND client wiring**
 
 ```vue
 <!-- src/client/layouts/Layout.vue -->
 <script setup lang="ts">
 import { computed, provide, reactive, ref, watch } from 'vue'
 import { Content, useData } from 'vuepress/client'
+import { setContentAssetMap } from '../assets/resolve-content-asset.js'
 import {
   SYNCTROL_DRAWER_OPEN_KEY,
   SYNCTROL_SHELL_CONTEXT_KEY,
   SYNCTROL_THEME_OPTIONS_KEY,
   type SynctrolShellContext,
-} from '../composables/keys'
+} from '../composables/keys.js'
 import ShellLayout from '../components/ShellLayout.vue'
-import { useThemeOptions } from '../composables/useThemeOptions'
-import { buildLocaleAlternates } from '../i18n/locale-alternates'
+import { useThemeOptions } from '../composables/useThemeOptions.js'
+import { buildLocaleAlternates } from '../i18n/locale-alternates.js'
+import { encodePathSegment } from '../../shared/encode-path-segment.js'
+import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
+
+interface SynctrolFrontmatter {
+  identity?: string
+  locale?: string
+  contentAssets?: Record<string, string>
+  alternates?: Array<{ locale: string; publicPath: string }>
+}
 
 const theme = useThemeOptions()
 const { page, siteData } = useData()
 const drawerOpen = ref(false)
 
-const identity = computed(
-  () =>
-    (page.value.frontmatter.synctrolIdentity as string | undefined) ?? 'home',
-)
-const locale = computed(
-  () =>
-    (page.value.frontmatter.synctrolLocale as string | undefined) ??
-    theme.mainLocale,
+const synctrol = computed(
+  () => (page.value.frontmatter.synctrol as SynctrolFrontmatter | undefined) ?? {},
 )
 
+const identity = computed(() => synctrol.value.identity ?? 'home')
+const locale = computed(() => synctrol.value.locale ?? theme.mainLocale)
+
 const localeAlternates = computed(() => {
-  const pages =
-    (page.value.frontmatter.synctrolAlternates as
-      | Array<{ identity: string; locale: string; publicPath: string }>
-      | undefined) ?? []
+  const injected = synctrol.value.alternates ?? []
+  const pages = injected.length
+    ? injected.map((entry) => ({
+        identity: identity.value,
+        locale: entry.locale,
+        publicPath: entry.publicPath,
+      }))
+    : Object.keys(theme.locales).map((key) => ({
+        identity: identity.value,
+        locale: key,
+        // Encoded locale home — never raw `/${key}/` for non-ASCII keys
+        publicPath: joinPublicPath(
+          normalizeBase(siteData.value.base),
+          `/${encodePathSegment(key)}/`,
+        ),
+      }))
   return buildLocaleAlternates({
     identity: identity.value,
     localeOptions: Object.fromEntries(
@@ -2631,18 +2872,17 @@ const localeAlternates = computed(() => {
         { label: value.label },
       ]),
     ),
-    pages: pages.length
-      ? pages
-      : Object.keys(theme.locales).map((key) => ({
-          identity: identity.value,
-          locale: key,
-          // Prefer compiled publicPath from Plan 03. If synthesizing a home
-          // fallback, the locale segment must be encodeRouteSegment'd — ASCII
-          // keys are identity under encoding.
-          publicPath: `/${key}/`,
-        })),
+    pages,
   })
 })
+
+watch(
+  () => synctrol.value.contentAssets,
+  (map) => {
+    setContentAssetMap(map ?? {})
+  },
+  { immediate: true },
+)
 
 const shell = reactive<SynctrolShellContext>({
   locale: locale.value,
@@ -2685,7 +2925,7 @@ provide(SYNCTROL_DRAWER_OPEN_KEY, drawerOpen)
 // src/client/config.ts
 import { defineClientConfig } from 'vuepress/client'
 import Layout from './layouts/Layout.vue'
-import './styles/index'
+import './styles/index.js'
 
 export default defineClientConfig({
   layouts: {
@@ -2695,24 +2935,38 @@ export default defineClientConfig({
 ```
 
 ```ts
-// src/client/index.ts
+// src/client/index.ts — EXTEND Plan 04; never replace asset helpers
+export {
+  createResolveContentAsset,
+  normalizeContentAssetRef,
+  resolveContentAsset,
+  setContentAssetMap,
+  type ContentAssetMap,
+} from './assets/resolve-content-asset.js'
+
 export { default as Layout } from './layouts/Layout.vue'
 export * from './composables/keys.js'
 ```
 
-`src/compiler/theme.ts` already points `clientConfigFile` at `src/client/config.ts` from Task 3.
+`src/compiler/theme.ts` already sets `clientConfigFile` and injects `synctrol.alternates` from Task 3. Confirm `scripts/smoke-built-exports.mjs` still asserts Plan 04 asset helpers after build.
 
-- [ ] **Step 4: Run Layout test**
+- [ ] **Step 4: Run Layout + export tests + build smoke**
 
-Run: `npm test -- tests/client/layouts/Layout.test.ts`
+Run:
 
-Expected: PASS
+```bash
+npm test -- tests/client/layouts/Layout.test.ts tests/client/index.exports.test.ts
+npm run test:build-smoke
+```
+
+Expected: PASS (asset helpers remain on `vuepress-theme-synctrolling/client`)
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/client/layouts/Layout.vue src/client/config.ts src/client/index.ts \
-  src/compiler/theme.ts src/index.ts tests/client/layouts/Layout.test.ts
+  src/compiler/theme.ts tests/client/layouts/Layout.test.ts \
+  tests/client/index.exports.test.ts
 git commit -m "feat: wire VuePress Layout to Synctrol ShellLayout"
 ```
 
@@ -2829,7 +3083,7 @@ Expected: all Plan 05 tests PASS. Then run full package suite:
 npm test
 ```
 
-Expected: Plans 01–03 tests still PASS alongside Plan 05.
+Expected: Plans 01–04 tests still PASS alongside Plan 05.
 
 - [ ] **Step 5: Commit**
 
@@ -2855,7 +3109,7 @@ git commit -m "test: cover shell accessibility and mobile chrome contracts"
 
 Run: `npm test`
 
-Expected: PASS (foundation + compiler + locale/route + shell).
+Expected: PASS (foundation + compiler + locale/route + assets + shell).
 
 - [ ] **Step 2: Manually confirm scoped acceptance against the spec**
 
@@ -2887,13 +3141,15 @@ If already green, no extra commit.
 
 ## Plan Self-Review
 
-1. **Spec coverage (Plan 05 / sections 14–19, 29 shell a11y, 32.3 shell components):** Desktop grid (§14.1), mobile shell (§14.2), dock tokens (§14.2), Header+ThemeMode (§15), Navigation+externalTarget (§16), SocialLinks items-only (§17), LanguageSwitcher (§18), Footer reserved (§19), a11y Escape/focus/labels (§29), component tests (§32.3). Background (§13/§06), Release/News UI (§22–26), SEO (§28), root router HTML (§7.3 beyond locale storage key) intentionally out of scope.
+1. **Spec coverage (Plan 05 / sections 14–19, 29 shell a11y, 32.3 shell components; contracts from Plans 01–04):** Desktop grid (§14.1), mobile shell (§14.2), dock tokens (§14.2), Header+ThemeMode (§15), Navigation+externalTarget (§16), SocialLinks items-only (§17), LanguageSwitcher (§18), Footer reserved (§19), a11y Escape/focus/labels (§29), component tests (§32.3). Background (§13/§06), Release/News UI (§22–26), SEO (§28), root router HTML (§7.3 beyond locale storage key) intentionally out of scope.
 
 2. **Placeholder scan:** No TBD/TODO/“implement later” left in tasks; asset hashing deferred explicitly via stub URLs allowed by Plan 05 constraints.
 
-3. **Type consistency:** `NavigationOptions.externalTarget`, `SocialLinksOptions.items`, `defaultColorMode`, `ColorModePreference`, `synctrol:color-mode`, `synctrol:locale`, `PageIdentity` alternates, dock CSS variable names match Plans 01–03 and the design spec.
+3. **Type consistency:** `NavigationOptions.externalTarget`, `SocialLinksOptions.items`, `defaultColorMode`, `ColorModePreference`, `synctrol:color-mode`, `LOCALE_STORAGE_KEY` (`synctrol:locale` via shared), nested `frontmatter.synctrol` (`identity`/`locale`/`contentAssets`/`alternates`), Plan 04 client asset helpers, dock CSS variable names match Plans 01–04 and the design spec.
+
+4. **HEAD executability:** Snippets import `route-path.js`, extend `src/client/index.ts`, patch Plan 04 `theme.ts`, encode locale segments, and include `vue-shim.d.ts` so `npm test` / `npm run build` stay green under `tsc`.
 
 ---
 
 **Task count:** 15  
-**Key files:** `src/client/components/ShellLayout.vue`, `src/client/layouts/Layout.vue`, `src/client/styles/shell.css`, `src/client/components/ThemeMode.vue`, `src/client/components/Navigation.vue`, `src/client/components/HeaderBar.vue`, `src/client/components/NavDrawer.vue`, `src/client/components/SocialLinks.vue`, `src/client/components/LanguageSwitcher.vue`, `src/client/components/SiteFooter.vue`, `src/client/color-mode/*`, `src/client/navigation/resolve-nav-href.ts`, `src/client/a11y/focus-trap.ts`, `src/client/config.ts`, `src/compiler/theme.ts`
+**Key files:** `src/client/components/ShellLayout.vue`, `src/client/layouts/Layout.vue`, `src/client/styles/shell.css`, `src/client/components/ThemeMode.vue`, `src/client/components/Navigation.vue`, `src/client/components/HeaderBar.vue`, `src/client/components/NavDrawer.vue`, `src/client/components/SocialLinks.vue`, `src/client/components/LanguageSwitcher.vue`, `src/client/components/SiteFooter.vue`, `src/client/color-mode/*`, `src/client/navigation/resolve-nav-href.ts`, `src/client/a11y/focus-trap.ts`, `src/client/config.ts`, `src/client/index.ts` (extends Plan 04), `src/compiler/theme.ts` (Plan 04 patch), `src/shared/locale-storage.ts`, `src/shared/encode-path-segment.ts`, `src/vue-shim.d.ts`
