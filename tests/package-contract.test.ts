@@ -37,10 +37,13 @@ describe('package contract', () => {
       '../scripts/smoke-built-exports.mjs',
       import.meta.url,
     )
+    const smokeSource = readFileSync(buildSmoke, 'utf8')
 
     expect(existsSync(clientEntry)).toBe(true)
     expect(readFileSync(clientEntry, 'utf8')).not.toMatch(/\.css/)
     expect(existsSync(buildSmoke)).toBe(true)
+    expect(smokeSource).toMatch(/dist\/client\/layouts\/Layout\.vue/)
+    expect(smokeSource).toMatch(/dist\/client\/config\.js/)
     expect(packageJson.scripts['test:build-smoke']).toBe(
       'npm run build && node scripts/smoke-built-exports.mjs',
     )
