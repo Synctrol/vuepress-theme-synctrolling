@@ -14,6 +14,15 @@ export default defineUserConfig({
   base: '/',
   dest: resolve(configDir, 'dist'),
   bundler: viteBundler(),
+  head: [
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap',
+      },
+    ],
+  ],
   locales: {
     '/zh/': { lang: 'zh-CN' },
     '/en/': { lang: 'en-US' },
@@ -27,6 +36,7 @@ export default defineUserConfig({
     },
     topbarText: 'Copyright Synctrol',
     footbarText: '敬请期待 · STAY TUNED',
+    featureFont: "'Archivo Black', 'Arial Black', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
     navigation: {
       items: [
         {

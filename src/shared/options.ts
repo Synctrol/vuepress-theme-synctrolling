@@ -120,6 +120,8 @@ export interface SynctrolThemeOptions {
   topbarText: Multilanguage
   /** Optional text rendered in the bottom bar (replaces home-footer markdown). */
   footbarText?: Multilanguage
+  /** Display font family applied to logo, bar texts and nav links. */
+  featureFont?: string
   feeds?: {
     rss: boolean
     sitemap: boolean
@@ -150,6 +152,7 @@ export interface ResolvedSynctrolThemeOptions {
   defaultColorMode: 'auto' | 'light' | 'dark'
   topbarText: Multilanguage
   footbarText?: Multilanguage
+  featureFont?: string
   feeds: { rss: boolean; sitemap: boolean }
   navigation: NavigationOptions
   socialLinks: SocialLinksOptions
@@ -328,6 +331,9 @@ export function resolveThemeOptions(
     ...(input.footbarText === undefined
       ? {}
       : { footbarText: copyMultilanguage(input.footbarText) }),
+    ...(input.featureFont === undefined
+      ? {}
+      : { featureFont: input.featureFont }),
     feeds: {
       rss: input.feeds?.rss ?? true,
       sitemap: input.feeds?.sitemap ?? true,

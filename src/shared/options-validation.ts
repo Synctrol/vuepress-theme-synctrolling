@@ -23,6 +23,7 @@ const TOP_LEVEL_FIELDS = [
   'defaultColorMode',
   'topbarText',
   'footbarText',
+  'featureFont',
   'feeds',
   'navigation',
   'socialLinks',
@@ -575,6 +576,9 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
   validateMultilanguage(input.topbarText, 'options.topbarText', input.mainLocale)
   if (input.footbarText !== undefined) {
     validateMultilanguage(input.footbarText, 'options.footbarText', input.mainLocale)
+  }
+  if (input.featureFont !== undefined) {
+    assertNonEmptyString(input.featureFont, 'options.featureFont')
   }
   validateFeeds(input.feeds)
   validateNavigation(input.navigation, input.mainLocale)

@@ -22,6 +22,7 @@ export interface ClientSynctrolThemeOptions {
   defaultColorMode: ResolvedSynctrolThemeOptions['defaultColorMode']
   topbarText: Multilanguage
   footbarText?: Multilanguage
+  featureFont?: string
   navigation: NavigationOptions
   socialLinks: SocialLinksOptions
   linkCloud?: LinkCloudOptions
@@ -178,6 +179,9 @@ export function toClientThemeOptions(
     ...(resolved.footbarText === undefined
       ? {}
       : { footbarText: copyMultilanguage(resolved.footbarText) }),
+    ...(resolved.featureFont === undefined
+      ? {}
+      : { featureFont: resolved.featureFont }),
     navigation: copyNavigation(resolved.navigation),
     socialLinks: copySocialLinks(resolved.socialLinks),
     ...(resolved.linkCloud === undefined
