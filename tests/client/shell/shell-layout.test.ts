@@ -37,4 +37,16 @@ describe('ShellLayout', () => {
     })
     expect(wrapper.get('.syn-shell').classes()).toContain('syn-shell--drawer-open')
   })
+
+  it('renders the content container as a section and the language switcher inside the footer', () => {
+    const wrapper = mountShell(ShellLayout, {
+      slots: { default: '<p class="syn-main-probe">Body</p>' },
+    })
+    const main = wrapper.get('main.syn-main')
+    const section = main.find('section.cell.cell-title')
+    expect(section.exists()).toBe(true)
+    expect(section.find('.syn-main-probe').exists()).toBe(true)
+    const footer = wrapper.get('footer.syn-site-footer')
+    expect(footer.find('.syn-language').exists()).toBe(true)
+  })
 })

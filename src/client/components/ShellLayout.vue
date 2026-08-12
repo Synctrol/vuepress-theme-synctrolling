@@ -24,17 +24,17 @@ const shellClass = computed(() => ({
   <div :class="shellClass">
     <HeaderBar />
     <main class="syn-main">
-      <div class="syn-main__inner">
+      <section class="cell cell-title">
         <slot />
-      </div>
+      </section>
     </main>
     <Navigation />
     <SiteFooter>
       <slot name="footer" />
+      <LanguageSwitcher />
     </SiteFooter>
     <div class="syn-shell__dock" aria-hidden="true" />
     <SocialLinks />
-    <LanguageSwitcher />
     <NavDrawer />
   </div>
 </template>
