@@ -41,14 +41,29 @@ function extractNamedFormatter(
   throw new Error(`Unclosed syn-formatter wrapper for ${name}`)
 }
 
+function toReferenceLogoHtml(logoHtml: string): string {
+  return logoHtml
+    .replace(/<h1>/, '<h1 class="logo">')
+    .replace(/<p>([\s\S]*?)<\/p>/, (_match: string, inner: string) => {
+      const lines = inner
+        .split(/<br\s*\/?>/i)
+        .map((line) => line.replace(/\s+/g, ' ').trim())
+        .filter((line) => line.length > 0)
+      return lines
+        .map((line) => `<p class="logo-sub">${line}</p>`)
+        .join('\n')
+    })
+}
+
 export function extractHomeFormatterHtml(renderedHtml: string): {
   logoHtml: string
   footerHtml?: string
 } {
-  const logoHtml = extractNamedFormatter(renderedHtml, 'home-logo')
-  if (logoHtml === undefined) {
+  const extracted = extractNamedFormatter(renderedHtml, 'home-logo')
+  if (extracted === undefined) {
     throw new Error('Rendered Home markdown is missing home-logo formatter HTML')
   }
+  const logoHtml = toReferenceLogoHtml(extracted)
 
   const footerHtml = extractNamedFormatter(renderedHtml, 'home-footer')
   return footerHtml === undefined ? { logoHtml } : { logoHtml, footerHtml }

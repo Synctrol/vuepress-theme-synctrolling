@@ -58,4 +58,18 @@ describe('home formatters', () => {
       logoHtml: expect.stringContaining('SYNCTROL'),
     })
   })
+
+  it('renders the extracted logo HTML with reference classes and per-line sub-labels', () => {
+    const md = new MarkdownIt()
+    registerHomeFormatters(md)
+    const html = md.render(
+      '::: home-logo\n# SYNCTROL\n\nWE SHAPE WAVE  \nAND DESCRIBE SOUND\n:::\n',
+    )
+    const extracted = extractHomeFormatterHtml(html)
+    expect(extracted.logoHtml).toContain('<h1 class="logo">SYNCTROL</h1>')
+    expect(extracted.logoHtml).toContain('<p class="logo-sub">WE SHAPE WAVE</p>')
+    expect(extracted.logoHtml).toContain('<p class="logo-sub">AND DESCRIBE SOUND</p>')
+    expect(extracted.logoHtml).not.toContain('<br')
+    expect(extracted.logoHtml).toContain('data-syn-formatter="home-logo"')
+  })
 })
