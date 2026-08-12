@@ -185,7 +185,7 @@ describe('shell.css', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*background:\s*transparent/)
     expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*border:\s*0/)
-    expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*color:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*color:\s*var\(--syn-bar-fg\)/)
   })
 
   it('adds the reference 640px mobile breakpoint', () => {

@@ -68,7 +68,7 @@ body {
   background: transparent;
   border: 0;
   padding: 0;
-  color: var(--syn-fg);
+  color: var(--syn-bar-fg);
   cursor: pointer;
 }
 
