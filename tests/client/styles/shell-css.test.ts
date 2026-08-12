@@ -9,7 +9,6 @@ describe('shell.css', () => {
     expect(css).toContain("grid-template-areas:")
     expect(css).toContain("'header header'")
     expect(css).toContain("'main navigation'")
-    expect(css).toContain("'main navigation'")
     expect(css).toContain("'main .'")
     expect(css).toContain("'footer footer'")
     expect(css).toContain("'dock dock'")
