@@ -235,6 +235,8 @@ body {
   align-items: center;
   justify-content: center;
   border-top: var(--syn-border-strong);
+  /* Desktop: blend with the page background instead of the deco column. */
+  background: var(--syn-bg);
   padding: 24px;
 }
 
@@ -272,37 +274,18 @@ body {
   display: inline-flex;
   width: var(--syn-dock-control-size);
   height: var(--syn-dock-control-size);
-  box-sizing: border-box;
-  border: var(--syn-border-strong);
-  border-radius: var(--syn-radius);
-  background: var(--syn-bg);
-  color: var(--syn-fg);
-}
-
-.syn-social-links__link:hover,
-.syn-social-links__link:focus-visible {
-  background: var(--syn-deco-symbol-bg);
-}
-
-.syn-social-links__link:hover .syn-social-links__icon,
-.syn-social-links__link:focus-visible .syn-social-links__icon {
-  filter: invert(1);
-}
-
-:root[data-theme='dark'] .syn-social-links__link:hover,
-:root[data-theme='dark'] .syn-social-links__link:focus-visible {
-  background: var(--syn-deco-symbol-bg);
-}
-
-:root[data-theme='dark'] .syn-social-links__link:hover .syn-social-links__icon,
-:root[data-theme='dark'] .syn-social-links__link:focus-visible .syn-social-links__icon {
-  filter: invert(0);
 }
 
 .syn-social-links__icon {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: opacity 0.2s ease;
+}
+
+.syn-social-links__link:hover .syn-social-links__icon,
+.syn-social-links__link:focus-visible .syn-social-links__icon {
+  opacity: 0.6;
 }
 
 :root[data-theme='dark'] .syn-social-links__icon {
@@ -409,6 +392,11 @@ body {
 .syn-nav-drawer .syn-navigation {
   flex: 1;
   border-bottom: 0;
+}
+
+/* Mobile: the in-drawer side-panel keeps the deco column color. */
+.syn-nav-drawer .syn-navigation__side-panel {
+  background: transparent;
 }
 
 :focus-visible {
