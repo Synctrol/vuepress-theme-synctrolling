@@ -58,6 +58,9 @@ describe('root public exports', () => {
       resolveDefinitionsPath,
       SynctrolDiagnosticError,
       validatePlatformEntry,
+      compilerApi.buildReleaseIndexModel,
+      compilerApi.buildReleaseDetailModel,
+      compilerApi.buildReleaseFrontmatterForPage,
     ]
 
     expect(rootExports.every((value) => typeof value === 'function')).toBe(
@@ -65,6 +68,9 @@ describe('root public exports', () => {
     )
     expect(Object.keys(compilerApi).sort()).toEqual([
       'SynctrolDiagnosticError',
+      'buildReleaseDetailModel',
+      'buildReleaseFrontmatterForPage',
+      'buildReleaseIndexModel',
       'compileContent',
       'createDiagnostic',
       'discoverContentPackages',
