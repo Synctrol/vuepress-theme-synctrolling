@@ -1,4 +1,11 @@
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import {
+  computed,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  type Ref,
+} from 'vue'
 import { nextColorMode } from '../color-mode/cycle.js'
 import { resolveSurfaceColorMode } from '../color-mode/resolve.js'
 import {
@@ -8,6 +15,14 @@ import {
 import type { ColorModePreference } from '../color-mode/types.js'
 import { useThemeOptions } from './useThemeOptions.js'
 
+type ColorModeApi = {
+  preference: Ref<ColorModePreference>
+  surface: Ref<'light' | 'dark'>
+  cycle: () => void
+}
+
+let shared: ColorModeApi | null = null
+
 function getPrefersDark(): boolean {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
@@ -16,7 +31,7 @@ function applyDataset(surface: 'light' | 'dark'): void {
   document.documentElement.dataset.theme = surface
 }
 
-export function useColorMode() {
+function createColorModeState(): ColorModeApi {
   const theme = useThemeOptions()
   const preference = ref<ColorModePreference>(theme.defaultColorMode)
   const prefersDark = ref(false)
@@ -58,4 +73,18 @@ export function useColorMode() {
   watch(surface, (value) => applyDataset(value), { flush: 'sync' })
 
   return { preference, surface, cycle }
+}
+
+export function useColorMode(): ColorModeApi {
+  if (!shared) shared = createColorModeState()
+  return shared
+}
+
+export function useResolvedColorMode(): Ref<'light' | 'dark'> {
+  return useColorMode().surface
+}
+
+/** Test-only reset between cases. */
+export function __resetColorModeStateForTests(): void {
+  shared = null
 }

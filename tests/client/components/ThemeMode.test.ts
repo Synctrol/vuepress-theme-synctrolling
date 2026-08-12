@@ -1,12 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import ThemeMode from '../../../src/client/components/ThemeMode.vue'
 import { COLOR_MODE_STORAGE_KEY } from '../../../src/client/color-mode/storage'
+import { __resetColorModeStateForTests } from '../../../src/client/composables/useColorMode'
 import { mountShell } from '../harness/mount'
 
 describe('ThemeMode', () => {
   beforeEach(() => {
     localStorage.clear()
     document.documentElement.dataset.theme = 'light'
+  })
+
+  afterEach(() => {
+    __resetColorModeStateForTests()
   })
 
   it('shows the localized AUTO label by default', () => {
