@@ -18,7 +18,10 @@ import { createSynctrolBackgroundsVitePlugin } from './backgrounds/vite-plugin.j
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 import { collectVisiblePlatformEntries } from './platforms/collect-visible-platform-entries.js'
 import { writeSynctrolCspJson } from './platforms/write-csp-artifact.js'
+import { buildHomeFrontmatterForPage } from './home/build-home-frontmatter.js'
 import { registerHomeFormatters } from './markdown/home-formatters.js'
+import { buildNewsFrontmatterForPage } from './news/attach-news-page-data.js'
+import { buildPageFrontmatterForPage } from './page/attach-page-page-data.js'
 import { buildReleaseFrontmatterForPage } from './release/inject-release-frontmatter.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -147,6 +150,34 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           },
         })
 
+        const resolveCoverPublicPath = (
+          pkg: RouteContentPackage,
+          relativePath: string,
+        ): string | undefined =>
+          assetManifest.contentPublicPaths[pkg.identity]?.[relativePath]
+
+        const news = buildNewsFrontmatterForPage({
+          compiled,
+          allPages,
+          packages,
+          options: resolved,
+          definitions: built.definitions,
+          resolveCoverPublicPath,
+          base: app.options.base,
+        })
+
+        const pageFrontmatter = buildPageFrontmatterForPage({
+          compiled,
+          packages,
+          options: resolved,
+          resolveCoverPublicPath,
+        })
+
+        const home = buildHomeFrontmatterForPage({
+          compiled,
+          packages,
+        })
+
         const page = await createPage(app, {
           // VuePress sanitizes and re-encodes this itself; Task 3's routable
           // gate guarantees the result equals compiled.url.routePath.
@@ -172,6 +203,9 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
               alternates,
               platformDefinitions,
               ...(release === null ? {} : { release }),
+              ...(news === null ? {} : { news }),
+              ...(pageFrontmatter === null ? {} : { page: pageFrontmatter }),
+              ...(home === null ? {} : { home }),
             },
           },
         })

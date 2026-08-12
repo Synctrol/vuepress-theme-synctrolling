@@ -11,13 +11,26 @@ import {
   type SynctrolShellContext,
 } from '../composables/keys.js'
 import ShellLayout from '../components/ShellLayout.vue'
+import HomeFooterSlot from '../components/home/HomeFooterSlot.vue'
+import HomeLogoSlot from '../components/home/HomeLogoSlot.vue'
 import { useThemeOptions } from '../composables/useThemeOptions.js'
 import { buildLocaleAlternates } from '../i18n/locale-alternates.js'
 import { encodePathSegment } from '../../shared/encode-path-segment.js'
+import { formatCalendarDate } from '../../shared/format-calendar-date.js'
 import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
 import { resolvePlatformTypes } from '../../platforms/registry.js'
 import type { SynctrolReleaseFrontmatter } from '../../shared/release/types.js'
+import type {
+  SynctrolHomeFrontmatter,
+  SynctrolNewsFrontmatter,
+  SynctrolPageFrontmatter,
+} from '../../shared/types/news.js'
 import type { ContentDefinitions } from '../../shared/types.js'
+import NewsDetailLayout from './NewsDetailLayout.vue'
+import NewsIndexLayout from './NewsIndexLayout.vue'
+import NewsTagArchiveLayout from './NewsTagArchiveLayout.vue'
+import NewsTagsIndexLayout from './NewsTagsIndexLayout.vue'
+import PageDetailLayout from './PageDetailLayout.vue'
 import ReleaseIndex from './ReleaseIndex.vue'
 import ReleaseDetail from './ReleaseDetail.vue'
 
@@ -29,6 +42,9 @@ interface SynctrolFrontmatter {
   alternates?: Array<{ locale: string; publicPath: string }>
   platformDefinitions?: ContentDefinitions['platforms']
   release?: SynctrolReleaseFrontmatter
+  news?: SynctrolNewsFrontmatter
+  page?: SynctrolPageFrontmatter
+  home?: SynctrolHomeFrontmatter
 }
 
 const theme = useThemeOptions()
@@ -110,6 +126,9 @@ provide(SYNCTROL_SHELL_CONTEXT_KEY, shell)
 provide(SYNCTROL_DRAWER_OPEN_KEY, drawerOpen)
 
 const release = computed(() => synctrol.value.release)
+const news = computed(() => synctrol.value.news)
+const pageFrontmatter = computed(() => synctrol.value.page)
+const home = computed(() => synctrol.value.home)
 const platformDefinitions = computed(
   () => synctrol.value.platformDefinitions ?? {},
 )
@@ -119,6 +138,11 @@ const localeMessages = computed(
     theme.locales[locale.value]?.messages ??
     theme.locales[theme.mainLocale].messages,
 )
+const localeOption = computed(
+  () => theme.locales[locale.value] ?? theme.locales[theme.mainLocale],
+)
+const formatDate = (date: string) =>
+  formatCalendarDate(date, localeOption.value.lang, localeOption.value.dateFormat)
 const platformMessages = computed(() => ({
   platformLinks: localeMessages.value.platformLinks,
   activateEmbed: localeMessages.value.activateEmbed,
@@ -149,6 +173,55 @@ const platformMessages = computed(() => ({
       :load-strategy="theme.platforms.loadStrategy"
       :platform-messages="platformMessages"
     />
+    <NewsIndexLayout
+      v-else-if="news?.kind === 'index'"
+      :data="news.data"
+      :empty-label="localeMessages.emptyNews"
+      :draft-label="localeMessages.draft"
+      :translation-unavailable-label="localeMessages.translationUnavailable"
+      :previous-page-label="localeMessages.previousPage"
+      :next-page-label="localeMessages.nextPage"
+      :format-date="formatDate"
+    />
+    <NewsTagsIndexLayout
+      v-else-if="news?.kind === 'tags-index'"
+      :data="news.data"
+    />
+    <NewsTagArchiveLayout
+      v-else-if="news?.kind === 'tag'"
+      :data="news.data"
+      :empty-label="localeMessages.emptyNews"
+      :draft-label="localeMessages.draft"
+      :translation-unavailable-label="localeMessages.translationUnavailable"
+      :previous-page-label="localeMessages.previousPage"
+      :next-page-label="localeMessages.nextPage"
+      :format-date="formatDate"
+    />
+    <NewsDetailLayout
+      v-else-if="news?.kind === 'detail'"
+      :data="news.data"
+      :published-label="localeMessages.published"
+      :updated-label="localeMessages.updated"
+      :draft-label="localeMessages.draft"
+      :format-date="formatDate"
+    >
+      <Content />
+    </NewsDetailLayout>
+    <PageDetailLayout
+      v-else-if="pageFrontmatter?.kind === 'detail'"
+      :data="pageFrontmatter.data"
+      :draft-label="localeMessages.draft"
+    >
+      <Content />
+    </PageDetailLayout>
+    <HomeLogoSlot
+      v-else-if="home?.kind === 'home'"
+      :html="home.logoHtml"
+      :seo-title="String(page.frontmatter.title ?? '')"
+    />
     <Content v-else />
+    <template #footer>
+      <HomeFooterSlot v-if="home?.kind === 'home'" :html="home.footerHtml" />
+    </template>
   </ShellLayout>
 </template>

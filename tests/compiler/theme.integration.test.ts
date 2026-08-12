@@ -678,4 +678,76 @@ album:
     expect(homeSynctrol.release).toBeUndefined()
     expect(homeSynctrol.platformDefinitions).toEqual(expect.any(Object))
   })
+
+  it('injects frontmatter.synctrol.news, page, and home for Plan 09 kinds', async () => {
+    write(
+      'content/news/alpha/content.yml',
+      'type: news\nslug: alpha\ndate: 2026-08-11\ntags: [release]\n',
+    )
+    write(
+      'content/news/alpha/zh.md',
+      '---\ntitle: Alpha\n---\n正文\n',
+    )
+    write(
+      'content/news/alpha/en.md',
+      '---\ntitle: Alpha EN\n---\nBody\n',
+    )
+    write(
+      'content/pages/team/content.yml',
+      'type: page\nslug: team\n',
+    )
+    write(
+      'content/pages/team/zh.md',
+      '---\ntitle: 团队\n---\n正文\n',
+    )
+    write(
+      'content/pages/team/en.md',
+      '---\ntitle: Team\n---\nBody\n',
+    )
+
+    const app = await runBuild()
+
+    const newsDetail = app.pages.find(
+      (candidate: Page) => candidate.path === '/zh/news/alpha/',
+    )
+    expect(newsDetail).toBeDefined()
+    expect(
+      (newsDetail!.frontmatter.synctrol as { news?: { kind: string } }).news
+        ?.kind,
+    ).toBe('detail')
+
+    const newsIndex = app.pages.find(
+      (candidate: Page) => candidate.path === '/zh/news/',
+    )
+    expect(newsIndex).toBeDefined()
+    expect(
+      (newsIndex!.frontmatter.synctrol as { news?: { kind: string } }).news
+        ?.kind,
+    ).toBe('index')
+
+    const pageDetail = app.pages.find(
+      (candidate: Page) => candidate.path === '/zh/team/',
+    )
+    expect(pageDetail).toBeDefined()
+    expect(
+      (pageDetail!.frontmatter.synctrol as { page?: { kind: string } }).page
+        ?.kind,
+    ).toBe('detail')
+
+    const home = app.pages.find((candidate: Page) => candidate.path === '/zh/')
+    expect(home).toBeDefined()
+    const homeSynctrol = home!.frontmatter.synctrol as {
+      home?: { kind: string; logoHtml?: string }
+      contentAssets?: Record<string, string>
+      alternates?: unknown
+      platformDefinitions?: unknown
+      release?: unknown
+    }
+    expect(homeSynctrol.home?.logoHtml).toEqual(expect.any(String))
+    expect(homeSynctrol.home!.logoHtml!.length).toBeGreaterThan(0)
+    expect(homeSynctrol.contentAssets).toEqual(expect.any(Object))
+    expect(homeSynctrol.alternates).toEqual(expect.any(Array))
+    expect(homeSynctrol.platformDefinitions).toEqual(expect.any(Object))
+    expect(homeSynctrol.release).toBeUndefined()
+  })
 })
