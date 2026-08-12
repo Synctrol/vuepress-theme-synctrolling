@@ -295,4 +295,82 @@ describe('synctrolTheme production integration', () => {
     expect(rootHtml).toContain(`href="/${encodedLocale}/"`)
     expect(rootHtml).not.toContain('href="/日本語/"')
   })
+
+  it('injects frontmatter.synctrol.contentAssets and writes hashed content assets', async () => {
+    write(
+      'content/releases/first-release/content.yml',
+      'type: release\nslug: first-release\ndate: 2026-08-11\ncover: ./assets/cover.webp\n',
+    )
+    write('content/releases/first-release/assets/cover.webp', 'fake-webp-bytes')
+
+    const app = await runBuild()
+    const page = app.pages.find(
+      (candidate: Page) => candidate.path === '/zh/releases/first-release/',
+    )
+    expect(page).toBeDefined()
+
+    const synctrol = page!.frontmatter.synctrol as {
+      identity: string
+      contentAssets: Record<string, string>
+    }
+    expect(synctrol.identity).toBe('release:first-release')
+    expect(synctrol.contentAssets).toEqual(expect.any(Object))
+    expect(synctrol.contentAssets['./assets/cover.webp']).toMatch(
+      /^\/assets\/content\/release\/first-release\/cover\.[0-9a-f]{8}\.webp$/,
+    )
+
+    const publicPath = synctrol.contentAssets['./assets/cover.webp']
+    expect(existsSync(join(app.dir.dest(), publicPath.slice(1)))).toBe(true)
+  })
+
+  it('keeps Plan 03 Task 12 behaviors after asset wiring', async () => {
+    // Same contract shape as the existing "keeps the Plan 01 theme contract" case.
+    const theme = synctrolTheme({
+      siteUrl: 'https://synctrol.com',
+      mainLocale: 'zh',
+      copyright: '© Synctrol',
+      locales: { zh: { lang: 'zh-CN', label: '中文' } },
+      seo: {
+        name: 'Synctrol',
+        description: 'd',
+        defaultImage: '/i.png',
+        organization: { name: 'Synctrol', logo: '/l.png' },
+        collections: {
+          release: { title: 'R', description: 'r' },
+          news: { title: 'N', description: 'n' },
+        },
+      },
+    })
+    expect(theme.define.__SYNCTROL_THEME_OPTIONS__).toMatchObject({
+      siteUrl: 'https://synctrol.com',
+      showDrafts: false,
+    })
+
+    const app = await runBuild()
+    const paths = app.pages.map((page: Page) => page.path)
+
+    // content/** filter retained
+    expect(paths.some((path: string) => path.startsWith('/content/'))).toBe(false)
+
+    // root router written
+    const rootHtml = readFileSync(join(app.dir.dest(), 'index.html'), 'utf8')
+    expect(rootHtml).toContain('location.replace')
+    expect(rootHtml).toContain('synctrol:locale')
+    expect(rootHtml).toContain('href="/zh/"')
+
+    // frontmatter.synctrol.contentAssets injected on content pages (empty map ok when no assets)
+    const home = app.pages.find((page: Page) => page.path === '/zh/')
+    expect(home).toBeDefined()
+    const homeSynctrol = home!.frontmatter.synctrol as {
+      identity: string
+      contentAssets: Record<string, string>
+    }
+    expect(homeSynctrol.identity).toBe('home')
+    expect(homeSynctrol.contentAssets).toEqual(expect.any(Object))
+  })
+
+  it('allows root-absolute seo.defaultImage without requiring a file', async () => {
+    // runBuild() already uses defaultImage: '/images/og.png' — must still succeed.
+    await expect(runBuild()).resolves.toBeTruthy()
+  })
 })

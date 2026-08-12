@@ -71,6 +71,20 @@ describe('buildSite', () => {
       'news:launch',
     ])
     expect(Object.keys(built.definitions.tags)).toEqual(['release'])
+
+    // Plan 04 Task 10: compiled packages retained for the asset adapter.
+    expect(built.compiledPackages).toBeDefined()
+    expect(
+      built.compiledPackages.map((pkg) => ({
+        dir: pkg.dir,
+        identity: pkg.identity,
+      })),
+    ).toEqual(
+      built.packages.map((pkg) => ({
+        dir: pkg.dir,
+        identity: pkg.identity,
+      })),
+    )
   })
 
   it('surfaces Plan 02 content warnings through the site diagnostics', () => {

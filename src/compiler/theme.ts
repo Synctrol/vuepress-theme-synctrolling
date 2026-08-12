@@ -7,6 +7,8 @@ import type { SynctrolThemeOptions } from '../shared/options.js'
 import { resolveThemeOptions } from '../shared/options.js'
 import type { CompiledPage } from '../shared/route-types.js'
 import type { RouteContentPackage } from '../shared/types.js'
+import { compileAssets } from './assets/compile-assets.js'
+import { toAssetPackageSource } from './assets/to-asset-package-source.js'
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 
 function isContentSourcePage(page: Page): boolean {
@@ -47,6 +49,28 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           : { definitionsPath: resolved.definitionsPath }),
       })
 
+      // themeAssetPaths may be [] until a theme static root is configured;
+      // themeAssetsRoot is only consulted when that list is non-empty.
+      const assetSources = built.compiledPackages.map((compiled) => {
+        const routed = built!.packages.find(
+          (pkg) => pkg.dir === compiled.dir && pkg.identity === compiled.identity,
+        )
+        if (!routed) {
+          throw new Error(`Missing routed package for ${compiled.identity}`)
+        }
+        return toAssetPackageSource(compiled, routed)
+      })
+
+      const assetManifest = compileAssets({
+        packages: assetSources,
+        themeOptions: resolved,
+        configDir: app.dir.source('.vuepress'),
+        themeAssetsRoot: app.dir.source('.vuepress'),
+        themeAssetPaths: [],
+        base: app.options.base,
+        destDir: app.dir.dest(),
+      })
+
       // VuePress globs every markdown file under the source dir, which would
       // otherwise publish the content tree at /content/**. Pages with a null
       // filePathRelative (the automatic 404) are kept.
@@ -55,6 +79,8 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       const byDir = new Map(built.packages.map((pkg) => [pkg.dir, pkg]))
 
       for (const compiled of built.site.pages) {
+        const contentAssets =
+          assetManifest.contentPublicPaths[compiled.identity] ?? {}
         const page = await createPage(app, {
           // VuePress sanitizes and re-encodes this itself; Task 3's routable
           // gate guarantees the result equals compiled.url.routePath.
@@ -75,6 +101,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
               noindex: compiled.noindex,
               bodyLocale: compiled.bodyLocale,
               canonicalLocale: compiled.canonicalLocale,
+              contentAssets,
             },
           },
         })

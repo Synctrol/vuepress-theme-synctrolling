@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import type { ResolvedSynctrolThemeOptions } from '../shared/options.js'
 import type {
+  CompiledContentPackage,
   ContentDefinitions,
   LocaleKey,
   RouteContentPackage,
@@ -24,6 +25,8 @@ export interface BuildSiteInput {
 export interface BuiltSite {
   site: CompiledSite
   packages: RouteContentPackage[]
+  /** Plan 02 packages retained for Plan 04 asset adapter (book/manifest refs). */
+  compiledPackages: CompiledContentPackage[]
   definitions: ContentDefinitions
 }
 
@@ -65,6 +68,7 @@ export function buildSite(input: BuildSiteInput): BuiltSite {
       diagnostics: mergeSiteDiagnostics(compiled.warnings, site.diagnostics),
     },
     packages,
+    compiledPackages: compiled.packages,
     definitions: compiled.definitions,
   }
 }
