@@ -25,7 +25,7 @@ Revised after preflight against HEAD ~`29383fa` / branch tip at audit. Binding d
 
 4. **Client import depths + NodeNext `.js`.**
    - From `src/client/components/platforms/*.ts` use `../../../shared/...` and `../../../platforms/...` (three levels up to `src/`).
-   - From `src/client/components/platforms/renderers/*.ts` use `../../../../shared/...` when needed.
+   - From `src/client/components/platforms/renderers/*.ts` use `../../../../shared/...` and `../../../../platforms/...` (four levels up to `src/`).
    - Every relative import under `src/**` ends in `.js`. Test imports stay extensionless (`tsconfig.test.json` bundler).
 
 5. **Do not re-export SFCs from `./client`.**
@@ -2775,8 +2775,8 @@ Expected: FAIL with module not found
 ```ts
 // src/client/components/platforms/renderers/createIframePlayer.ts
 import { defineComponent, h } from 'vue'
-import type { BuiltInPlatformType } from '../../../shared/types.js'
-import { buildEmbedUrl } from '../../../platforms/urls.js'
+import type { BuiltInPlatformType } from '../../../../shared/types.js'
+import { buildEmbedUrl } from '../../../../platforms/urls.js'
 
 export function createIframePlayer(name: string, type: BuiltInPlatformType) {
   return defineComponent({
