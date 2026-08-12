@@ -92,6 +92,7 @@ body {
   min-width: 0;
   width: 100%;
   max-width: var(--syn-content-width);
+  margin-inline: auto;
 }
 
 .syn-main:has(.syn-home-logo) > .cell {
