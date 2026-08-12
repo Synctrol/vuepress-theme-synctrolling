@@ -32,7 +32,8 @@ export const audioPlayerType: PlatformTypeRegistration<AudioPlayerEntry> = {
   },
   component: createStubRenderer('AudioPlayerPlatform') as Component,
   cspOrigins(entry) {
-    if (/^https:\/\//.test(entry.src)) {
+    // Match assertAudioSource / parseHttpsUrl: scheme comparison is case-insensitive.
+    if (/^https:\/\//i.test(entry.src)) {
       return [new URL(entry.src).origin]
     }
     return ["'self'"]

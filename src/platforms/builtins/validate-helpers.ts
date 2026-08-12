@@ -1,5 +1,6 @@
-import type { Multilanguage } from '../../shared/types.js'
+import type { LocaleKey, Multilanguage } from '../../shared/types.js'
 import { fail } from '../../compiler/diagnostics.js'
+import { assertMultilanguage } from '../../compiler/multilanguage.js'
 
 export type PlainRecord = Record<string, unknown>
 
@@ -125,12 +126,37 @@ export function requirePlatformKey(
   return entry.platform
 }
 
+/**
+ * Optional entry `label` handling matching `validatePlatformEntry`:
+ * - absent → undefined
+ * - with `mainLocale` → assertMultilanguage (main locale required; locale maps cloned)
+ * - without `mainLocale` (pre-validated upstream) → still clone maps for isolation
+ */
 export function optionalLabel(
   entry: PlainRecord,
+  mainLocale?: LocaleKey,
+  path: string = VALIDATE_PATH,
 ): Multilanguage | undefined {
-  return Object.hasOwn(entry, 'label')
-    ? (entry.label as Multilanguage)
-    : undefined
+  if (!Object.hasOwn(entry, 'label')) {
+    return undefined
+  }
+
+  if (mainLocale !== undefined) {
+    return assertMultilanguage(entry.label, mainLocale, path, 'label')
+  }
+
+  const value = entry.label
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, string>),
+    ) as Multilanguage
+  }
+
+  return value as Multilanguage
 }
 
 export interface ValidatedHttpsUrl {

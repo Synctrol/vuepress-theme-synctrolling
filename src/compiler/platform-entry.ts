@@ -6,8 +6,8 @@ import type {
 } from '../shared/types.js'
 import type { PlatformTypeRegistration } from '../shared/options.js'
 import { resolvePlatformTypes } from '../platforms/registry.js'
+import { optionalLabel } from '../platforms/builtins/validate-helpers.js'
 import { fail, isDiagnosticError } from './diagnostics.js'
-import { assertMultilanguage } from './multilanguage.js'
 
 type PlainRecord = Record<string, unknown>
 
@@ -87,17 +87,6 @@ function copyOwnDataFields(value: unknown, path: string): PlainRecord {
   return copy
 }
 
-function validateLabel(
-  entry: PlainRecord,
-  mainLocale: LocaleKey,
-  path: string,
-) {
-  if (!Object.hasOwn(entry, 'label')) {
-    return undefined
-  }
-  return assertMultilanguage(entry.label, mainLocale, path, 'label')
-}
-
 export function validatePlatformEntry(
   entry: unknown,
   defs: ContentDefinitions,
@@ -152,7 +141,8 @@ export function validatePlatformEntry(
     })
   }
 
-  const label = validateLabel(raw, mainLocale, path)
+  // Shared with builtins: main-locale map check + clone/isolate from input mutation.
+  const label = optionalLabel(raw, mainLocale, path)
 
   try {
     const normalized = registration.validate({
