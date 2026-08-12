@@ -60,6 +60,20 @@ describe('assertNoRawHtmlRelativeAssets', () => {
     }
   })
 
+  it('rejects unquoted raw HTML relative attributes', () => {
+    const samples = [
+      '<img src=./assets/bad.webp>',
+      '<img src=../assets/bad.webp alt=x>',
+      '<a href=/assets/file.pdf>x</a>',
+      '<video poster=./assets/still.webp></video>',
+    ]
+    for (const html of samples) {
+      expect(() =>
+        assertNoRawHtmlRelativeAssets(html, '/content/home/zh.md'),
+      ).toThrow(/ASSET_RAW_HTML_RELATIVE|raw HTML/i)
+    }
+  })
+
   it('rejects raw HTML source/href/poster relative attributes', () => {
     const samples = [
       '<audio src="./assets/a.mp3"></audio>',

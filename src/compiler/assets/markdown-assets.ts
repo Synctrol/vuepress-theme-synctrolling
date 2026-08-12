@@ -3,8 +3,9 @@ import { fail } from '../diagnostics.js'
 const MARKDOWN_LINK_RE =
   /!?\[(?:[^\]]*)\]\((?<target><[^>]+>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'))?\)/g
 
+// Quoted or unquoted values with relative prefixes ./ ../ /
 const RAW_HTML_RELATIVE_ATTR_RE =
-  /\b(?:src|href|poster)\s*=\s*(["'])(?<value>(?:\.\.?\/|\/)[^"']*)\1/gi
+  /\b(?:src|href|poster)\s*=\s*(?:(["'])(?<quoted>(?:\.\.?\/|\/)[^"']*)\1|(?<unquoted>(?:\.\.?\/|\/)[^\s>"']*))/gi
 
 function normalizeTarget(raw: string): string {
   const trimmed = raw.trim()
@@ -40,7 +41,8 @@ export function assertNoRawHtmlRelativeAssets(
   RAW_HTML_RELATIVE_ATTR_RE.lastIndex = 0
   const match = RAW_HTML_RELATIVE_ATTR_RE.exec(body)
   if (!match) return
-  const value = match.groups?.value ?? match[2] ?? ''
+  const value =
+    match.groups?.quoted ?? match.groups?.unquoted ?? match[2] ?? match[3] ?? ''
   fail({
     severity: 'error',
     code: 'ASSET_RAW_HTML_RELATIVE',
