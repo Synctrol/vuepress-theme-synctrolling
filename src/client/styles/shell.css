@@ -128,7 +128,6 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  overflow-x: hidden;
   border-right: var(--syn-border-strong);
   padding: 24px 16px;
 }
@@ -367,15 +366,15 @@ body {
   color: var(--syn-fg);
   visibility: hidden;
   pointer-events: none;
-  transform: translateX(100%);
-  transition: transform 0.25s ease, visibility 0s linear 0.25s;
+  opacity: 0;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
 }
 
 .syn-shell--drawer-open .syn-nav-drawer {
   visibility: visible;
   pointer-events: auto;
-  transform: translateX(0);
-  transition: transform 0.25s ease;
+  opacity: 1;
+  transition: opacity 0.25s ease;
 }
 
 .syn-nav-drawer__panel {

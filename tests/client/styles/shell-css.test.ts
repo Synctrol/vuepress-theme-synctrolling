@@ -172,11 +172,11 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-main\s*\{[^}]*position:\s*relative/)
     expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*position:\s*absolute/)
     expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*inset:\s*0/)
-    // The drawer stays rendered so the close slide can animate (visibility,
+    // The drawer stays rendered so the fade can animate (visibility,
     // not display, toggles; the header icon morphs into a close icon).
     expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*visibility:\s*hidden/)
-    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*transform:\s*translateX\(100%\)/)
-    expect(css).toMatch(/\.syn-shell--drawer-open\s*\.syn-nav-drawer\s*\{[^}]*visibility:\s*visible/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*opacity:\s*0/)
+    expect(css).toMatch(/\.syn-shell--drawer-open\s*\.syn-nav-drawer\s*\{[^}]*opacity:\s*1/)
     expect(css).toMatch(/\.syn-header__menu-icon--active\s*line:nth-child\(1\)\s*\{[^}]*rotate\(45deg\)/)
     expect(css).toMatch(/\.syn-header__menu-icon--active\s*line:nth-child\(3\)\s*\{[^}]*rotate\(-45deg\)/)
   })
