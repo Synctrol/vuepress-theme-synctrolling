@@ -21,7 +21,11 @@ onMounted(() => {
 watch(
   () => props.syncInput,
   (input) => {
-    if (!input || !hostRef.value) return
+    if (!hostRef.value) return
+    if (!input) {
+      props.runtime.dispose()
+      return
+    }
     void props.runtime.sync(input)
   },
   { deep: true },

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
+import BackgroundHost from '../../../src/client/background/BackgroundHost.vue'
 import { useBackgroundRuntime } from '../../../src/client/background/use-background-runtime'
 import { solidProbeLoader, solidProbeLog } from '../../fixtures/backgrounds/solid-probe'
 import type { SynctrolClientPageData } from '../../../src/client/background/types'
@@ -79,20 +80,11 @@ function mountHarness() {
   const Harness = defineComponent({
     setup() {
       const { runtime, syncInput } = useBackgroundRuntime()
-      let hostBound = false
       return () =>
-        h('div', { class: 'syn-shell' }, [
-          h('div', {
-            class: 'syn-background',
-            ref: (el) => {
-              if (el instanceof HTMLElement && !hostBound) {
-                hostBound = true
-                runtime.setHost(el)
-                if (syncInput.value) void runtime.sync(syncInput.value)
-              }
-            },
-          }),
-        ])
+        h(BackgroundHost, {
+          runtime,
+          syncInput: syncInput.value,
+        })
     },
   })
   return mount(Harness, { attachTo: document.body })
@@ -115,6 +107,30 @@ describe('useBackgroundRuntime', () => {
     reducedMotionMatches.value = false
     __resetColorModeStateForTests()
     document.body.innerHTML = ''
+  })
+
+  it('builds syncInput without driving runtime.sync', async () => {
+    let syncSpy: ReturnType<typeof vi.spyOn> | undefined
+    const Harness = defineComponent({
+      setup() {
+        const { runtime, syncInput } = useBackgroundRuntime()
+        syncSpy = vi.spyOn(runtime, 'sync')
+        return () =>
+          h('div', {
+            'data-type': syncInput.value?.contentType ?? 'none',
+            'data-mode': syncInput.value?.colorMode ?? 'none',
+          })
+      },
+    })
+    wrapper = mount(Harness)
+    await nextTick()
+    expect(wrapper.get('div').attributes('data-type')).toBe('home')
+
+    colorMode.value = 'dark'
+    await nextTick()
+    expect(wrapper.get('div').attributes('data-mode')).toBe('dark')
+    expect(syncSpy).not.toHaveBeenCalled()
+    expect(solidProbeLog).toEqual([])
   })
 
   it('updates on route, locale, colorMode, and reducedMotion changes', async () => {
@@ -156,6 +172,23 @@ describe('useBackgroundRuntime', () => {
     await nextTick()
     await Promise.resolve()
     expect(solidProbeLog.at(-1)).toMatch(/^update:\/en\/releases\/:en:dark:true$/)
+  })
+
+  it('does not double-sync when BackgroundHost owns sync', async () => {
+    wrapper = mountHarness()
+    await nextTick()
+    await Promise.resolve()
+    const afterMount = [...solidProbeLog]
+    expect(afterMount.filter((e) => e.startsWith('init:'))).toHaveLength(1)
+
+    colorMode.value = 'dark'
+    await nextTick()
+    await Promise.resolve()
+    const updates = solidProbeLog.filter((e) =>
+      e.startsWith('update:/zh/:zh:dark:false'),
+    )
+    expect(updates).toHaveLength(1)
+    expect(solidProbeLog.filter((e) => e === 'dispose')).toHaveLength(0)
   })
 
   it('does not load a background when synctrol contentType is missing', async () => {

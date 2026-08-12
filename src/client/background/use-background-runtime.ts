@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { computed, onBeforeUnmount, ref, type Ref } from 'vue'
 import { useData, useRoute } from 'vuepress/client'
 import backgroundLoaders from 'virtual:synctrol-backgrounds'
 import { useResolvedColorMode } from '../composables/useColorMode.js'
@@ -9,6 +9,10 @@ import {
 import { BackgroundRuntime, type BackgroundSyncInput } from './runtime.js'
 import type { SynctrolClientPageData } from './types.js'
 
+/**
+ * Builds reactive sync input (+ reduced-motion subscription).
+ * BackgroundHost owns setHost / sync / dispose — do not call runtime.sync here.
+ */
 export function useBackgroundRuntime(): {
   runtime: BackgroundRuntime
   syncInput: Ref<BackgroundSyncInput | null>
@@ -39,21 +43,8 @@ export function useBackgroundRuntime(): {
     }
   })
 
-  watch(
-    syncInput,
-    (input) => {
-      if (!input) {
-        runtime.dispose()
-        return
-      }
-      void runtime.sync(input)
-    },
-    { deep: true },
-  )
-
   onBeforeUnmount(() => {
     unsubscribeMotion()
-    runtime.dispose()
   })
 
   return { runtime, syncInput }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import BackgroundHost from '../../../src/client/background/BackgroundHost.vue'
 import { BackgroundRuntime } from '../../../src/client/background/runtime'
 import { solidProbeLoader, solidProbeLog } from '../../fixtures/backgrounds/solid-probe'
@@ -89,5 +89,47 @@ describe('BackgroundHost', () => {
     expect(solidProbeLog[0]).toMatch(/^init:/)
     wrapper.unmount()
     expect(solidProbeLog).toContain('dispose')
+  })
+
+  it('disposes to solid when syncInput becomes null', async () => {
+    solidProbeLog.length = 0
+    const runtime = new BackgroundRuntime({
+      backgrounds: { home: solidProbeLoader },
+    })
+    const syncInput = ref<{
+      contentType: 'home'
+      route: string
+      locale: string
+      colorMode: 'light' | 'dark'
+      reducedMotion: boolean
+    } | null>({
+      contentType: 'home',
+      route: '/zh/',
+      locale: 'zh',
+      colorMode: 'light',
+      reducedMotion: false,
+    })
+    const Parent = defineComponent({
+      setup() {
+        return () =>
+          h(BackgroundHost, {
+            runtime,
+            syncInput: syncInput.value,
+          })
+      },
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    await nextTick()
+    await Promise.resolve()
+    expect(solidProbeLog[0]).toMatch(/^init:/)
+
+    syncInput.value = null
+    await nextTick()
+    await Promise.resolve()
+
+    const el = wrapper.get('.syn-background').element as HTMLElement
+    expect(solidProbeLog).toContain('dispose')
+    expect(el.dataset.synBackground).toBe('solid')
+    wrapper.unmount()
   })
 })

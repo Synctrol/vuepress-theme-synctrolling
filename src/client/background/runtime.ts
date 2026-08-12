@@ -101,7 +101,18 @@ export class BackgroundRuntime {
     const generation = ++this.loadGeneration
     this.disposeActive()
 
-    const mod: BackgroundModule = await loader()
+    let mod: BackgroundModule
+    try {
+      mod = await loader()
+    } catch {
+      if (generation !== this.loadGeneration || !this.host) {
+        return
+      }
+      this.applySolidSurface(this.host)
+      this.host.dataset.synBackground = 'solid'
+      return
+    }
+
     if (generation !== this.loadGeneration || !this.host) {
       return
     }

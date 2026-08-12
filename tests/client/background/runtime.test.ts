@@ -249,6 +249,32 @@ describe('BackgroundRuntime', () => {
     runtime.dispose()
   })
 
+  it('falls back to solid when the loader rejects', async () => {
+    const runtime = new BackgroundRuntime({
+      backgrounds: {
+        home: async () => {
+          throw new Error('background load failed')
+        },
+      },
+    })
+    runtime.setHost(host)
+
+    await expect(
+      runtime.sync({
+        contentType: 'home',
+        route: '/zh/',
+        locale: 'zh',
+        colorMode: 'light',
+        reducedMotion: false,
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(host.dataset.synBackground).toBe('solid')
+    expect(host.style.backgroundColor).toBe('var(--syn-bg)')
+    expect(solidProbeLog).toEqual([])
+    runtime.dispose()
+  })
+
   it('ignores a pending loader when sync falls back to solid before it resolves', async () => {
     let resolveLoader!: (mod: Awaited<ReturnType<BackgroundLoader>>) => void
     const pendingLoader: BackgroundLoader = () =>
