@@ -5,7 +5,7 @@ import { mountShell } from '../harness/mount'
 describe('Navigation', () => {
   it('renders items in configuration order with localized labels', () => {
     const wrapper = mountShell(Navigation, { locale: 'en' })
-    const links = wrapper.findAll('a')
+    const links = wrapper.findAll('.syn-navigation__link')
     expect(links).toHaveLength(2)
     expect(links[0]!.text()).toBe('Releases')
     expect(links[0]!.attributes('href')).toBe('/en/releases/')

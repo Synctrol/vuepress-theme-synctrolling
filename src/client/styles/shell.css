@@ -240,6 +240,10 @@ body {
 
 .syn-site-footer {
   grid-area: footer;
+  position: relative;
+  /* Above the drawer (z-index 40) so the in-bar language switcher's
+     dropdown stays usable while the mobile menu is open. */
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -259,7 +263,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: var(--syn-dock-gap);
-  margin: 0 0 0 auto;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -365,8 +369,13 @@ body {
 
 .syn-language__option[aria-selected='true'] {
   font-weight: 600;
-  background: white;
-  color: black;
+  background: var(--syn-bg);
+  color: var(--syn-fg);
+}
+
+.syn-language__option[aria-selected='false'] {
+  background: var(--syn-fg);
+  color: var(--syn-bg);
 }
 
 .syn-nav-drawer {

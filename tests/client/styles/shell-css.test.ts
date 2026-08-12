@@ -47,11 +47,11 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-language\s*\{[^}]*transform:\s*translateY\(-3px\)/)
   })
 
-  it('renders the social links as chips inside the footer bar', () => {
+  it('renders the social links as chips in the nav side-panel', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).not.toMatch(/\.syn-social-links\s*\{[^}]*position:\s*fixed/)
     expect(css).not.toMatch(/\.syn-shell__dock/)
-    expect(css).toMatch(/\.syn-social-links\s*\{[^}]*margin:\s*0 0 0 auto/)
+    expect(css).toMatch(/\.syn-social-links\s*\{[^}]*margin:\s*0/)
     expect(css).toMatch(/\.syn-social-links__link\s*\{[^}]*background:\s*var\(--syn-bg\)/)
     expect(css).toMatch(/:root\[data-theme='dark'\]\s*\.syn-social-links__icon\s*\{[^}]*filter:\s*invert\(1\)/)
   })
@@ -162,8 +162,12 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-social-links__link:hover[^{]*\s*\.syn-social-links__icon[^{]*\{[^}]*filter:\s*invert\(1\)/)
     expect(css).toMatch(/:root\[data-theme='dark'\][^{]*\.syn-social-links__link:hover[^{]*\s*\.syn-social-links__icon[^{]*\{[^}]*filter:\s*invert\(0\)/)
     expect(css).toMatch(/\.syn-language__list\s*\{[^}]*bottom:\s*40px/)
-    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*white/)
-    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*color:\s*black/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*color:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*background:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*color:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*z-index:\s*50/)
+    expect(css).not.toMatch(/\.syn-language\s*\{[^}]*z-index:/)
     expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*max-width:\s*40vw/)
     expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*font-size:\s*12px/)
     expect(css).toMatch(/\.syn-language__option\s*\{[^}]*letter-spacing:\s*1px/)

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
 import { resolveNavHref } from '../navigation/resolve-nav-href.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
+import SocialLinks from './SocialLinks.vue'
 
 const { theme, shell, locale } = useLocaleShell()
 
@@ -68,6 +69,7 @@ const items = computed(() =>
       </li>
     </ul>
     <div class="syn-navigation__side-panel">
+      <SocialLinks />
       <slot name="side-panel" />
     </div>
   </nav>

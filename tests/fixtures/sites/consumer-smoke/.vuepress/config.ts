@@ -37,6 +37,25 @@ export default defineUserConfig({
         { label: { zh: '关于', en: 'About' }, href: '/about/' },
       ],
     },
+    socialLinks: {
+      items: [
+        {
+          label: 'Forums',
+          icon: '/assets/icons/forums.svg',
+          url: 'https://github.com/orgs/Synctrol/discussions',
+        },
+        {
+          label: 'Bilibili',
+          icon: '/assets/icons/bilibili.svg',
+          url: 'https://space.bilibili.com/3546856898431612',
+        },
+        {
+          label: 'GitHub',
+          icon: '/assets/icons/github.svg',
+          url: 'https://github.com/synctrol',
+        },
+      ],
+    },
     seo: {
       name: { zh: 'Consumer Smoke', en: 'Consumer Smoke' },
       description: {

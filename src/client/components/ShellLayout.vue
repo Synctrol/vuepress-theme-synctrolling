@@ -8,7 +8,6 @@ import LanguageSwitcher from './LanguageSwitcher.vue'
 import NavDrawer from './NavDrawer.vue'
 import Navigation from './Navigation.vue'
 import SiteFooter from './SiteFooter.vue'
-import SocialLinks from './SocialLinks.vue'
 
 const injected = inject(SYNCTROL_DRAWER_OPEN_KEY, null) as Ref<boolean> | null
 const drawerOpen = injected ?? ref(false)
@@ -32,7 +31,6 @@ const shellClass = computed(() => ({
     <Navigation />
     <SiteFooter>
       <slot name="footer" />
-      <SocialLinks />
       <LanguageSwitcher />
     </SiteFooter>
   </div>

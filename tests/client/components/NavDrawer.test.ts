@@ -63,12 +63,13 @@ describe('NavDrawer', () => {
     const links = wrapper.findAll('.syn-navigation__link')
     expect(links.length).toBeGreaterThan(0)
     const firstLink = links[0]!.element as HTMLAnchorElement
-    const lastLink = links[links.length - 1]!.element as HTMLAnchorElement
 
     // Trap container is the dialog root so the first nav link gets focus
     expect(document.activeElement).toBe(firstLink)
 
-    lastLink.focus()
+    // Last focusable is the social link in the side-panel
+    const lastFocusable = wrapper.get('.syn-social-links__link').element as HTMLAnchorElement
+    lastFocusable.focus()
     dialog.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }),
     )
