@@ -2,25 +2,72 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver the Synctrol platform entry system: built-in type schemas and renderers, custom `platforms.types` registration, interaction/viewport lazy embeds with failure fallback, accessibility titles/labels, and the merged `synctrol-csp.json` audit artifact (no CSP meta injection).
+## Revision Notes (executable against Plans 01–06 @ HEAD `29383fa`)
 
-**Architecture:** Pure platform modules under `src/platforms/` own URL building, CSP origin contribution, and a type registry that merges built-ins with theme `platforms.types`. The Plan 02 compiler path `validatePlatformEntry` switches to that registry so custom types share the same flat-entry validation. Client components under `src/client/components/platforms/` lazy-load embeds per `loadStrategy` and fall back to external links. A Node hook writes `<dest>/synctrol-csp.json` after collecting origins from every visible Book platform entry.
+Revised after preflight against HEAD ~`29383fa` / branch tip at audit. Binding decisions (do not re-litigate):
 
-**Tech Stack:** TypeScript, Vue 3 (`defineComponent` / `@vue/test-utils`), Vitest + `happy-dom`, Node `fs` for the CSP artifact, VuePress 2 theme hooks from Plans 01–03. Package name `vuepress-theme-synctrolling`.
+1. **Platform type registry flows end-to-end from theme options into Book validation.**
+   - `buildSite()` resolves `platformTypes = resolvePlatformTypes(options.platforms.types)` and passes it into `compileContent({ …, platformTypes })`.
+   - Extend `CompileContentOptions` with optional `platformTypes?: Record<string, PlatformTypeRegistration>`.
+   - Thread `platformTypes` through `parseBook` → `parseAlbumBook` / `parseGiftBook` → `validateBookLink` → `validatePlatformEntry(..., types)`.
+   - `validatePlatformEntry` gains an optional final `types` argument defaulting to `resolvePlatformTypes({})` so direct Plan 02 callers keep built-ins-only behavior.
+   - Custom `platforms.types` registrations **must** validate successfully in real `book.yml` via `compileContent` / `buildSite` (not only via manual `validatePlatformEntry` calls). Task 5 includes that fixture test.
+
+2. **CSP theme wiring is an additive PATCH against current `src/compiler/theme.ts`.**
+   - Use `built.compiledPackages` + `built.definitions.platforms` + `built.site.pages` / `built.packages` — **never** invent `releasePackages`.
+   - Keep existing root-router `onGenerated` write (`built.site.rootRouterHtml` → `index.html`).
+   - Write `<dest>/synctrol-csp.json` in the same `onGenerated` after the router write; do **not** inject CSP meta.
+   - Public root export path is `./compiler/platforms/write-csp-artifact.js` (module created under `src/compiler/platforms/`), **not** `./node/platforms/...`.
+
+3. **"Visible" platform entries = packages that contribute published pages** (same visibility as Plan 04 assets / Plan 03 routes).
+   - `collectVisiblePlatformEntries` mirrors `selectAssetPackageSources({ compiledPackages, packages, pages })`: only Books whose `identity` appears on at least one `CompiledPage` contribute CSP origins.
+   - Draft / unpublished releases skipped by route availability are excluded from CSP. Document and test.
+
+4. **Client import depths + NodeNext `.js`.**
+   - From `src/client/components/platforms/*.ts` use `../../../shared/...` and `../../../platforms/...` (three levels up to `src/`).
+   - From `src/client/components/platforms/renderers/*.ts` use `../../../../shared/...` when needed.
+   - Every relative import under `src/**` ends in `.js`. Test imports stay extensionless (`tsconfig.test.json` bundler).
+
+5. **Do not re-export SFCs from `./client`.**
+   - `PlatformEmbed` / `PlatformLinks` are `defineComponent` **`.ts`** modules and may be appended to `src/client/index.ts`.
+   - Never export `.vue` files from `vuepress-theme-synctrolling/client`. Append platform exports; **preserve** Plan 04 asset helpers and Plan 05/06 keys / `BackgroundHost` non-export boundary.
+
+6. **Vitest:** extend the shipped `projects` config only. Do **not** replace it with `environmentMatchGlobs`. Do **not** reinstall `happy-dom` / `@vue/test-utils` / `@vitejs/plugin-vue` (already at HEAD). Client platform tests live under `tests/client/platforms/**` (covered by the existing happy-dom project).
+
+7. **Custom `cspOrigins` v1 contract is frame-only for non-audio types.**
+   - `PlatformTypeRegistration.cspOrigins(entry): string[]` stays origin-only (no directive map).
+   - Collect maps: `audio_player` → `media-src`; `link` → none; all other types (built-in players **and** custom) → `frame-src`.
+   - `connect-src` stays empty in v1. Do not invent a directive-returning registration API in this plan.
+
+8. **Registry refactor preserves Plan 02 hardening.**
+   - Keep own-data-property copying, accessor avoidance, inherited definition rejection, URL credential rejection, provider hostname spoof checks, and strict `audio_player.src` package-relative rules (`./…` only — no root-absolute, traversal, query/hash, encoded `..`).
+   - Move helpers into `src/platforms/builtins/validate-helpers.ts` (or keep shared security helpers called from both `validatePlatformEntry` pre-dispatch and built-in `validate`).
+   - All existing `tests/compiler/platform-entry.test.ts` cases must stay green; new built-in unit tests do **not** replace them.
+
+9. **Verification gates before plan complete:** `npm run test:typecheck`, full Plan 07 platform suite, `tests/compiler/platform-entry.test.ts`, `npm test`, `npm run test:build-smoke`.
+
+**Goal:** Deliver the Synctrol platform entry system: built-in type schemas and renderers, custom `platforms.types` registration (validated through real Book compilation), interaction/viewport lazy embeds with failure fallback, accessibility titles/labels, and the merged `synctrol-csp.json` audit artifact from published-page Books only (no CSP meta injection).
+
+**Architecture:** Pure platform modules under `src/platforms/` own URL building, CSP origin contribution, and a type registry that merges built-ins with theme `platforms.types`. That registry is passed from `buildSite` → `compileContent` → `parseBook` → `validatePlatformEntry` so custom types work in real `book.yml`. Client components under `src/client/components/platforms/` lazy-load embeds per `loadStrategy` and fall back to external links. Theme `onGenerated` writes `<dest>/synctrol-csp.json` from platform entries on packages that contribute published pages (mirroring Plan 04 asset visibility).
+
+**Tech Stack:** TypeScript (NodeNext), Vue 3 (`defineComponent` / `@vue/test-utils`), Vitest `projects` (client = `happy-dom`, node = `node`) from Plans 05–06, Node `fs` for the CSP artifact, VuePress 2 theme hooks from Plans 01–06. Package name `vuepress-theme-synctrolling`.
 
 ## Global Constraints
 
-- Plans 01–03 and Book data (`album.links`, `gift.items[].links`) are available; do not reimplement package discovery, locale routing, or Book branch parsing.
+- Plans 01–06 are shipped at HEAD; do not reimplement package discovery, locale routing, Book branch parsing, asset pipeline, shell, or background runtime. Preserve their public contracts.
 - Public configuration has no adapter, mode, or nested `args` object; entries are flat.
 - Platform definitions contain `category: digital | physical`, `type`, and `name: Multilanguage`.
 - `album.links` require digital platforms; `gift.items[].links` require physical platforms.
 - Built-in types: `link`, `audio_player`, `youtube_player`, `bilibili_player`, `apple_music_player`, `spotify_player`, `soundcloud_player`, `netease_player`.
-- `platforms.loadStrategy` accepts `'interaction' | 'viewport'` only; defaults to `'interaction'`; immediate loading is unsupported.
+- `platforms.loadStrategy` accepts `'interaction' | 'viewport'` only; defaults to `'interaction'`; immediate loading is unsupported (already enforced by `options-validation.ts` `assertOptionalEnum` — keep that path; add/extend tests, do not invent a second divergent throw).
 - URL validation, CSP audit output, and failure fallback cannot be disabled.
 - YAML cannot provide arbitrary HTML, scripts, or iframe templates.
 - First version writes `synctrol-csp.json` and must not inject a CSP meta tag.
 - Platform embeds must have descriptive titles; activation and failure UI use localized `activateEmbed`, `embedFailed`, and `openExternal` messages with `{platform}`.
 - Brand tokens remain fixed; platform UI uses Synctrol borders (`3px` / `1px`), square corners, black/white.
+- `PlatformTypeRegistration.component` is typed as Vue `Component` (replace HEAD `unknown`).
+- Custom type CSP origins contribute to `frame-src` only in v1 (see Revision Notes §7).
+- All later tasks inherit these constraints.
 
 ## File Structure
 
@@ -30,7 +77,7 @@
 | `src/platforms/urls.ts` | Build embed iframe `src` and external fallback URLs for built-ins |
 | `src/platforms/csp.ts` | Normalize origins; merge/dedupe `frame-src` / `media-src` / `connect-src` |
 | `src/platforms/registry.ts` | Resolve built-in + custom `PlatformTypeRegistration` map |
-| `src/platforms/builtins/validate-helpers.ts` | Shared entry map / unknown-field / HTTPS / autoplay helpers |
+| `src/platforms/builtins/validate-helpers.ts` | Shared security/validation helpers (preserve Plan 02 hardening) |
 | `src/platforms/builtins/index.ts` | Export built-in registrations (validate / cspOrigins / fallbackUrl / component) |
 | `src/platforms/builtins/link.ts` | `link` type registration |
 | `src/platforms/builtins/audio-player.ts` | `audio_player` type registration |
@@ -40,24 +87,34 @@
 | `src/platforms/builtins/spotify-player.ts` | `spotify_player` type registration |
 | `src/platforms/builtins/soundcloud-player.ts` | `soundcloud_player` type registration |
 | `src/platforms/builtins/netease-player.ts` | `netease_player` type registration |
-| `src/platforms/collect-csp.ts` | Walk compiled Books; call `cspOrigins` for every visible entry |
+| `src/platforms/collect-csp.ts` | Merge `cspOrigins` for collectable entries into `SynctrolCspJson` |
 | `src/compiler/platforms/write-csp-artifact.ts` | Write `<dest>/synctrol-csp.json`; never emit CSP meta |
-| `src/compiler/platform-entry.ts` | Modify: validate via registry (built-in + custom) |
-| `src/shared/options.ts` | Modify: runtime-reject invalid `loadStrategy`; type `component` as Vue `Component` |
+| `src/compiler/platforms/collect-visible-platform-entries.ts` | Collect Book platform entries only from packages with published pages |
+| `src/compiler/platform-entry.ts` | Modify: validate via registry (built-in + custom); keep pre-dispatch hardening |
+| `src/compiler/book.ts` | Modify: thread `platformTypes` into album/gift link validation |
+| `src/compiler/compile-content.ts` | Modify: accept + forward `platformTypes` to `parseBook` |
+| `src/compiler/build-site.ts` | Modify: pass `resolvePlatformTypes(options.platforms.types)` into `compileContent` |
+| `src/compiler/theme.ts` | Modify: additive `onGenerated` CSP write (keep root-router) |
+| `src/shared/options.ts` | Modify: type `component` as Vue `Component`; optional `PlatformTypesConfig` alias |
 | `src/shared/types.ts` | Modify: export typed built-in entry interfaces used by renderers |
 | `src/client/components/platforms/PlatformEmbed.ts` | Lazy shell: interaction / viewport / failure → external link |
 | `src/client/components/platforms/PlatformLinks.ts` | List of platform entries with accessible labels |
 | `src/client/components/platforms/renderers/*.ts` | Per-type renderer components (iframe/`audio`/`a`) |
-| `tests/platforms/*.test.ts` | Unit tests for formatters, URLs, CSP, registry |
+| `src/client/index.ts` | Modify: **append** `PlatformEmbed` / `PlatformLinks` (preserve asset helpers + keys) |
+| `src/index.ts` | Modify: export registry + CSP writer from `./compiler/platforms/...` |
+| `tests/platforms/*.test.ts` | Unit tests for formatters, URLs, CSP, registry, builtins |
 | `tests/compiler/platform-entry-registry.test.ts` | Custom type + category constraint tests through registry |
-| `tests/client/platforms/*.test.ts` | Component tests (lazy load, failure, a11y) with `happy-dom` |
+| `tests/compiler/compile-content-custom-platform.test.ts` | Custom type through real `compileContent` / temp content tree |
+| `tests/client/platforms/*.test.ts` | Component tests (lazy load, failure, a11y) under happy-dom project |
 | `tests/compiler/platforms/write-csp-artifact.test.ts` | Artifact write + no meta injection |
-| `vitest.config.ts` | Modify: `happy-dom` for `tests/client/**` |
-| `package.json` | Modify: add `happy-dom`, `@vue/test-utils` |
+| `tests/compiler/platforms/collect-visible-platform-entries.test.ts` | Published-page filter (draft exclusion) |
+| `tests/compiler/theme.integration.test.ts` | Extend: `synctrol-csp.json` written on generate; root-router intact |
+| `vitest.config.ts` | **Do not replace** Plan 05/06 `projects`; only extend if a new alias/CSS need appears (default: no change) |
+| `package.json` | **Do not** reinstall `happy-dom` / `@vue/test-utils` / `@vitejs/plugin-vue` |
 
-**Out of scope:** Release index/detail layout (Plan 08), asset hashing of `audio_player.src` package paths (Plan 04 may resolve public URLs later; this plan accepts absolute HTTPS or opaque relative `src` strings), shell chrome, SEO.
+**Out of scope:** Release index/detail layout (Plan 08), hashing/public URL rewrite of package-relative `audio_player.src` for client playback (Plan 04 already hashes declared `./assets/…` refs; this plan keeps Plan 02 validation: absolute HTTPS **or** strict package-relative `./…` — not opaque root-absolute/`assets/…` without `./`), shell chrome, SEO, directive-returning custom CSP API.
 
-**Assumed available:** `validatePlatformEntry` (Plan 02), `ContentDefinitions` / `PlatformDefinition`, Book parsing with digital/physical category checks, `resolveThemeOptions` with `platforms.loadStrategy` default `'interaction'`, `resolveMultilanguage`, `zhMessages` / `enMessages` keys `activateEmbed` / `embedFailed` / `openExternal` / `platformLinks`, Vitest via `npm test`.
+**Assumed available:** `validatePlatformEntry` + hardening (Plan 02), `ContentDefinitions` / `PlatformDefinition`, Book parsing with digital/physical category checks, `compileContent` / `buildSite` / `BuiltSite` (`compiledPackages`, no `releasePackages`), `selectAssetPackageSources` visibility pattern (Plan 04), `resolveThemeOptions` with `platforms.loadStrategy` default `'interaction'` + options-validation enum guard, `synctrolTheme` `onGenerated` root-router write (Plans 03–06), `resolveMultilanguage`, `zhMessages` / `enMessages` keys `activateEmbed` / `embedFailed` / `openExternal` / `platformLinks`, Vitest `projects` via `npm test`, `happy-dom` + `@vue/test-utils` already installed.
 
 ---
 
@@ -606,6 +663,8 @@ git commit -m "feat(platforms): normalize and merge CSP origin directives"
 - Consumes: URL builders (Task 2), typed entries (Task 1), `fail` diagnostics from Plan 02
 - Produces: `builtInPlatformTypes: Record<BuiltInPlatformType, PlatformTypeRegistration>` where each registration exposes `validate`, `cspOrigins`, optional `fallbackUrl`, and a stub `component`
 
+**Hardening (binding):** Moving validation into builtins must preserve every case in `tests/compiler/platform-entry.test.ts`. Prefer extracting HEAD helpers (`copyOwnDataFields`, `assertHttpsUrl` / hostname spoof checks, `assertPackageRelativeAsset`, credential rejection, etc.) into `validate-helpers.ts` (or a shared module both `platform-entry.ts` pre-dispatch and builtins call). Do **not** ship the simplified illustrative snippets below verbatim if they weaken HEAD rules — the snippets show shape; security behavior must match HEAD.
+
 - [ ] **Step 1: Write the failing built-in registration tests**
 
 ```ts
@@ -724,10 +783,10 @@ Expected: FAIL with module not found
 
 Also create: `src/platforms/builtins/validate-helpers.ts`
 
-Field constraints (identical to Plan 02 / spec):
+Field constraints (identical to Plan 02 / HEAD, not looser):
 
-- `link.url`: absolute HTTPS URL
-- `audio_player.src`: non-empty string (package-relative or absolute HTTPS); `mime` when present must start with `audio/`; `autoplay` boolean default `false`
+- `link.url`: absolute HTTPS URL (reject credentials / hostname spoof per HEAD)
+- `audio_player.src`: absolute HTTPS **or** strict package-relative `./…` asset (reject root-absolute, missing `./`, traversal, `\` / `?` / `#`, encoded `..`, control chars); `mime` when present must start with `audio/`; `autoplay` boolean default `false`
 - `youtube_player.videoId`: exactly 11 chars `[A-Za-z0-9_-]`; `start` non-negative integer; `autoplay` boolean default `false`
 - `bilibili_player.bvid`: `BV` + ten ASCII letters/digits; `page` integer ≥ 1; `autoplay` boolean default `false`
 - `apple_music_player.url`: HTTPS on `music.apple.com`
@@ -1296,16 +1355,28 @@ git commit -m "feat(platforms): register built-in platform type validators and C
 - Create: `src/platforms/registry.ts`
 - Create: `src/platforms/collect-csp.ts`
 - Modify: `src/compiler/platform-entry.ts`
-- Modify: `src/shared/options.ts` (reject `loadStrategy` other than `interaction` \| `viewport`)
+- Modify: `src/compiler/book.ts` (thread `platformTypes` through `parseBook` / album / gift / `validateBookLink`)
+- Modify: `src/compiler/compile-content.ts` (`CompileContentOptions.platformTypes`)
+- Modify: `src/compiler/build-site.ts` (pass `resolvePlatformTypes(options.platforms.types)`)
+- Modify: `src/shared/options.ts` (`PlatformTypeRegistration.component: Component`; optional `PlatformTypesConfig` alias if not already present)
 - Test: `tests/platforms/registry.test.ts`
 - Test: `tests/compiler/platform-entry-registry.test.ts`
 - Test: `tests/platforms/collect-csp.test.ts`
+- Test: `tests/compiler/compile-content-custom-platform.test.ts`
+- Extend: `tests/shared/options.test.ts` (`loadStrategy: 'immediate'` rejected)
+- Regress: `tests/compiler/platform-entry.test.ts` (must stay green)
 
 **Interfaces:**
-- Consumes: `builtInPlatformTypes`, theme `platforms.types`, `ContentDefinitions`, Plan 02 `validatePlatformEntry` signature
-- Produces: `resolvePlatformTypes(custom): PlatformTypesConfig`; `validatePlatformEntry(..., types?)` uses registry; `collectCspFromEntries(entries, types): SynctrolCspJson`
+- Consumes: `builtInPlatformTypes`, theme `platforms.types`, `ContentDefinitions`, Plan 02 `validatePlatformEntry` / `parseBook` / `compileContent` / `buildSite`
+- Produces:
+  - `resolvePlatformTypes(custom): Record<string, PlatformTypeRegistration>`
+  - `validatePlatformEntry(..., types?)` uses registry
+  - `CompileContentOptions.platformTypes?: Record<string, PlatformTypeRegistration>`
+  - `parseBook(path, defs, mainLocale, platformTypes?)`
+  - `collectCspFromEntries(entries, types): SynctrolCspJson`
+  - End-to-end: custom type in theme options + `definitions.yml` + `book.yml` succeeds via `compileContent` / `buildSite`
 
-- [ ] **Step 1: Write failing registry / compiler / collect tests**
+- [ ] **Step 1: Write failing registry / compiler / collect / e2e tests**
 
 ```ts
 // tests/platforms/registry.test.ts
@@ -1449,6 +1520,7 @@ describe('validatePlatformEntry with registry', () => {
 ```ts
 // tests/platforms/collect-csp.test.ts
 import { describe, expect, it } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { collectCspFromEntries } from '../../src/platforms/collect-csp'
 import { resolvePlatformTypes } from '../../src/platforms/registry'
 
@@ -1479,10 +1551,119 @@ describe('collectCspFromEntries', () => {
     expect(csp['media-src']).toEqual(['https://cdn.example.com'])
     expect(csp['connect-src']).toEqual([])
   })
+
+  it('maps custom type origins to frame-src only (v1)', () => {
+    const types = resolvePlatformTypes({
+      bandcamp_player: {
+        validate: (e: unknown) => e as never,
+        component: defineComponent({ setup: () => () => h('div') }),
+        cspOrigins: () => ['https://bandcamp.com'],
+      },
+    })
+    const csp = collectCspFromEntries(
+      [{ type: 'bandcamp_player', entry: { platform: 'bc', url: 'https://bandcamp.com/x' } }],
+      types,
+    )
+    expect(csp['frame-src']).toEqual(['https://bandcamp.com'])
+    expect(csp['media-src']).toEqual([])
+    expect(csp['connect-src']).toEqual([])
+  })
 })
 ```
 
-Also extend `tests/shared/options.test.ts` with:
+```ts
+// tests/compiler/compile-content-custom-platform.test.ts
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { compileContent } from '../../src/compiler/compile-content'
+import { resolvePlatformTypes } from '../../src/platforms/registry'
+
+function write(root: string, relative: string, contents: string): void {
+  const absolute = join(root, relative)
+  mkdirSync(dirname(absolute), { recursive: true })
+  writeFileSync(absolute, contents, 'utf8')
+}
+
+describe('compileContent custom platform types', () => {
+  it('accepts book.yml entries whose definition.type is registered via platformTypes', () => {
+    const root = mkdtempSync(join(tmpdir(), 'synctrol-custom-plat-'))
+    const contentRoot = join(root, 'content')
+    write(
+      root,
+      'content/definitions.yml',
+      `tags: {}
+platforms:
+  bandcamp:
+    category: digital
+    type: bandcamp_player
+    name: Bandcamp
+`,
+    )
+    write(root, 'content/home/content.yml', 'type: home\n')
+    write(
+      root,
+      'content/releases/demo/content.yml',
+      'type: release\nslug: demo\ndate: 2024-01-01\n',
+    )
+    write(
+      root,
+      'content/releases/demo/book.yml',
+      `type: album
+title: Demo Album
+album:
+  links:
+    - platform: bandcamp
+      url: https://bandcamp.com/album/demo
+`,
+    )
+
+    const types = resolvePlatformTypes({
+      bandcamp_player: {
+        validate(entry: unknown) {
+          const e = entry as { platform: string; url?: string }
+          if (typeof e.url !== 'string' || !e.url.startsWith('https://')) {
+            throw new Error('bandcamp url required')
+          }
+          return e
+        },
+        component: defineComponent({ setup: () => () => h('div') }),
+        cspOrigins: () => ['https://bandcamp.com'],
+        fallbackUrl: (e: { url: string }) => e.url,
+      },
+    })
+
+    // Without platformTypes, custom definition.type must fail.
+    expect(() =>
+      compileContent({
+        contentRoot,
+        sourceDir: root,
+        configDir: join(root, '.vuepress'),
+        mainLocale: 'zh',
+      }),
+    ).toThrow(/UNKNOWN_PLATFORM_TYPE|bandcamp_player/)
+
+    const result = compileContent({
+      contentRoot,
+      sourceDir: root,
+      configDir: join(root, '.vuepress'),
+      mainLocale: 'zh',
+      platformTypes: types,
+    })
+    const release = result.packages.find((p) => p.identity === 'release:demo')
+    expect(release?.book).toMatchObject({
+      type: 'album',
+      album: {
+        links: [{ platform: 'bandcamp', url: 'https://bandcamp.com/album/demo' }],
+      },
+    })
+  })
+})
+```
+
+Also extend `tests/shared/options.test.ts` with (through existing `validateThemeOptions` / `resolveThemeOptions` path — do not add a second divergent throw in `resolveThemeOptions` if enum validation already rejects):
 
 ```ts
 it('rejects immediate platform loadStrategy', () => {
@@ -1500,20 +1681,18 @@ it('rejects immediate platform loadStrategy', () => {
 Run:
 
 ```bash
-npm test -- tests/platforms/registry.test.ts tests/compiler/platform-entry-registry.test.ts tests/platforms/collect-csp.test.ts tests/shared/options.test.ts
+npm test -- tests/platforms/registry.test.ts tests/compiler/platform-entry-registry.test.ts tests/platforms/collect-csp.test.ts tests/compiler/compile-content-custom-platform.test.ts tests/shared/options.test.ts
 ```
 
-Expected: FAIL on missing registry/collect modules and/or missing `types` parameter / loadStrategy guard
+Expected: FAIL on missing registry/collect modules and/or missing `platformTypes` / `types` parameter
 
-- [ ] **Step 3: Implement registry, collect, and refactor platform-entry**
+- [ ] **Step 3: Implement registry, collect, and thread types through the compiler**
 
 ```ts
 // src/platforms/registry.ts
 import { builtInPlatformTypes } from './builtins/index.js'
-import type { PlatformTypeRegistration, PlatformTypesConfig } from '../shared/options.js'
+import type { PlatformTypeRegistration } from '../shared/options.js'
 import type { BuiltInPlatformType } from '../shared/types.js'
-
-export type { PlatformTypesConfig }
 
 export function resolvePlatformTypes(
   custom: Record<string, PlatformTypeRegistration> = {},
@@ -1535,26 +1714,30 @@ export function isBuiltInPlatformType(type: string): type is BuiltInPlatformType
 }
 ```
 
-Add to `src/shared/options.ts`:
+In `src/shared/options.ts`, type the registration component and optional alias:
 
 ```ts
-export interface PlatformTypesConfig {
-  [type: string]: PlatformTypeRegistration
+import type { Component } from 'vue'
+
+export interface PlatformTypeRegistration<
+  T extends PlatformEntryBase = PlatformEntryBase,
+> {
+  validate(entry: unknown): T
+  component: Component
+  cspOrigins(entry: T): string[]
+  fallbackUrl?(entry: T): string
 }
+
+export type PlatformTypesConfig = Record<string, PlatformTypeRegistration>
 ```
 
-In `resolveThemeOptions`, after reading platforms:
+Refactor `src/compiler/platform-entry.ts` so type-specific switch body is replaced by registry lookup **after** existing plain-object / platform key / definition / category checks (hardening unchanged):
 
 ```ts
-const loadStrategy = input.platforms?.loadStrategy ?? 'interaction'
-if (loadStrategy !== 'interaction' && loadStrategy !== 'viewport') {
-  throw new Error('platforms.loadStrategy must be interaction or viewport')
-}
-```
+import type { PlatformTypeRegistration } from '../shared/options.js'
+import { resolvePlatformTypes } from '../platforms/registry.js'
+import { isDiagnosticError } from './diagnostics.js'
 
-Refactor `src/compiler/platform-entry.ts` so the switch body is replaced by registry lookup:
-
-```ts
 export function validatePlatformEntry(
   entry: unknown,
   defs: ContentDefinitions,
@@ -1563,8 +1746,7 @@ export function validatePlatformEntry(
   requiredCategory: PlatformCategory,
   types: Record<string, PlatformTypeRegistration> = resolvePlatformTypes({}),
 ): NormalizedPlatformEntry {
-  // existing plain-object / platform key / definition / category checks unchanged
-  // resolve label via assertMultilanguage unchanged
+  // existing copyOwnDataFields / platform key / definition / category checks unchanged
   const registration = types[definition.type]
   if (!registration) {
     fail({
@@ -1576,9 +1758,9 @@ export function validatePlatformEntry(
   }
   try {
     const normalized = registration.validate({
-      ...entry,
-      platform: entry.platform,
-      ...(label ? { label } : {}),
+      ...raw,
+      platform,
+      ...(label !== undefined ? { label } : {}),
     })
     return normalized as NormalizedPlatformEntry
   } catch (error) {
@@ -1590,6 +1772,89 @@ export function validatePlatformEntry(
       path,
     })
   }
+}
+```
+
+Thread `platformTypes` through Book parsing (exact signature changes):
+
+```ts
+// src/compiler/book.ts — validateBookLink / parseAlbumBook / parseGiftBook / parseBook
+function validateBookLink(
+  entry: unknown,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+  path: string,
+  fieldPath: string,
+  requiredCategory: PlatformCategory,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
+): NormalizedPlatformEntry {
+  try {
+    return validatePlatformEntry(
+      entry,
+      defs,
+      mainLocale,
+      path,
+      requiredCategory,
+      platformTypes ?? resolvePlatformTypes({}),
+    )
+  } catch (error) {
+    // existing diagnostic fieldPath rewriting unchanged
+  }
+}
+
+export function parseBook(
+  bookYmlPath: string,
+  defs: ContentDefinitions,
+  mainLocale: LocaleKey,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
+): Book {
+  // pass platformTypes into parseAlbumBook / parseGiftBook
+}
+```
+
+```ts
+// src/compiler/compile-content.ts
+import type { PlatformTypeRegistration } from '../shared/options.js'
+
+export interface CompileContentOptions {
+  contentRoot: string
+  sourceDir: string
+  configDir: string
+  mainLocale: LocaleKey
+  definitionsPath?: string
+  /** Resolved built-in + custom platform type registry from theme options. */
+  platformTypes?: Record<string, PlatformTypeRegistration>
+}
+
+// validateOptions: allow optional platformTypes object (do not deep-validate registrations here;
+// theme options already validated them). Forward into parseBook:
+book = parseBook(
+  item.bookYmlPath,
+  definitions,
+  validated.mainLocale,
+  validated.platformTypes,
+)
+```
+
+```ts
+// src/compiler/build-site.ts
+import { resolvePlatformTypes } from '../platforms/registry.js'
+
+export function buildSite(input: BuildSiteInput): BuiltSite {
+  const localeKeys = Object.keys(input.options.locales) as LocaleKey[]
+  const platformTypes = resolvePlatformTypes(input.options.platforms.types)
+
+  const compiled = compileContent({
+    contentRoot: join(input.sourceDir, SYNCTROL_CONTENT_DIR),
+    sourceDir: input.sourceDir,
+    configDir: input.configDir,
+    mainLocale: input.options.mainLocale,
+    platformTypes,
+    ...(input.definitionsPath === undefined
+      ? {}
+      : { definitionsPath: input.definitionsPath }),
+  })
+  // …rest unchanged
 }
 ```
 
@@ -1617,9 +1882,8 @@ export function collectCspFromEntries(
     if (type === 'link') {
       return emptyCspJson()
     }
-    // v1: non-audio registration origins are audited as frame-src hosts.
-    // connect-src stays empty for built-ins; custom types currently contribute
-    // embed host origins through frame-src via the same cspOrigins() array.
+    // v1: non-audio registration origins (built-in players + custom) → frame-src.
+    // connect-src stays empty; custom types cannot contribute media/connect via cspOrigins().
     return {
       'frame-src': origins,
       'media-src': [],
@@ -1630,23 +1894,23 @@ export function collectCspFromEntries(
 }
 ```
 
-Ensure Book compilation (Plan 02) continues to pass `requiredCategory: 'digital'` for `album.links` and `'physical'` for `gift.items[].links`. When theme options are available to the compiler, pass `resolvePlatformTypes(options.platforms.types)` into `validatePlatformEntry`.
+Ensure Book compilation continues to pass `requiredCategory: 'digital'` for `album.links` and `'physical'` for `gift.items[].links`.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run:
 
 ```bash
-npm test -- tests/platforms/registry.test.ts tests/compiler/platform-entry-registry.test.ts tests/platforms/collect-csp.test.ts tests/compiler/platform-entry.test.ts tests/shared/options.test.ts
+npm test -- tests/platforms/registry.test.ts tests/compiler/platform-entry-registry.test.ts tests/platforms/collect-csp.test.ts tests/compiler/compile-content-custom-platform.test.ts tests/compiler/platform-entry.test.ts tests/shared/options.test.ts
 ```
 
-Expected: PASS (including Plan 02 platform-entry tests still green)
+Expected: PASS (including Plan 02 platform-entry hardening tests still green)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/platforms/registry.ts src/platforms/collect-csp.ts src/compiler/platform-entry.ts src/shared/options.ts tests/platforms/registry.test.ts tests/compiler/platform-entry-registry.test.ts tests/platforms/collect-csp.test.ts tests/shared/options.test.ts
-git commit -m "feat(platforms): wire type registry into entry validation and CSP collection"
+git add src/platforms/registry.ts src/platforms/collect-csp.ts src/compiler/platform-entry.ts src/compiler/book.ts src/compiler/compile-content.ts src/compiler/build-site.ts src/shared/options.ts tests/platforms/registry.test.ts tests/compiler/platform-entry-registry.test.ts tests/platforms/collect-csp.test.ts tests/compiler/compile-content-custom-platform.test.ts tests/shared/options.test.ts
+git commit -m "feat(platforms): wire type registry through compileContent and Book validation"
 ```
 
 ---
@@ -1660,10 +1924,12 @@ git commit -m "feat(platforms): wire type registry into entry validation and CSP
 - Test: `tests/compiler/platforms/collect-visible-platform-entries.test.ts`
 
 **Interfaces:**
-- Consumes: `collectCspFromEntries`, compiled Book data (`AlbumBook` / `GiftBook`), `resolvePlatformTypes`
-- Produces: `writeSynctrolCspJson(destDir, csp): string` writing `<dest>/synctrol-csp.json`; `collectVisiblePlatformEntries(books): CspCollectable[]`; `assertNoCspMetaInjection(html: string): void`
+- Consumes: `collectCspFromEntries`, `CompiledContentPackage[]`, `RouteContentPackage[]`, `CompiledPage[]`, platform key→type map from definitions
+- Produces: `writeSynctrolCspJson(destDir, csp): string`; `collectVisiblePlatformEntries(input): CspCollectable[]`; `assertNoCspMetaInjection(html: string): void`
 
-- [ ] **Step 1: Write the failing artifact tests**
+**Visibility rule (binding):** A Book contributes CSP entries only when its package `identity` appears on at least one published `CompiledPage` (same filter idea as `selectAssetPackageSources`). Draft / unpublished packages that compile but produce no pages are excluded.
+
+- [ ] **Step 1: Write the failing artifact + visibility tests**
 
 ```ts
 // tests/compiler/platforms/write-csp-artifact.test.ts
@@ -1708,55 +1974,113 @@ describe('writeSynctrolCspJson', () => {
 // tests/compiler/platforms/collect-visible-platform-entries.test.ts
 import { describe, expect, it } from 'vitest'
 import { collectVisiblePlatformEntries } from '../../../src/compiler/platforms/collect-visible-platform-entries'
-import type { AlbumBook, GiftBook } from '../../../src/shared/types'
+import type {
+  AlbumBook,
+  CompiledContentPackage,
+  GiftBook,
+  RouteContentPackage,
+} from '../../../src/shared/types'
+import type { CompiledPage } from '../../../src/shared/route-types'
+
+const platformTypes = {
+  youtube: 'youtube_player',
+  taobao: 'link',
+}
+
+const album: AlbumBook = {
+  type: 'album',
+  title: 'A',
+  album: {
+    links: [{ platform: 'youtube', videoId: 'dQw4w9WgXcQ', autoplay: false }],
+  },
+}
+
+const gift: GiftBook = {
+  type: 'gift',
+  title: 'G',
+  gift: {
+    items: [
+      {
+        id: 'poster',
+        title: 'Poster',
+        links: [{ platform: 'taobao', url: 'https://item.taobao.com/x' }],
+      },
+    ],
+  },
+}
+
+function compiled(
+  identity: string,
+  dir: string,
+  book: AlbumBook | GiftBook,
+): CompiledContentPackage {
+  return {
+    dir,
+    identity,
+    manifest: {
+      type: 'release',
+      slug: identity.split(':')[1]!,
+      title: 'T',
+      date: '2024-01-01',
+    } as CompiledContentPackage['manifest'],
+    book,
+  }
+}
 
 describe('collectVisiblePlatformEntries', () => {
-  it('collects album.links as digital entries and gift item links as physical', () => {
-    const album: AlbumBook = {
-      type: 'album',
-      title: 'A',
-      album: {
-        links: [
-          { platform: 'youtube', videoId: 'dQw4w9WgXcQ', autoplay: false },
-        ],
-      },
-    }
-    const gift: GiftBook = {
-      type: 'gift',
-      title: 'G',
-      gift: {
-        items: [
-          {
-            id: 'poster',
-            title: 'Poster',
-            links: [{ platform: 'taobao', url: 'https://item.taobao.com/x' }],
-          },
-        ],
-      },
-    }
-    const defs = {
-      youtube: 'youtube_player',
-      taobao: 'link',
-    }
-    const items = collectVisiblePlatformEntries(
-      [
-        { book: album, platformTypes: defs },
-        { book: gift, platformTypes: defs },
-      ],
-    )
+  it('collects album.links and gift item links only for packages with published pages', () => {
+    const published = compiled('release:live', '/pkg/live', album)
+    const draft = compiled('release:draft', '/pkg/draft', gift)
+    const pages: CompiledPage[] = [
+      {
+        identity: 'release:live',
+        packagePath: '/pkg/live',
+        bodyLocale: 'zh',
+      } as CompiledPage,
+    ]
+    const packages: RouteContentPackage[] = [
+      { identity: 'release:live', dir: '/pkg/live', type: 'release', slug: 'live', locales: {} },
+      { identity: 'release:draft', dir: '/pkg/draft', type: 'release', slug: 'draft', locales: {} },
+    ] as RouteContentPackage[]
+
+    const items = collectVisiblePlatformEntries({
+      compiledPackages: [published, draft],
+      packages,
+      pages,
+      platformTypes,
+    })
     expect(items).toEqual([
       {
         type: 'youtube_player',
         entry: { platform: 'youtube', videoId: 'dQw4w9WgXcQ', autoplay: false },
       },
-      {
-        type: 'link',
-        entry: { platform: 'taobao', url: 'https://item.taobao.com/x' },
-      },
     ])
+    expect(items.some((i) => i.type === 'link')).toBe(false)
+  })
+
+  it('returns empty when no pages publish any package', () => {
+    const onlyDraft = compiled('release:draft', '/pkg/draft', album)
+    expect(
+      collectVisiblePlatformEntries({
+        compiledPackages: [onlyDraft],
+        packages: [
+          {
+            identity: 'release:draft',
+            dir: '/pkg/draft',
+            type: 'release',
+            slug: 'draft',
+            locales: {},
+          } as RouteContentPackage,
+        ],
+        pages: [],
+        platformTypes,
+      }),
+    ).toEqual([])
   })
 })
 ```
+
+Adjust `CompiledPage` / `RouteContentPackage` fixture fields to match HEAD types (include required fields from `src/shared/route-types.ts` / `types.ts` — use `as` casts only for irrelevant fields, not to skip the identity/packagePath filter under test).
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -1768,7 +2092,7 @@ npm test -- tests/compiler/platforms/write-csp-artifact.test.ts tests/compiler/p
 
 Expected: FAIL with module not found
 
-- [ ] **Step 3: Implement writers and collectors**
+- [ ] **Step 3: Implement writers and published-page collectors**
 
 ```ts
 // src/compiler/platforms/write-csp-artifact.ts
@@ -1791,33 +2115,69 @@ export function assertNoCspMetaInjection(html: string): void {
 
 ```ts
 // src/compiler/platforms/collect-visible-platform-entries.ts
-import type { Book, NormalizedPlatformEntry } from '../../shared/types.js'
+import type { CompiledPage } from '../../shared/route-types.js'
+import type {
+  Book,
+  CompiledContentPackage,
+  NormalizedPlatformEntry,
+  RouteContentPackage,
+} from '../../shared/types.js'
 import type { CspCollectable } from '../../platforms/collect-csp.js'
 
-export interface BookPlatformSource {
-  book: Book
-  /** Map of platform key → definition.type for entries already validated. */
+/**
+ * Collect platform entries only from packages that contribute published pages
+ * (Plan 03 availability / same visibility as Plan 04 selectAssetPackageSources).
+ */
+export function collectVisiblePlatformEntries(input: {
+  compiledPackages: readonly CompiledContentPackage[]
+  packages: readonly RouteContentPackage[]
+  pages: readonly CompiledPage[]
+  /** Map of platform key → definition.type */
   platformTypes: Record<string, string>
-}
+}): CspCollectable[] {
+  const visibleIdentities = new Set<string>()
+  for (const page of input.pages) {
+    if (page.packagePath === undefined) continue
+    visibleIdentities.add(page.identity)
+  }
 
-export function collectVisiblePlatformEntries(
-  sources: BookPlatformSource[],
-): CspCollectable[] {
+  const routedByIdentity = new Map(
+    input.packages.map((pkg) => [pkg.identity, pkg]),
+  )
+
   const items: CspCollectable[] = []
-  for (const { book, platformTypes } of sources) {
-    if (book.type === 'album') {
-      for (const entry of book.album.links ?? []) {
-        push(items, entry, platformTypes)
-      }
-    } else {
-      for (const giftItem of book.gift.items) {
-        for (const entry of giftItem.links ?? []) {
-          push(items, entry, platformTypes)
-        }
-      }
+  for (const compiled of input.compiledPackages) {
+    if (!visibleIdentities.has(compiled.identity)) continue
+    const routed = routedByIdentity.get(compiled.identity)
+    if (
+      routed === undefined ||
+      routed.dir !== compiled.dir ||
+      routed.identity !== compiled.identity
+    ) {
+      throw new Error(`Missing routed package for ${compiled.identity}`)
     }
+    if (compiled.book === undefined) continue
+    collectFromBook(items, compiled.book, input.platformTypes)
   }
   return items
+}
+
+function collectFromBook(
+  items: CspCollectable[],
+  book: Book,
+  platformTypes: Record<string, string>,
+): void {
+  if (book.type === 'album') {
+    for (const entry of book.album.links ?? []) {
+      push(items, entry, platformTypes)
+    }
+    return
+  }
+  for (const giftItem of book.gift.items) {
+    for (const entry of giftItem.links ?? []) {
+      push(items, entry, platformTypes)
+    }
+  }
 }
 
 function push(
@@ -1831,16 +2191,7 @@ function push(
 }
 ```
 
-Wire from the theme build hook (extend `synctrolTheme` / Plan 03 site compile orchestration when available):
-
-```ts
-const types = resolvePlatformTypes(resolved.platforms.types)
-const entries = collectVisiblePlatformEntries(sources)
-const csp = collectCspFromEntries(entries, types)
-writeSynctrolCspJson(app.dir.dest(), csp)
-// Log a one-line build summary: `synctrol-csp.json: N frame-src, M media-src, K connect-src`
-// Do not call any HTML transformer that inserts CSP meta.
-```
+Theme wiring lands in Task 11 (additive `onGenerated` PATCH). This task only ships the pure collector + writer.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -1856,42 +2207,24 @@ Expected: PASS
 
 ```bash
 git add src/compiler/platforms/write-csp-artifact.ts src/compiler/platforms/collect-visible-platform-entries.ts tests/compiler/platforms/write-csp-artifact.test.ts tests/compiler/platforms/collect-visible-platform-entries.test.ts
-git commit -m "feat(platforms): write synctrol-csp.json audit artifact without CSP meta"
+git commit -m "feat(platforms): collect published-page CSP entries and write synctrol-csp.json"
 ```
 
 ---
 
-### Task 7: Configure client test harness and PlatformEmbed shell
+### Task 7: PlatformEmbed shell (client happy-dom project already present)
 
 **Files:**
-- Modify: `package.json` (add `happy-dom`, `@vue/test-utils`)
-- Modify: `vitest.config.ts`
 - Create: `src/client/components/platforms/PlatformEmbed.ts`
 - Test: `tests/client/platforms/platform-embed.test.ts`
+- **Do not** modify `package.json` for `happy-dom` / `@vue/test-utils` / `@vitejs/plugin-vue` (already at HEAD).
+- **Do not** replace `vitest.config.ts` with `environmentMatchGlobs`. Keep Plan 05/06 `projects`. Client tests under `tests/client/platforms/**` already run in the happy-dom project. Only extend `vitest.config.ts` if a new alias is required (default: no change).
 
 **Interfaces:**
 - Consumes: `loadStrategy`, `formatMessage`, registration `component` + `fallbackUrl`, locale messages
 - Produces: `PlatformEmbed` Vue component props `{ entry, typeRegistration, platformName, loadStrategy, messages }` with states `idle | loading | ready | failed`
 
-- [ ] **Step 1: Install client test deps and write failing embed tests**
-
-```bash
-npm install -D happy-dom @vue/test-utils
-```
-
-Update `vitest.config.ts`:
-
-```ts
-import { defineConfig } from 'vitest/config'
-
-export default defineConfig({
-  test: {
-    environment: 'node',
-    include: ['tests/**/*.test.ts'],
-    environmentMatchGlobs: [['tests/client/**', 'happy-dom']],
-  },
-})
-```
+- [ ] **Step 1: Write failing embed tests (no dep install)**
 
 ```ts
 // tests/client/platforms/platform-embed.test.ts
@@ -2039,16 +2372,18 @@ describe('PlatformEmbed', () => {
 
 Run: `npm test -- tests/client/platforms/platform-embed.test.ts`
 
-Expected: FAIL with module not found for `PlatformEmbed`
+Expected: FAIL with module not found for `PlatformEmbed` (still runs under the client happy-dom project)
 
 - [ ] **Step 3: Implement PlatformEmbed**
+
+NodeNext import depths from `src/client/components/platforms/` → `src/` require **three** `../` segments:
 
 ```ts
 // src/client/components/platforms/PlatformEmbed.ts
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PropType } from 'vue'
-import type { PlatformTypeRegistration } from '../../shared/options.js'
-import { formatMessage } from '../../platforms/format-message.js'
+import type { PlatformTypeRegistration } from '../../../shared/options.js'
+import { formatMessage } from '../../../platforms/format-message.js'
 
 type LoadStrategy = 'interaction' | 'viewport'
 
@@ -2184,8 +2519,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add package.json package-lock.json vitest.config.ts src/client/components/platforms/PlatformEmbed.ts tests/client/platforms/platform-embed.test.ts
-git commit -m "feat(platforms): add PlatformEmbed lazy shell with failure fallback"
+git add src/client/components/platforms/PlatformEmbed.ts tests/client/platforms/platform-embed.test.ts
+git commit -m "feat(platforms): add PlatformEmbed lazy shell with interaction and viewport strategies"
 ```
 
 ---
@@ -2575,6 +2910,8 @@ component: NeteasePlayerPlatform,
 
 Delete `src/client/components/platforms/renderers/placeholders.ts` after no builtin module imports `createStubRenderer`.
 
+Verification: `rg createStubRenderer src/platforms src/client` must return no matches after Task 9. Confirm `placeholders.ts` is deleted and no shipped module imports it.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- tests/client/platforms/iframe-players.test.ts tests/platforms/builtins.test.ts`
@@ -2711,8 +3048,8 @@ export function resolvePlatformLabel(input: {
 // src/client/components/platforms/PlatformLinks.ts
 import { defineComponent, h } from 'vue'
 import type { PropType } from 'vue'
-import type { ContentDefinitions, LocaleKey, NormalizedPlatformEntry } from '../../shared/types.js'
-import type { PlatformTypeRegistration } from '../../shared/options.js'
+import type { ContentDefinitions, LocaleKey, NormalizedPlatformEntry } from '../../../shared/types.js'
+import type { PlatformTypeRegistration } from '../../../shared/options.js'
 import { PlatformEmbed } from './PlatformEmbed.js'
 import { resolvePlatformLabel } from './resolve-platform-label.js'
 
@@ -2803,19 +3140,21 @@ git commit -m "feat(platforms): add PlatformLinks list with accessible labels"
 
 ---
 
-### Task 11: Public exports, theme hook wiring, and full verification
+### Task 11: Public exports, theme CSP PATCH, and full verification
 
 **Files:**
-- Modify: `src/index.ts` (export platform registry / CSP helpers used by sites registering custom types)
-- Modify: `src/client/index.ts` (create if missing; export `PlatformLinks`, `PlatformEmbed`)
-- Modify: theme `onGenerated` / compile orchestration to call CSP write from Task 6
+- Modify: `src/index.ts` — **append** platform registry / CSP helpers (correct compiler path)
+- Modify: `src/client/index.ts` — **append** `PlatformEmbed` / `PlatformLinks`; preserve Plan 04 asset helpers + Plan 05/06 keys; never export `.vue`
+- Modify: `src/compiler/theme.ts` — additive `onGenerated` CSP write (keep root-router)
+- Extend: `tests/compiler/theme.integration.test.ts` — prove `synctrol-csp.json` on generate + root-router intact + no CSP meta
 - Test: `tests/platforms/platform-system.integration.test.ts`
+- Optionally extend: `tests/public-exports.test.ts` / `scripts/smoke-built-exports.mjs` for new root/client symbols
 
 **Interfaces:**
-- Consumes: all prior platform modules
-- Produces: documented public registration surface matching spec `platforms.types`; integration proof that digital album + physical gift entries validate, CSP merges, and embeds stay lazy
+- Consumes: all prior platform modules + `BuiltSite` (`compiledPackages`, `packages`, `site.pages`, `definitions`)
+- Produces: public registration surface; theme writes `<dest>/synctrol-csp.json` from published-page Books only; no CSP meta; full gates green
 
-- [ ] **Step 1: Write the failing integration test**
+- [ ] **Step 1: Write failing integration + theme generation tests**
 
 ```ts
 // tests/platforms/platform-system.integration.test.ts
@@ -2848,7 +3187,7 @@ const defs: ContentDefinitions = {
 }
 
 describe('platform system integration', () => {
-  it('validates flat entries, writes CSP artifact, and never injects CSP meta', () => {
+  it('validates flat entries, filters visibility, writes CSP artifact, never injects CSP meta', () => {
     const options = resolveThemeOptions({
       siteUrl: 'https://synctrol.com',
       mainLocale: 'zh',
@@ -2910,10 +3249,32 @@ describe('platform system integration', () => {
       bilibili: 'bilibili_player',
       taobao: 'link',
     }
-    const collected = collectVisiblePlatformEntries([
-      { book: album, platformTypes },
-      { book: gift, platformTypes },
-    ])
+
+    // Published album only — gift package has no pages → excluded from CSP.
+    const collected = collectVisiblePlatformEntries({
+      compiledPackages: [
+        {
+          dir: '/pkg/a',
+          identity: 'release:a',
+          manifest: { type: 'release', slug: 'a', title: 'A', date: '2024-01-01' } as never,
+          book: album,
+        },
+        {
+          dir: '/pkg/g',
+          identity: 'release:g',
+          manifest: { type: 'release', slug: 'g', title: 'G', date: '2024-01-01' } as never,
+          book: gift,
+        },
+      ],
+      packages: [
+        { identity: 'release:a', dir: '/pkg/a', type: 'release', slug: 'a', locales: {} } as never,
+        { identity: 'release:g', dir: '/pkg/g', type: 'release', slug: 'g', locales: {} } as never,
+      ],
+      pages: [
+        { identity: 'release:a', packagePath: '/pkg/a', bodyLocale: 'zh' } as never,
+      ],
+      platformTypes,
+    })
     const csp = collectCspFromEntries(collected, types)
     expect(csp['frame-src']).toContain('https://player.bilibili.com')
     expect(csp['frame-src']).not.toContain('https://item.taobao.com')
@@ -2928,64 +3289,128 @@ describe('platform system integration', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails if exports/hooks are incomplete**
-
-Run: `npm test -- tests/platforms/platform-system.integration.test.ts`
-
-Expected: FAIL only if prior tasks left gaps; otherwise proceed to wire exports and re-run
-
-- [ ] **Step 3: Export public API and wire CSP write**
+Extend `tests/compiler/theme.integration.test.ts` with a case that includes a published release Book with a YouTube (or bilibili) link, runs `onGenerated`, then asserts:
 
 ```ts
-// append to src/index.ts
-export { resolvePlatformTypes } from './platforms/registry.js'
-export { formatMessage } from './platforms/format-message.js'
-export { writeSynctrolCspJson, assertNoCspMetaInjection } from './node/platforms/write-csp-artifact.js'
-export type { PlatformTypeRegistration, PlatformsOptions, PlatformTypesConfig } from './shared/options.js'
+it('writes synctrol-csp.json on generate without CSP meta and keeps root router', async () => {
+  // …fixture with published release book containing youtube_player link…
+  const app = await runBuild()
+  const dest = app.dir.dest()
+  const cspPath = join(dest, 'synctrol-csp.json')
+  expect(existsSync(cspPath)).toBe(true)
+  const csp = JSON.parse(readFileSync(cspPath, 'utf8'))
+  expect(csp['frame-src']).toContain('https://www.youtube.com') // or bilibili origin used in fixture
+
+  const indexHtml = readFileSync(join(dest, 'index.html'), 'utf8')
+  expect(indexHtml).toContain('synctrol') // root-router HTML still present (match existing test assertions)
+  assertNoCspMetaInjection(indexHtml)
+  // Spot-check a content page HTML stub does not gain CSP meta either:
+  // assertNoCspMetaInjection(readFileSync(somePageHtml, 'utf8'))
+})
 ```
 
-```ts
-// src/client/index.ts
-export { PlatformEmbed } from './components/platforms/PlatformEmbed.js'
-export { PlatformLinks } from './components/platforms/PlatformLinks.js'
-```
+Reuse the existing `runBuild` / fixture helpers in that file; do not invent a parallel theme harness.
 
-In the theme generated hook (same place Plan 03 writes root router HTML), after content compile:
-
-```ts
-const types = resolvePlatformTypes(resolved.platforms.types)
-const sources = compiled.releasePackages
-  .filter((pkg) => pkg.book)
-  .map((pkg) => ({
-    book: pkg.book!,
-    platformTypes: Object.fromEntries(
-      Object.entries(compiled.definitions.platforms).map(([key, def]) => [key, def.type]),
-    ),
-  }))
-const csp = collectCspFromEntries(collectVisiblePlatformEntries(sources), types)
-writeSynctrolCspJson(app.dir.dest(), csp)
-console.log(
-  `[vuepress-theme-synctrolling] synctrol-csp.json: ${csp['frame-src'].length} frame-src, ${csp['media-src'].length} media-src, ${csp['connect-src'].length} connect-src`,
-)
-```
-
-Do not add any `head` / markdown HTML that inserts `Content-Security-Policy` meta.
-
-- [ ] **Step 4: Run the full platform suite**
+- [ ] **Step 2: Run tests to verify they fail if exports/hooks are incomplete**
 
 Run:
 
 ```bash
-npm test -- tests/platforms tests/client/platforms tests/compiler/platforms tests/compiler/platform-entry.test.ts tests/compiler/platform-entry-registry.test.ts tests/shared/options.test.ts
+npm test -- tests/platforms/platform-system.integration.test.ts tests/compiler/theme.integration.test.ts
 ```
 
-Expected: PASS for every platform-system test file
+Expected: FAIL until theme CSP write / exports are wired (or FAIL on new theme assertion)
+
+- [ ] **Step 3: Append public API and PATCH theme `onGenerated`**
+
+```ts
+// append to src/index.ts (do not remove existing exports)
+export { resolvePlatformTypes } from './platforms/registry.js'
+export { formatMessage } from './platforms/format-message.js'
+export {
+  writeSynctrolCspJson,
+  assertNoCspMetaInjection,
+} from './compiler/platforms/write-csp-artifact.js'
+export type {
+  PlatformTypeRegistration,
+  PlatformsOptions,
+  PlatformTypesConfig,
+} from './shared/options.js'
+```
+
+```ts
+// append to src/client/index.ts — PRESERVE existing asset helpers + composable keys
+export {
+  createResolveContentAsset,
+  normalizeContentAssetRef,
+  resolveContentAsset,
+  setContentAssetMap,
+  type ContentAssetMap,
+} from './assets/resolve-content-asset.js'
+
+export * from './composables/keys.js'
+// Forbidden: export { default as Layout } from './layouts/Layout.vue'
+// Forbidden: export BackgroundHost
+// Forbidden: any other .vue SFC re-export
+
+export { PlatformEmbed } from './components/platforms/PlatformEmbed.js'
+export { PlatformLinks } from './components/platforms/PlatformLinks.js'
+```
+
+Additive PATCH for `src/compiler/theme.ts` — import collectors/writer/registry; inside existing `onGenerated`, **after** the root-router write:
+
+```ts
+import { resolvePlatformTypes } from '../platforms/registry.js'
+import { collectCspFromEntries } from '../platforms/collect-csp.js'
+import { collectVisiblePlatformEntries } from './platforms/collect-visible-platform-entries.js'
+import { writeSynctrolCspJson } from './platforms/write-csp-artifact.js'
+
+// inside returned theme object:
+onGenerated: (app: App): void => {
+  if (built === undefined) return
+
+  const target = app.dir.dest('index.html')
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, built.site.rootRouterHtml, 'utf8')
+
+  const types = resolvePlatformTypes(resolved.platforms.types)
+  const platformTypes = Object.fromEntries(
+    Object.entries(built.definitions.platforms).map(([key, def]) => [key, def.type]),
+  )
+  const entries = collectVisiblePlatformEntries({
+    compiledPackages: built.compiledPackages,
+    packages: built.packages,
+    pages: built.site.pages,
+    platformTypes,
+  })
+  const csp = collectCspFromEntries(entries, types)
+  writeSynctrolCspJson(app.dir.dest(), csp)
+  console.log(
+    `[vuepress-theme-synctrolling] synctrol-csp.json: ${csp['frame-src'].length} frame-src, ${csp['media-src'].length} media-src, ${csp['connect-src'].length} connect-src`,
+  )
+},
+```
+
+Do **not** reference `built.releasePackages` / `compiled.releasePackages`. Do not add any `head` / HTML transformer that inserts `Content-Security-Policy` meta. Preserve `clientConfigFile`, boot script, `buildSite`, asset compilation, backgrounds Vite plugin, content-tree filter, `contentAssets`, `alternates`, and root-router behavior.
+
+- [ ] **Step 4: Run the full verification gates**
+
+Run:
+
+```bash
+npm test -- tests/platforms tests/client/platforms tests/compiler/platforms tests/compiler/platform-entry.test.ts tests/compiler/platform-entry-registry.test.ts tests/compiler/compile-content-custom-platform.test.ts tests/shared/options.test.ts tests/compiler/theme.integration.test.ts
+npm run test:typecheck
+npm test
+npm run test:build-smoke
+```
+
+Expected: PASS for every command
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/index.ts src/client/index.ts tests/platforms/platform-system.integration.test.ts
-git commit -m "feat(platforms): export platform API and verify CSP audit pipeline"
+git add src/index.ts src/client/index.ts src/compiler/theme.ts tests/platforms/platform-system.integration.test.ts tests/compiler/theme.integration.test.ts tests/public-exports.test.ts scripts/smoke-built-exports.mjs
+git commit -m "feat(platforms): export platform API and write published-page CSP artifact"
 ```
 
 ---
@@ -2995,17 +3420,20 @@ git commit -m "feat(platforms): export platform API and verify CSP audit pipelin
 1. **Spec coverage (section 11 + related):**
    - Definitions `category` / `type` / `name Multilanguage` — assumed from Plan 02; category digital/physical enforced in Tasks 5 and 11.
    - Flat link entries (no args) — Tasks 4–5 validators reject unknown fields.
-   - All eight built-in types + value constraints — Tasks 2, 4, 8, 9.
+   - All eight built-in types + value constraints — Tasks 2, 4, 8, 9; Plan 02 hardening preserved.
    - `album.links` digital / `gift.items[].links` physical — Tasks 5, 6, 11.
-   - `loadStrategy` interaction|viewport, no immediate — Tasks 5, 7.
-   - Custom `platforms.types` (`validate` / `component` / `cspOrigins` / `fallbackUrl`) — Tasks 4–5, 11.
+   - Custom types through real `compileContent` / `buildSite` — Task 5 e2e fixture.
+   - `loadStrategy` interaction|viewport, no immediate — Task 5 options test (existing validation path).
+   - Custom `platforms.types` (`validate` / `component` / `cspOrigins` / `fallbackUrl`) — Tasks 4–5, 11; custom CSP → frame-src only.
    - Lazy embed after interaction/viewport; failure → external link — Task 7.
-   - `synctrol-csp.json` merge/dedupe; no CSP meta in v1 — Tasks 3, 5, 6, 11.
-   - Accessibility titles/labels — Tasks 7–10 (`iframe title`, `aria-label`, message templates).
-2. **Placeholder scan:** no TBD/TODO; commands and expected outcomes specified.
-3. **Type consistency:** `PlatformTypeRegistration`, `BuiltInPlatformType`, entry interfaces, `loadStrategy`, and message keys match Plan 01 / spec naming; `validatePlatformEntry` gains an optional `types` argument without breaking Plan 02 call sites (default `resolvePlatformTypes({})`).
+   - `synctrol-csp.json` from published-page Books; no CSP meta in v1 — Tasks 3, 5, 6, 11 (+ theme.integration).
+   - Accessibility titles/labels — Tasks 7–10.
+2. **Placeholder scan:** no TBD/TODO; commands and expected outcomes specified; no fictional `releasePackages`.
+3. **Type consistency:** `PlatformTypeRegistration.component: Component`; `validatePlatformEntry` optional `types`; `CompileContentOptions.platformTypes`; `collectVisiblePlatformEntries` published-page filter; root export `./compiler/platforms/write-csp-artifact.js`; client imports use `../../../` from `components/platforms/`.
+4. **Preflight Criticals closed:** registry→compile path (C1), theme CSP against `BuiltSite` (C2), visible=published pages (C3), export path (C4), client import depths (C5), append `./client` exports (C6).
+5. **Important closed as practical:** Vitest projects preserved; hardening preserved; e2e custom type test; frame-only custom CSP documented; theme generation CSP test; full gates listed.
 
 ---
 
 **Task count:** 11  
-**Key files:** `src/platforms/registry.ts`, `src/platforms/builtins/`, `src/platforms/csp.ts`, `src/platforms/urls.ts`, `src/compiler/platform-entry.ts`, `src/compiler/platforms/write-csp-artifact.ts`, `src/client/components/platforms/PlatformEmbed.ts`, `src/client/components/platforms/PlatformLinks.ts`, `src/client/components/platforms/renderers/`
+**Key files:** `src/platforms/registry.ts`, `src/platforms/builtins/`, `src/platforms/csp.ts`, `src/platforms/urls.ts`, `src/compiler/platform-entry.ts`, `src/compiler/compile-content.ts`, `src/compiler/book.ts`, `src/compiler/build-site.ts`, `src/compiler/theme.ts`, `src/compiler/platforms/write-csp-artifact.ts`, `src/compiler/platforms/collect-visible-platform-entries.ts`, `src/client/components/platforms/PlatformEmbed.ts`, `src/client/components/platforms/PlatformLinks.ts`, `src/client/components/platforms/renderers/`
