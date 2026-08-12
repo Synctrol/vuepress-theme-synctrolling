@@ -16,10 +16,26 @@ export interface ResolvedNavHref {
   external: boolean
 }
 
-/** True when any `/`-separated segment is exactly `.` or `..` (including bare/trailing). */
+/** True when a path segment is `.` / `..`, including after percent-decoding. */
+function isRelativePathSegment(segment: string): boolean {
+  let decoded = segment
+  while (true) {
+    if (decoded === '.' || decoded === '..') return true
+    if (!decoded.includes('%')) return false
+    try {
+      const next = decodeURIComponent(decoded)
+      if (next === decoded) return false
+      decoded = next
+    } catch {
+      return false
+    }
+  }
+}
+
+/** True when any `/`-separated segment is `.` or `..` (bare, trailing, or percent-encoded). */
 function hasRelativePathSegments(href: string): boolean {
   const pathOnly = href.split(/[?#]/, 1)[0] ?? href
-  return pathOnly.split('/').some((segment) => segment === '.' || segment === '..')
+  return pathOnly.split('/').some(isRelativePathSegment)
 }
 
 export function resolveNavHref(input: ResolveNavHrefInput): ResolvedNavHref {

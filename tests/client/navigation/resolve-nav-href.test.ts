@@ -107,4 +107,25 @@ describe('resolveNavHref', () => {
       ).toThrow(/relative segments forbidden/)
     }
   })
+
+  it('rejects percent-encoded . / .. path segments after decoding', () => {
+    for (const href of [
+      '/%2e%2e/admin',
+      '/%2E/',
+      '/%2e/',
+      '/foo/%2e%2e/',
+      '/%2E%2E/x',
+      '/a/%2e/b',
+      '/%252e%252e/escape',
+    ]) {
+      expect(() =>
+        resolveNavHref({
+          href,
+          locale: 'zh',
+          base: '/',
+          mainLocale: 'zh',
+        }),
+      ).toThrow(/relative segments forbidden/)
+    }
+  })
 })
