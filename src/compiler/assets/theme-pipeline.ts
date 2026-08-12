@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
 import { relative } from 'node:path'
 import type { ResolvedAsset } from '../../shared/asset-types.js'
 import {
@@ -32,7 +32,10 @@ export function resolveThemeAsset(input: {
   const sourcePath = resolveSafePath(input.themeAssetsRoot, input.relativeRef)
   const buffer = readFileSync(sourcePath)
   const contentHash = hashFileContents(buffer)
-  const key = relative(input.themeAssetsRoot, sourcePath).replace(/\\/g, '/')
+  // resolveSafePath returns real paths; compare against the real root so a
+  // symlink themeAssetsRoot does not yield keys like `../../actual/...`.
+  const rootReal = realpathSync(input.themeAssetsRoot)
+  const key = relative(rootReal, sourcePath).replace(/\\/g, '/')
   const assetPath = buildThemeAssetPath(key, contentHash)
   const publicPath = buildAssetPublicPath(assetPath, input.base)
   return {

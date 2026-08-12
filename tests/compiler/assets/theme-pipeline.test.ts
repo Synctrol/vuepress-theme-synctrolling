@@ -1,4 +1,11 @@
-import { readFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -54,5 +61,29 @@ describe('resolveThemeAsset', () => {
     expect(resolved.absoluteUrl.startsWith('https://example.com/site/assets/theme/')).toBe(
       true,
     )
+  })
+
+  it('computes relative keys from realpath of a symlink themeAssetsRoot', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'theme-assets-symlink-'))
+    const linkRoot = join(tmp, 'link-root')
+    symlinkSync(realpathSync(themeAssetsRoot), linkRoot)
+    try {
+      const hash = hashFileContents(
+        readFileSync(join(themeAssetsRoot, 'grid.svg')),
+      )
+      const resolved = resolveThemeAsset({
+        themeAssetsRoot: linkRoot,
+        relativeRef: './grid.svg',
+        base: '/',
+        siteUrl: 'https://synctrol.com',
+      })
+      expect(resolved.assetPath).toBe(`/assets/theme/grid.${hash}.svg`)
+      expect(resolved.assetPath).not.toContain('..')
+      expect(resolved.sourcePath).toBe(
+        realpathSync(join(themeAssetsRoot, 'grid.svg')),
+      )
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
   })
 })
