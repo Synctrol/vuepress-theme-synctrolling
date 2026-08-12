@@ -149,8 +149,10 @@ body {
 
 .syn-navigation {
   grid-area: navigation;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* Nested grid keeps the golden ratio exact: fr rows ignore content
+     and padding, so the side-panel can carry full 24px padding. */
+  grid-template-rows: minmax(0, 1.618fr) minmax(0, 1fr);
   background: var(--syn-deco-bg);
   color: var(--syn-deco-label-fg);
   padding: 0;
@@ -159,7 +161,7 @@ body {
 .syn-navigation__list {
   display: flex;
   flex-direction: column;
-  flex: 1.618;
+  min-height: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -225,17 +227,15 @@ body {
 }
 
 /* Right-column bottom area (reference cell-status position); child of the
-   nav so the golden ratio lives inside one flex column (1.618 : 1).
-   Horizontal-only padding: vertical padding would distort the flex
-   distribution (padding forms a minimum box). Content comes from the
-   consumer via the side-panel slot. */
+   nav, sized by the nav's golden-ratio grid rows. Content (social links,
+   ...) is injected via the side-panel slot and centered by default. */
 .syn-navigation__side-panel {
-  flex: 1;
   min-height: 0;
-  /* Separator via box-shadow: a real border would offset the flex
-     golden-ratio distribution (borders cannot shrink). */
-  box-shadow: inset 0 3px 0 currentColor;
-  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: var(--syn-border-strong);
+  padding: 24px;
 }
 
 .syn-site-footer {
@@ -398,8 +398,6 @@ body {
 }
 
 .syn-nav-drawer .syn-navigation {
-  display: flex;
-  flex-direction: column;
   flex: 1;
   border-bottom: 0;
 }
