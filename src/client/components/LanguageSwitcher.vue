@@ -138,7 +138,7 @@ onUnmounted(() => {
     <button
       ref="toggleRef"
       type="button"
-      class="syn-language__toggle"
+      class="syn-language__toggle syn-bar-chip"
       aria-haspopup="listbox"
       :aria-expanded="open ? 'true' : 'false'"
       :aria-controls="listboxId"

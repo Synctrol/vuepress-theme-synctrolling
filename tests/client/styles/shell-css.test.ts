@@ -77,6 +77,7 @@ describe('shell.css', () => {
   it('keeps the bars at reference height (no p margins, in-bar controls shrink)', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toMatch(/\.syn-header__copyright\s*\{[^}]*margin:\s*0/)
+    expect(css).toMatch(/\.syn-header\s*\{[^}]*--syn-dock-control-size:\s*20px/)
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*--syn-dock-control-size:\s*20px/)
     expect(css).not.toContain('@media (max-width: 360px)')
   })
@@ -99,10 +100,14 @@ describe('shell.css', () => {
 
   it('styles the theme toggle like the reference theme-option', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*background:\s*var\(--syn-bar-fg\)/)
+    expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*color:\s*var\(--syn-bar-bg\)/)
+    expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
     expect(css).toMatch(/\.syn-theme-mode__button\s*\{[^}]*font-size:\s*12px/)
-    expect(css).toMatch(/\.syn-theme-mode__button\s*\{[^}]*letter-spacing:\s*1px/)
-    expect(css).toMatch(/\.syn-theme-mode__button\s*\{[^}]*color:\s*inherit/)
+    expect(css).toMatch(/\.syn-theme-mode__button\s*\{[^}]*padding:\s*0 8px/)
     expect(css).toMatch(/\.syn-theme-mode__button:hover[^{]*\{[^}]*text-decoration:\s*underline/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*max-width:\s*40vw/)
+    expect(css).not.toMatch(/\.syn-language__toggle\s*\{[^}]*background:/)
   })
 
   it('renders the navigation column as a deco link-panel column', () => {
@@ -151,9 +156,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-language__list\s*\{[^}]*bottom:\s*40px/)
     expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*white/)
     expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*color:\s*black/)
-    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*background:\s*var\(--syn-bar-fg\)/)
-    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*color:\s*var\(--syn-bar-bg\)/)
-    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*letter-spacing:\s*1px/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*max-width:\s*40vw/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*font-size:\s*12px/)
     expect(css).toMatch(/\.syn-language__option\s*\{[^}]*letter-spacing:\s*1px/)
     expect(css).toMatch(/\.syn-language__toggle:hover[^{]*\{[^}]*text-decoration:\s*underline/)
     expect(css).toMatch(/\.syn-nav-drawer__close\s*\{[^}]*letter-spacing:\s*1px/)

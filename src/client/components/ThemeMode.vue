@@ -36,7 +36,7 @@ function onKeydown(event: KeyboardEvent): void {
   <div class="syn-theme-mode">
     <button
       type="button"
-      class="syn-theme-mode__button"
+      class="syn-theme-mode__button syn-bar-chip"
       :aria-label="announcement"
       @click="cycle"
       @keydown="onKeydown"

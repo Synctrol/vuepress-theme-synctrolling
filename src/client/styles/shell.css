@@ -49,6 +49,8 @@ body {
   padding: 10px 16px;
   font-size: 13px;
   letter-spacing: 2px;
+  /* In-bar controls must fit the reference bar height (~44px). */
+  --syn-dock-control-size: 20px;
 }
 
 .syn-header__copyright {
@@ -59,15 +61,24 @@ body {
   display: none;
 }
 
-.syn-theme-mode__button {
+/* Shared chip look for in-bar controls (theme toggle, language toggle):
+   inverted relative to the bar, bordered, fits the bar height. */
+.syn-bar-chip {
+  min-height: var(--syn-dock-control-size);
+  box-sizing: border-box;
+  border: var(--syn-border-strong);
+  border-radius: var(--syn-radius);
+  background: var(--syn-bar-fg);
+  color: var(--syn-bar-bg);
   font: inherit;
-  font-size: 12px;
+  line-height: 1;
   letter-spacing: 1px;
-  color: inherit;
-  background: transparent;
-  border: none;
-  padding: 2px 4px;
   cursor: pointer;
+}
+
+.syn-theme-mode__button {
+  font-size: 12px;
+  padding: 0 8px;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -270,23 +281,12 @@ body {
 }
 
 .syn-language__toggle {
-  min-height: var(--syn-dock-control-size);
   max-width: 40vw;
   padding: 0 8px;
-  box-sizing: border-box;
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: var(--syn-border-strong);
-  border-radius: var(--syn-radius);
-  /* Invert relative to the bar: white chip on the black bar (light),
-     black chip on the white bar (dark). */
-  background: var(--syn-bar-fg);
-  color: var(--syn-bar-bg);
-  font: inherit;
-  font-size: 12px;
-  line-height: 1;
-  letter-spacing: 1px;
 }
 
 .syn-language__toggle:hover,
