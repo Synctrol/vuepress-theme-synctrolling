@@ -2,6 +2,8 @@
 import { computed, provide, reactive, ref, watch } from 'vue'
 import { Content, useData } from 'vuepress/client'
 import { setContentAssetMap } from '../assets/resolve-content-asset.js'
+import BackgroundHost from '../background/BackgroundHost.vue'
+import { useBackgroundRuntime } from '../background/use-background-runtime.js'
 import {
   SYNCTROL_DRAWER_OPEN_KEY,
   SYNCTROL_SHELL_CONTEXT_KEY,
@@ -24,6 +26,7 @@ interface SynctrolFrontmatter {
 const theme = useThemeOptions()
 const { page, siteData } = useData()
 const drawerOpen = ref(false)
+const { runtime, syncInput } = useBackgroundRuntime()
 
 const synctrol = computed(
   () => (page.value.frontmatter.synctrol as SynctrolFrontmatter | undefined) ?? {},
@@ -100,6 +103,7 @@ provide(SYNCTROL_DRAWER_OPEN_KEY, drawerOpen)
 </script>
 
 <template>
+  <BackgroundHost :runtime="runtime" :sync-input="syncInput" />
   <ShellLayout>
     <Content />
   </ShellLayout>

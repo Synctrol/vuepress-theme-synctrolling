@@ -8,3 +8,4 @@ export {
 
 export * from './composables/keys.js'
 // Forbidden: export { default as Layout } from './layouts/Layout.vue'
+// Forbidden: export BackgroundHost

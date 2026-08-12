@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 
@@ -6,6 +7,16 @@ export default defineConfig({
     projects: [
       {
         plugins: [vue()],
+        resolve: {
+          alias: {
+            'virtual:synctrol-backgrounds': fileURLToPath(
+              new URL(
+                './tests/fixtures/backgrounds/virtual-backgrounds-mock.ts',
+                import.meta.url,
+              ),
+            ),
+          },
+        },
         test: {
           name: 'client',
           environment: 'happy-dom',
