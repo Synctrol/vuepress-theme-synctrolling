@@ -71,8 +71,7 @@ onUnmounted(() => {
     :aria-label="messages.menu"
     :aria-hidden="drawerOpen ? 'false' : 'true'"
   >
-    <div class="syn-nav-drawer__panel">
-      <Navigation />
-    </div>
+    <Navigation />
+    <div class="syn-nav-drawer__side-panel" />
   </div>
 </template>

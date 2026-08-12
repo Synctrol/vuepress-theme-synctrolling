@@ -9,7 +9,7 @@ describe('shell.css', () => {
     expect(css).toContain("grid-template-areas:")
     expect(css).toContain("'header header'")
     expect(css).toContain("'main navigation'")
-    expect(css).toContain("'main .'")
+    expect(css).toContain("'main side-panel'")
     expect(css).toContain("'footer footer'")
     expect(css).not.toContain("'dock dock'")
     expect(css).toContain('minmax(0, 1.618fr)')
@@ -115,6 +115,10 @@ describe('shell.css', () => {
 
   it('renders the navigation column as a deco link-panel column', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-side-panel\s*\{[^}]*grid-area:\s*side-panel/)
+    expect(css).toMatch(/\.syn-side-panel\s*\{[^}]*padding:\s*24px/)
+    expect(css).toMatch(/\.syn-nav-drawer__side-panel\s*\{[^}]*flex:\s*1/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\.syn-navigation\s*\{[^}]*flex:\s*1\.618/)
     expect(css).toMatch(/\.syn-navigation\s*\{[^}]*background:\s*var\(--syn-deco-bg\)/)
     expect(css).toMatch(/\.syn-navigation\s*\{[^}]*color:\s*var\(--syn-deco-label-fg\)/)
     expect(css).toMatch(/\.syn-navigation\s*\{[^}]*display:\s*flex/)

@@ -23,7 +23,7 @@ body {
   grid-template-areas:
     'header header'
     'main navigation'
-    'main .'
+    'main side-panel'
     'footer footer';
   grid-template-columns:
     minmax(0, 1.618fr)
@@ -225,6 +225,15 @@ body {
   color: var(--syn-deco-bg);
 }
 
+/* Right-column bottom area (reference cell-status position); keeps the
+   1.618fr : 1fr golden ratio via the grid rows. Content comes from the
+   consumer via slots/components later. */
+.syn-side-panel {
+  grid-area: side-panel;
+  min-height: 0;
+  padding: 24px;
+}
+
 .syn-site-footer {
   grid-area: footer;
   display: flex;
@@ -387,8 +396,16 @@ body {
 .syn-nav-drawer .syn-navigation {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1.618;
   border-bottom: 0;
+}
+
+.syn-nav-drawer__side-panel {
+  flex: 1;
+  min-height: 0;
+  /* Horizontal-only padding: vertical padding would distort the
+     flex golden-ratio distribution (padding forms a minimum box). */
+  padding: 0 24px;
 }
 
 :focus-visible {
@@ -424,7 +441,8 @@ body {
     bottom: 0;
   }
 
-  .syn-shell > .syn-navigation {
+  .syn-shell > .syn-navigation,
+  .syn-shell > .syn-side-panel {
     display: none;
   }
 }
