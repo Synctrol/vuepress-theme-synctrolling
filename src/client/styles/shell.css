@@ -347,46 +347,6 @@ body {
   transform: translateX(0);
 }
 
-.syn-nav-drawer__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--syn-bar-bg);
-  color: var(--syn-bar-fg);
-  border-bottom: var(--syn-border-strong);
-  padding: 10px 16px;
-  font-size: 13px;
-  letter-spacing: 2px;
-  --syn-dock-control-size: 20px;
-}
-
-.syn-nav-drawer__bar--bottom {
-  justify-content: flex-end;
-  border-bottom: 0;
-  border-top: var(--syn-border-strong);
-}
-
-.syn-nav-drawer__title {
-  margin: 0;
-}
-
-.syn-nav-drawer__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: inherit;
-}
-
-.syn-nav-drawer__close-icon {
-  display: block;
-}
-
 .syn-nav-drawer__panel {
   flex: 1;
   min-height: 0;
@@ -399,21 +359,6 @@ body {
   flex-direction: column;
   flex: 1;
   border-bottom: 0;
-}
-
-.syn-shell--drawer-open .syn-social-links,
-.syn-shell--drawer-open .syn-language {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.syn-nav-drawer__close {
-  font: inherit;
-  letter-spacing: 1px;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
 }
 
 :focus-visible {

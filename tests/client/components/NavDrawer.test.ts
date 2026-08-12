@@ -45,7 +45,7 @@ describe('NavDrawer', () => {
     expect(dialog.attributes('aria-modal')).toBe('true')
   })
 
-  it('activates focus trap on mount when already open and includes Close', async () => {
+  it('activates focus trap on mount when already open and wraps Tab to the first link', async () => {
     const drawerOpen = ref(true)
     const wrapper = mountShell(NavDrawer, {
       locale: 'en',
@@ -60,20 +60,19 @@ describe('NavDrawer', () => {
     await flushTrapActivate()
 
     const dialog = wrapper.get('[role="dialog"]').element as HTMLElement
-    const closeBtn = wrapper.get('.syn-nav-drawer__close').element as HTMLButtonElement
     const links = wrapper.findAll('.syn-navigation__link')
     expect(links.length).toBeGreaterThan(0)
+    const firstLink = links[0]!.element as HTMLAnchorElement
+    const lastLink = links[links.length - 1]!.element as HTMLAnchorElement
 
-    // Trap container is the dialog root so Close is first focusable
-    expect(document.activeElement).toBe(closeBtn)
+    // Trap container is the dialog root so the first nav link gets focus
+    expect(document.activeElement).toBe(firstLink)
 
-    // Last focusable is the in-drawer language switcher toggle
-    const lastFocusable = wrapper.get('.syn-language__toggle').element as HTMLButtonElement
-    lastFocusable.focus()
+    lastLink.focus()
     dialog.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }),
     )
-    expect(document.activeElement).toBe(closeBtn)
+    expect(document.activeElement).toBe(firstLink)
 
     wrapper.unmount()
   })
@@ -100,8 +99,7 @@ describe('NavDrawer', () => {
     await nextTick()
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
 
-    const closeBtn = wrapper.get('.syn-nav-drawer__close').element as HTMLButtonElement
-    expect(document.activeElement).not.toBe(closeBtn)
+    // Trap activation was cancelled before the rAF — focus stays outside
     expect(document.activeElement).toBe(outside)
 
     wrapper.unmount()

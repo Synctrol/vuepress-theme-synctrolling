@@ -82,9 +82,9 @@ describe('shell.css', () => {
     expect(css).not.toContain('@media (max-width: 360px)')
   })
 
-  it('hides fixed docks while the drawer is open', () => {
-    expect(css).toMatch(/\.syn-shell--drawer-open[\s\S]*\.syn-social-links/)
-    expect(css).toMatch(/\.syn-shell--drawer-open[\s\S]*\.syn-language/)
+  it('keeps the footer controls visible while the drawer is open', () => {
+    expect(css).not.toMatch(/\.syn-shell--drawer-open[\s\S]*\.syn-social-links/)
+    expect(css).not.toMatch(/\.syn-shell--drawer-open[\s\S]*\.syn-language/)
   })
 
   it('styles header and footer as reference bars', () => {
@@ -160,8 +160,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*font-size:\s*12px/)
     expect(css).toMatch(/\.syn-language__option\s*\{[^}]*letter-spacing:\s*1px/)
     expect(css).toMatch(/\.syn-language__toggle:hover[^{]*\{[^}]*text-decoration:\s*underline/)
-    expect(css).toMatch(/\.syn-nav-drawer__close\s*\{[^}]*background:\s*transparent/)
-    expect(css).toMatch(/\.syn-nav-drawer__close\s*\{[^}]*border:\s*0/)
+    expect(css).not.toMatch(/\.syn-nav-drawer__close/)
+    expect(css).not.toMatch(/\.syn-nav-drawer__bar/)
   })
 
   it('lays the nav drawer over the main area so bars and shell borders stay visible', () => {

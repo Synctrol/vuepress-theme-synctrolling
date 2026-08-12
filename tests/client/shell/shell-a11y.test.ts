@@ -32,8 +32,11 @@ describe('shell accessibility', () => {
     expect(wrapper.find('.syn-nav-drawer .syn-navigation').exists()).toBe(true)
 
     await flushTrapActivate()
-    const closeBtn = wrapper.get('.syn-nav-drawer__close').element as HTMLButtonElement
-    expect(document.activeElement).toBe(closeBtn)
+    // Focus moves into the drawer's first nav link
+    const firstLink = wrapper
+      .findAll('.syn-nav-drawer .syn-navigation__link')[0]!
+      .element as HTMLAnchorElement
+    expect(document.activeElement).toBe(firstLink)
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     await nextTick()
