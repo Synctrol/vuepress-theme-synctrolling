@@ -118,7 +118,18 @@ mirroring the reference's no-explicit-choice fallback (same values as dark).
   - `h1`: `font-size: clamp(48px, 9vw, 96px); font-weight: 900; line-height: 0.9; letter-spacing: -2px`
   - `p`: `font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: var(--syn-sub-title-fg); margin-top: 12px`
   - block: `text-align: right` (reference `.cell-title`)
-- `.syn-home-footer`: `font-size: 11px; letter-spacing: 3px; color: var(--syn-status-sub-fg)` (reference `.status-sub`); `text-transform: uppercase`.
+- `.syn-home-footer`: the theme's home footer slot renders inside the bottom
+  bar (`.syn-site-footer`), so it inherits bar colors and bar text metrics
+  (`13px; letter-spacing: 2px`). No extra rules needed; the reference's
+  `.status-sub` color token is ported to `--syn-status-sub-fg` for future
+  status-cell use but is not applied on the footer.
+
+### 4b. Dark-mode hover bug in release.css
+
+`release.css` uses the selector `:root.dark` which never matches (the
+color-mode boot script sets `document.documentElement.dataset.theme`, not a
+class). The tile/draft hover inversions therefore never apply in dark mode.
+Align to the reference: `:root[data-theme='dark']` in both hover rules.
 
 ### 5. Interactive elements (dock + language)
 
@@ -166,9 +177,9 @@ Unchanged: solid `var(--syn-bg)` via `.syn-background` (out of scope).
 
 - src/client/styles/tokens.css
 - src/client/styles/shell.css
-- tests/client/styles/tokens.test.ts (new)
+- src/client/styles/release.css (dark-mode selector fix only)
+- tests/client/tokens.test.ts (extend)
 - tests/client/styles/shell-css.test.ts (extend)
-- tests/client/layouts/Layout.test.ts (extend)
 
 No component `.vue` changes expected (styles only); if a hover inversion
 needs a class hook, the minimal change is CSS-only via existing selectors.
