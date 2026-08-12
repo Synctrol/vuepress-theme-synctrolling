@@ -25,7 +25,10 @@ describe('shell mobile contract', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toContain('@media (max-width: 768px)')
     expect(css).toContain('padding-bottom: var(--syn-dock-content-clearance)')
-    expect(css).toContain('.syn-shell > .syn-navigation')
-    expect(css).toContain('display: none')
+    // Tie hide rule to `.syn-shell > .syn-navigation` inside the mobile media block
+    // (not an unrelated `display: none` elsewhere in shell.css).
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*?\.syn-shell\s*>\s*\.syn-navigation\s*\{[^}]*display:\s*none/,
+    )
   })
 })
