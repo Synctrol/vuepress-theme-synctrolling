@@ -16,7 +16,6 @@ function registerFormatterContainer(md: MarkdownItApi, name: string): void {
 
 export function registerHomeFormatters(md: MarkdownItApi): void {
   registerFormatterContainer(md, 'home-logo')
-  registerFormatterContainer(md, 'home-footer')
 }
 
 export function assertHomeHasLogo(markdownSource: string, filePath: string): void {

@@ -19,7 +19,7 @@ const baseInput = {
     zh: { lang: 'zh-CN', label: '中文' },
     en: { lang: 'en-US', label: 'English' },
   },
-  copyright: '© Synctrol',
+  topbarText: '© Synctrol',
   seo: {
     name: 'Synctrol',
     description: 'Official website of the Synctrol music team',

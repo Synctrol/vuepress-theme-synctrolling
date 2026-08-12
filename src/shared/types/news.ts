@@ -92,5 +92,4 @@ export interface SynctrolPageFrontmatter {
 export interface SynctrolHomeFrontmatter {
   kind: 'home'
   logoHtml: string
-  footerHtml?: string
 }

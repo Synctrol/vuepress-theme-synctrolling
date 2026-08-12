@@ -6,7 +6,7 @@ describe('package smoke', () => {
     const theme = synctrolTheme({
       siteUrl: 'https://synctrol.com',
       mainLocale: 'zh',
-      copyright: 'SYNCTROL © 2026',
+      topbarText: 'SYNCTROL © 2026',
       locales: {
         zh: { lang: 'zh-CN', label: '中文' },
         en: { lang: 'en-US', label: 'English' },

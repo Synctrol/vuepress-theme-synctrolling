@@ -20,7 +20,8 @@ const TOP_LEVEL_FIELDS = [
   'locales',
   'showDrafts',
   'defaultColorMode',
-  'copyright',
+  'topbarText',
+  'footbarText',
   'feeds',
   'navigation',
   'socialLinks',
@@ -542,7 +543,10 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
     ['auto', 'light', 'dark'],
     'options.defaultColorMode',
   )
-  validateMultilanguage(input.copyright, 'options.copyright', input.mainLocale)
+  validateMultilanguage(input.topbarText, 'options.topbarText', input.mainLocale)
+  if (input.footbarText !== undefined) {
+    validateMultilanguage(input.footbarText, 'options.footbarText', input.mainLocale)
+  }
   validateFeeds(input.feeds)
   validateNavigation(input.navigation, input.mainLocale)
   validateSocialLinks(input.socialLinks, input.mainLocale)

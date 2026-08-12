@@ -53,7 +53,11 @@ body {
   --syn-dock-control-size: 20px;
 }
 
-.syn-header__copyright {
+.syn-topbar-text {
+  margin: 0;
+}
+
+.syn-footbar-text {
   margin: 0;
 }
 

@@ -49,7 +49,7 @@ async function runBuild(base: '/' | `/${string}/` = '/') {
     theme: synctrolTheme({
       siteUrl: 'https://synctrol.com',
       mainLocale: 'zh',
-      copyright: '© Synctrol',
+      topbarText: '© Synctrol',
       locales: {
         zh: { lang: 'zh-CN', label: '中文' },
         en: { lang: 'en-US', label: 'English' },
@@ -100,7 +100,7 @@ describe('synctrolTheme production integration', () => {
     const theme = synctrolTheme({
       siteUrl: 'https://synctrol.com',
       mainLocale: 'zh',
-      copyright: '© Synctrol',
+      topbarText: '© Synctrol',
       locales: { zh: { lang: 'zh-CN', label: '中文' } },
       seo: {
         name: 'Synctrol',
@@ -131,7 +131,7 @@ describe('synctrolTheme production integration', () => {
     const theme = synctrolTheme({
       siteUrl: 'https://synctrol.com',
       mainLocale: 'zh',
-      copyright: '© Synctrol',
+      topbarText: '© Synctrol',
       locales: { zh: { lang: 'zh-CN', label: '中文' } },
       seo: {
         name: 'Synctrol',
@@ -174,7 +174,7 @@ describe('synctrolTheme production integration', () => {
       options: resolveThemeOptions({
         siteUrl: 'https://synctrol.com',
         mainLocale: 'zh',
-        copyright: '© Synctrol',
+        topbarText: '© Synctrol',
         locales: {
           zh: { lang: 'zh-CN', label: '中文' },
           en: { lang: 'en-US', label: 'English' },
@@ -307,7 +307,7 @@ describe('synctrolTheme production integration', () => {
     const themeOptionsInput = {
       siteUrl: 'https://synctrol.com',
       mainLocale: locale,
-      copyright: '© Synctrol',
+      topbarText: '© Synctrol',
       locales: {
         // Plan 01 requires complete messages for non-zh/en locales (same as Tasks 7–9).
         [locale]: {
@@ -447,7 +447,7 @@ describe('synctrolTheme production integration', () => {
     const theme = synctrolTheme({
       siteUrl: 'https://synctrol.com',
       mainLocale: 'zh',
-      copyright: '© Synctrol',
+      topbarText: '© Synctrol',
       locales: { zh: { lang: 'zh-CN', label: '中文' } },
       seo: {
         name: 'Synctrol',
@@ -586,7 +586,7 @@ album:
       theme: synctrolTheme({
         siteUrl: 'https://synctrol.com',
         mainLocale: 'zh',
-        copyright: '© Synctrol',
+        topbarText: '© Synctrol',
         locales: {
           zh: { lang: 'zh-CN', label: '中文' },
           en: { lang: 'en-US', label: 'English' },

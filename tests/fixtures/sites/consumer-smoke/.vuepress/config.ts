@@ -25,7 +25,8 @@ export default defineUserConfig({
       zh: { lang: 'zh-CN', label: '中文', messages: zhMessages },
       en: { lang: 'en-US', label: 'English', messages: enMessages },
     },
-    copyright: 'Copyright Synctrol',
+    topbarText: 'Copyright Synctrol',
+    footbarText: '敬请期待 · STAY TUNED',
     navigation: {
       items: [
         {

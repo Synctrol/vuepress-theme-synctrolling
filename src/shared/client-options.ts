@@ -19,7 +19,8 @@ export interface ClientSynctrolThemeOptions {
   locales: Record<LocaleKey, ResolvedLocaleOptions>
   showDrafts: boolean
   defaultColorMode: ResolvedSynctrolThemeOptions['defaultColorMode']
-  copyright: Multilanguage
+  topbarText: Multilanguage
+  footbarText?: Multilanguage
   navigation: NavigationOptions
   socialLinks: SocialLinksOptions
   release: ReleaseOptions
@@ -162,7 +163,10 @@ export function toClientThemeOptions(
     locales: copyLocales(resolved.locales),
     showDrafts: resolved.showDrafts,
     defaultColorMode: resolved.defaultColorMode,
-    copyright: copyMultilanguage(resolved.copyright),
+    topbarText: copyMultilanguage(resolved.topbarText),
+    ...(resolved.footbarText === undefined
+      ? {}
+      : { footbarText: copyMultilanguage(resolved.footbarText) }),
     navigation: copyNavigation(resolved.navigation),
     socialLinks: copySocialLinks(resolved.socialLinks),
     release: copyRelease(resolved.release),

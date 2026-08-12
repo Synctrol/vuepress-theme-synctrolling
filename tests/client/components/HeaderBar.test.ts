@@ -5,7 +5,7 @@ import { SYNCTROL_DRAWER_OPEN_KEY } from '../../../src/client/composables/keys'
 import { mountShell } from '../harness/mount'
 
 describe('HeaderBar', () => {
-  it('renders localized copyright and ThemeMode', () => {
+  it('renders localized topbar text and ThemeMode', () => {
     const drawerOpen = ref(false)
     const wrapper = mountShell(HeaderBar, {
       locale: 'zh',
@@ -14,6 +14,7 @@ describe('HeaderBar', () => {
       },
     })
     expect(wrapper.text()).toContain('© 2026 Synctrol')
+    expect(wrapper.find('.syn-topbar-text').exists()).toBe(true)
     expect(wrapper.find('.syn-theme-mode').exists()).toBe(true)
   })
 

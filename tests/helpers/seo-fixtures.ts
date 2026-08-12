@@ -27,7 +27,7 @@ export function resolvedOptions(
     },
     showDrafts: false,
     defaultColorMode: 'auto',
-    copyright: 'SYNCTROL (C) 2026',
+    topbarText: 'SYNCTROL (C) 2026',
     feeds: { rss: true, sitemap: true },
     navigation: { externalTarget: '_blank', items: [] },
     socialLinks: { items: [] },

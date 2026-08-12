@@ -107,7 +107,10 @@ export interface SynctrolThemeOptions {
   locales: Record<LocaleKey, LocaleOptions>
   showDrafts?: boolean
   defaultColorMode?: 'auto' | 'light' | 'dark'
-  copyright: Multilanguage
+  /** Text rendered in the top bar (replaces the old `copyright` option). */
+  topbarText: Multilanguage
+  /** Optional text rendered in the bottom bar (replaces home-footer markdown). */
+  footbarText?: Multilanguage
   feeds?: {
     rss: boolean
     sitemap: boolean
@@ -135,7 +138,8 @@ export interface ResolvedSynctrolThemeOptions {
   locales: Record<LocaleKey, ResolvedLocaleOptions>
   showDrafts: boolean
   defaultColorMode: 'auto' | 'light' | 'dark'
-  copyright: Multilanguage
+  topbarText: Multilanguage
+  footbarText?: Multilanguage
   feeds: { rss: boolean; sitemap: boolean }
   navigation: NavigationOptions
   socialLinks: SocialLinksOptions
@@ -309,7 +313,10 @@ export function resolveThemeOptions(
     locales,
     showDrafts: input.showDrafts ?? false,
     defaultColorMode: input.defaultColorMode ?? 'auto',
-    copyright: copyMultilanguage(input.copyright),
+    topbarText: copyMultilanguage(input.topbarText),
+    ...(input.footbarText === undefined
+      ? {}
+      : { footbarText: copyMultilanguage(input.footbarText) }),
     feeds: {
       rss: input.feeds?.rss ?? true,
       sitemap: input.feeds?.sitemap ?? true,

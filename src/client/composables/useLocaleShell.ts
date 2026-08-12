@@ -9,13 +9,13 @@ export function useLocaleShell() {
   const locale = computed(() => shell.locale)
   const messages = computed(() => theme.locales[shell.locale]!.messages)
   const localeLabel = computed(() => theme.locales[shell.locale]!.label)
-  const copyright = computed(() => {
-    const resolved = resolveMultilanguage(
-      theme.copyright,
-      shell.locale,
-      theme.mainLocale,
-    )
-    return resolved
-  })
-  return { theme, shell, locale, messages, localeLabel, copyright }
+  const topbarText = computed(() =>
+    resolveMultilanguage(theme.topbarText, shell.locale, theme.mainLocale),
+  )
+  const footbarText = computed(() =>
+    theme.footbarText === undefined
+      ? undefined
+      : resolveMultilanguage(theme.footbarText, shell.locale, theme.mainLocale),
+  )
+  return { theme, shell, locale, messages, localeLabel, topbarText, footbarText }
 }

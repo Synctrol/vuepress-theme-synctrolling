@@ -47,7 +47,7 @@ export function themeOptions(
     mainLocale: overrides.mainLocale ?? 'zh',
     locales: overrides.locales ?? baseLocales(),
     showDrafts: overrides.showDrafts ?? false,
-    copyright: '© Synctrol',
+    topbarText: '© Synctrol',
     seo: {
       name: 'Synctrol',
       description: 'Synctrol releases and news',

@@ -5,7 +5,7 @@ import { useLocaleShell } from '../composables/useLocaleShell.js'
 import ThemeMode from './ThemeMode.vue'
 
 const drawerOpen = inject(SYNCTROL_DRAWER_OPEN_KEY) as Ref<boolean>
-const { copyright, messages } = useLocaleShell()
+const { topbarText, messages } = useLocaleShell()
 
 function toggleMenu(): void {
   drawerOpen.value = !drawerOpen.value
@@ -15,10 +15,10 @@ function toggleMenu(): void {
 <template>
   <header class="syn-header">
     <p
-      class="syn-header__copyright"
-      :lang="copyright.fellBack ? copyright.locale : undefined"
+      class="syn-topbar-text"
+      :lang="topbarText.fellBack ? topbarText.locale : undefined"
     >
-      {{ copyright.text }}
+      {{ topbarText.text }}
     </p>
     <div class="syn-header__controls">
       <ThemeMode />

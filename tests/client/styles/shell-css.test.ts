@@ -80,7 +80,8 @@ describe('shell.css', () => {
 
   it('keeps the bars at reference height (no p margins, in-bar controls shrink)', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
-    expect(css).toMatch(/\.syn-header__copyright\s*\{[^}]*margin:\s*0/)
+    expect(css).toMatch(/\.syn-topbar-text\s*\{[^}]*margin:\s*0/)
+    expect(css).toMatch(/\.syn-footbar-text\s*\{[^}]*margin:\s*0/)
     expect(css).toMatch(/\.syn-header\s*\{[^}]*--syn-dock-control-size:\s*20px/)
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*--syn-dock-control-size:\s*20px/)
     expect(css).not.toContain('@media (max-width: 360px)')

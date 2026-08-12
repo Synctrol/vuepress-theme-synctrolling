@@ -7,7 +7,8 @@ export function fixtureThemeOptions(
   return resolveThemeOptions({
     siteUrl: 'https://synctrol.com',
     mainLocale: 'zh',
-    copyright: { zh: '© 2026 Synctrol', en: '© 2026 Synctrol' },
+    topbarText: { zh: '© 2026 Synctrol', en: '© 2026 Synctrol' },
+    footbarText: { zh: '敬请期待', en: 'Stay tuned' },
     defaultColorMode: 'auto',
     locales: {
       zh: { lang: 'zh-CN', label: '中文' },

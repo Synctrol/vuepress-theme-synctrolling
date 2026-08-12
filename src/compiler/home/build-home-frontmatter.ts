@@ -48,8 +48,5 @@ export function buildHomeFrontmatterForPage(
   return {
     kind: 'home',
     logoHtml: extracted.logoHtml,
-    ...(extracted.footerHtml === undefined
-      ? {}
-      : { footerHtml: extracted.footerHtml }),
   }
 }

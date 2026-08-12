@@ -19,7 +19,7 @@ export function themeOptions(
       zh: { lang: 'zh-CN', label: '中文' },
       en: { lang: 'en-US', label: 'English' },
     },
-    copyright: '© Synctrol',
+    topbarText: '© Synctrol',
     seo: {
       name: { zh: 'Synctrol', en: 'Synctrol' },
       description: {

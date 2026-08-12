@@ -7,13 +7,13 @@ import { homePackage } from '../../helpers/news-fixtures'
 import type { CompiledPage } from '../../../src/shared/route-types'
 
 describe('home formatters', () => {
-  it('registers home-logo and home-footer markdown-it containers', () => {
+  it('registers the home-logo markdown-it container', () => {
     const md = new MarkdownIt()
     registerHomeFormatters(md)
-    const html = md.render('::: home-logo\n# SYNCTROL\n:::\n\n::: home-footer\nContact\n:::\n')
+    const html = md.render('::: home-logo\n# SYNCTROL\n:::\n')
     expect(html).toContain('data-syn-formatter="home-logo"')
     expect(html).toContain('SYNCTROL')
-    expect(html).toContain('data-syn-formatter="home-footer"')
+    expect(html).not.toContain('home-footer')
   })
 
   it('asserts home-logo exists in Home markdown source', () => {
@@ -26,7 +26,6 @@ describe('home formatters', () => {
     registerHomeFormatters(md)
     const extracted = extractHomeFormatterHtml(md.render('::: home-logo\n# SYNCTROL\n:::\n'))
     expect(extracted.logoHtml).toContain('SYNCTROL')
-    expect(extracted.footerHtml).toBeUndefined()
 
     const pkg = homePackage({
       locales: {

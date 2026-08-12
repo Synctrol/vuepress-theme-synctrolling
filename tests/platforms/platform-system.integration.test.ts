@@ -31,7 +31,7 @@ describe('platform system integration', () => {
     const options = resolveThemeOptions({
       siteUrl: 'https://synctrol.com',
       mainLocale: 'zh',
-      copyright: 'SYNCTROL',
+      topbarText: 'SYNCTROL',
       locales: {
         zh: { lang: 'zh-CN', label: '中文' },
         en: { lang: 'en-US', label: 'English' },

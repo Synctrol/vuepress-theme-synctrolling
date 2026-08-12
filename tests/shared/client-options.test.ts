@@ -10,7 +10,7 @@ const base = {
   siteUrl: 'https://synctrol.com',
   definitionsPath: './content/definitions.yml',
   mainLocale: 'zh',
-  copyright: 'SYNCTROL © 2026',
+  topbarText: 'SYNCTROL © 2026',
   locales: {
     zh: { lang: 'zh-CN', label: '中文' },
     en: { lang: 'en-US', label: 'English' },

@@ -7,7 +7,7 @@ describe('resolveThemeOptions', () => {
   const base = {
     siteUrl: 'https://synctrol.com',
     mainLocale: 'zh',
-    copyright: 'SYNCTROL © 2026',
+    topbarText: 'SYNCTROL © 2026',
     locales: {
       zh: { lang: 'zh-CN', label: '中文' },
       en: { lang: 'en-US', label: 'English' },
@@ -40,7 +40,7 @@ describe('resolveThemeOptions', () => {
     resolveThemeOptions(input as SynctrolThemeOptions)
 
   const multilanguageLocations = [
-    ['options.copyright', ['copyright']],
+    ['options.topbarText', ['topbarText']],
     ['options.navigation.items[0].label', ['navigation', 'items', 0, 'label']],
     ['options.navigation.items[0].href', ['navigation', 'items', 0, 'href']],
     ['options.socialLinks.items[0].label', ['socialLinks', 'items', 0, 'label']],
@@ -180,10 +180,10 @@ describe('resolveThemeOptions', () => {
       expect(() =>
         resolveRuntimeOptions({
           ...base,
-          copyright: { en: 'English only' },
+          topbarText: { en: 'English only' },
         }),
       ).toThrow(
-        /Invalid options\.copyright\.zh: expected an own string for mainLocale "zh"/,
+        /Invalid options\.topbarText\.zh: expected an own string for mainLocale "zh"/,
       )
     } finally {
       Reflect.deleteProperty(Object.prototype, 'zh')
@@ -194,10 +194,10 @@ describe('resolveThemeOptions', () => {
     expect(() =>
       resolveRuntimeOptions({
         ...base,
-        copyright: { zh: 42, en: 'English' },
+        topbarText: { zh: 42, en: 'English' },
       }),
     ).toThrow(
-      /Invalid options\.copyright\.zh: expected an own string for mainLocale "zh"/,
+      /Invalid options\.topbarText\.zh: expected an own string for mainLocale "zh"/,
     )
   })
 
@@ -205,7 +205,7 @@ describe('resolveThemeOptions', () => {
     expect(
       resolveThemeOptions({
         ...base,
-        copyright: 'Shared copyright',
+        topbarText: 'Shared copyright',
         seo: {
           ...base.seo,
           name: 'Shared name',
@@ -221,7 +221,7 @@ describe('resolveThemeOptions', () => {
             },
           },
         },
-      }).copyright,
+      }).topbarText,
     ).toBe('Shared copyright')
   })
 
@@ -682,7 +682,7 @@ describe('resolveThemeOptions', () => {
         ...base,
         mainLocale: localeKey,
         locales,
-        copyright: { [localeKey]: 'Copyright' },
+        topbarText: { [localeKey]: 'Copyright' },
         seo: {
           ...base.seo,
           name: { [localeKey]: 'Synctrol' },
@@ -803,7 +803,7 @@ describe('resolveThemeOptions', () => {
   it('isolates resolved containers while preserving registration value identities', () => {
     const customMessages = { ...enMessages, draft: 'Draft before mutation' }
     const dateFormat: Intl.DateTimeFormatOptions = { dateStyle: 'short' }
-    const copyright = { zh: '版权', en: 'Copyright' }
+    const topbarText = { zh: '版权', en: 'Copyright' }
     const navigationLabel = { zh: '关于', en: 'About' }
     const navigationHref = { zh: '/guanyu', en: '/about' }
     const navigationItems = [
@@ -839,7 +839,7 @@ describe('resolveThemeOptions', () => {
     const backgrounds = { home: backgroundLoader }
     const input: SynctrolThemeOptions = {
       ...base,
-      copyright,
+      topbarText,
       locales: {
         ...base.locales,
         ja: {
@@ -877,7 +877,7 @@ describe('resolveThemeOptions', () => {
 
     customMessages.draft = 'Draft after mutation'
     dateFormat.dateStyle = 'full'
-    copyright.zh = '已改变'
+    topbarText.zh = '已改变'
     navigationLabel.zh = '已改变'
     navigationHref.en = '/changed'
     navigationItems.push({
@@ -905,7 +905,7 @@ describe('resolveThemeOptions', () => {
 
     expect(resolved.locales.ja.messages.draft).toBe('Draft before mutation')
     expect(resolved.locales.ja.dateFormat.dateStyle).toBe('short')
-    expect(resolved.copyright).toEqual({ zh: '版权', en: 'Copyright' })
+    expect(resolved.topbarText).toEqual({ zh: '版权', en: 'Copyright' })
     expect(resolved.navigation.items).toEqual([
       {
         label: { zh: '关于', en: 'About' },

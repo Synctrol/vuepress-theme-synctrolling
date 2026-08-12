@@ -11,9 +11,9 @@ import {
   type SynctrolShellContext,
 } from '../composables/keys.js'
 import ShellLayout from '../components/ShellLayout.vue'
-import HomeFooterSlot from '../components/home/HomeFooterSlot.vue'
 import HomeLogoSlot from '../components/home/HomeLogoSlot.vue'
 import { useThemeOptions } from '../composables/useThemeOptions.js'
+import { resolveMultilanguage } from '../../shared/multilanguage.js'
 import { buildLocaleAlternates } from '../i18n/locale-alternates.js'
 import { encodePathSegment } from '../../shared/encode-path-segment.js'
 import { formatCalendarDate } from '../../shared/format-calendar-date.js'
@@ -125,6 +125,14 @@ provide(SYNCTROL_THEME_OPTIONS_KEY, theme)
 provide(SYNCTROL_SHELL_CONTEXT_KEY, shell)
 provide(SYNCTROL_DRAWER_OPEN_KEY, drawerOpen)
 
+// Layout owns the shell context, so resolve the footbar text locally
+// (a component cannot inject its own provide).
+const footbarText = computed(() =>
+  theme.footbarText === undefined
+    ? undefined
+    : resolveMultilanguage(theme.footbarText, locale.value, theme.mainLocale),
+)
+
 const release = computed(() => synctrol.value.release)
 const news = computed(() => synctrol.value.news)
 const pageFrontmatter = computed(() => synctrol.value.page)
@@ -221,7 +229,13 @@ const platformMessages = computed(() => ({
     />
     <Content v-else />
     <template #footer>
-      <HomeFooterSlot v-if="home?.kind === 'home'" :html="home.footerHtml" />
+      <p
+        v-if="footbarText !== undefined"
+        class="syn-footbar-text"
+        :lang="footbarText.fellBack ? footbarText.locale : undefined"
+      >
+        {{ footbarText.text }}
+      </p>
     </template>
   </ShellLayout>
 </template>

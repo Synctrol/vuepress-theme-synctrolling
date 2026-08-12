@@ -1,4 +1,4 @@
-const FORMATTER_NAMES = ['home-logo', 'home-footer'] as const
+const FORMATTER_NAMES = ['home-logo'] as const
 
 type FormatterName = (typeof FORMATTER_NAMES)[number]
 
@@ -57,14 +57,10 @@ function toReferenceLogoHtml(logoHtml: string): string {
 
 export function extractHomeFormatterHtml(renderedHtml: string): {
   logoHtml: string
-  footerHtml?: string
 } {
   const extracted = extractNamedFormatter(renderedHtml, 'home-logo')
   if (extracted === undefined) {
     throw new Error('Rendered Home markdown is missing home-logo formatter HTML')
   }
-  const logoHtml = toReferenceLogoHtml(extracted)
-
-  const footerHtml = extractNamedFormatter(renderedHtml, 'home-footer')
-  return footerHtml === undefined ? { logoHtml } : { logoHtml, footerHtml }
+  return { logoHtml: toReferenceLogoHtml(extracted) }
 }
