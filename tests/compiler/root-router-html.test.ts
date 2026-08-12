@@ -131,13 +131,13 @@ describe('buildRootRouterScript', () => {
 describe('generateRootRouterHtml', () => {
   const options = themeOptions()
 
-  it('emits visible language links and an inline redirect script', () => {
+  it('emits an inline redirect script and no visible language links', () => {
     const html = generateRootRouterHtml({ options, base: '/' })
 
-    expect(html).toContain('href="/zh/"')
-    expect(html).toContain('>中文</a>')
-    expect(html).toContain('href="/en/"')
-    expect(html).toContain('>English</a>')
+    expect(html).not.toContain('href="/zh/"')
+    expect(html).not.toContain('>中文</a>')
+    expect(html).not.toContain('href="/en/"')
+    expect(html).not.toContain('>English</a>')
     expect(html).toContain('location.replace')
     expect(html).toContain(LOCALE_STORAGE_KEY)
     expect(html).toContain('<html lang="zh-CN">')
@@ -150,15 +150,15 @@ describe('generateRootRouterHtml', () => {
     expect(html).not.toMatch(/<link[^>]+rel="?modulepreload/)
   })
 
-  it('prefixes language hrefs with the VuePress base', () => {
+  it('serializes the base into the router config', () => {
     const html = generateRootRouterHtml({ options, base: '/docs/' })
 
-    expect(html).toContain('href="/docs/zh/"')
-    expect(html).toContain('href="/docs/en/"')
     expect(html).toContain('"base":"/docs/"')
+    expect(html).toContain('"homes"')
+    expect(html).toContain('"/docs/zh/"')
   })
 
-  it('emits encoded hrefs and homes for a non-ASCII locale key', () => {
+  it('emits encoded homes for a non-ASCII locale key', () => {
     // Plan 01 requires complete messages for non-zh/en locales (same as Tasks 7–8).
     const html = generateRootRouterHtml({
       options: themeOptions({
@@ -172,10 +172,6 @@ describe('generateRootRouterHtml', () => {
     })
     const encoded = encodeRouteSegment('日本語', 'locale')
 
-    expect(html).toContain(`href="/docs/${encoded}/"`)
-    expect(html).not.toContain('href="/docs/日本語/"')
-    expect(html).toContain(`"homes"`)
-    // homes values are encoded publicPaths after base join (base=/docs/)
     expect(html).toContain(`"/docs/${encoded}/"`)
   })
 
@@ -206,7 +202,6 @@ describe('generateRootRouterHtml', () => {
     expect(html).not.toContain('</script><script>alert(1)')
     expect(html).not.toContain('<img src=x')
     expect(html).toContain('\\u003c/script\\u003e')
-    expect(html).toContain('&lt;img src=x')
   })
 
   it('escapes ampersands and the U+2028/U+2029 line terminators in the inline JSON', () => {

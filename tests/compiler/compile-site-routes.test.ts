@@ -37,7 +37,7 @@ describe('compileSiteRoutes', () => {
     expect(paths).toContain('/zh/releases/first-release/')
     expect(result.diagnostics.every((d) => d.severity === 'warning')).toBe(true)
     expect(result.rootRouterHtml).toContain('location.replace')
-    expect(result.rootRouterHtml).toContain('href="/zh/"')
+    expect(result.rootRouterHtml).toContain('"homes"')
   })
 
   it('derives locale keys from configured locales in order', () => {

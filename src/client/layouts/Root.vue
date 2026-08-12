@@ -41,6 +41,7 @@ function resolveLocale(): string | null {
 }
 
 onMounted(() => {
+  // Always resolves: stored preference -> browser languages -> mainLocale.
   const locale = resolveLocale()
   const target = locale === null ? undefined : homes[locale]
   // Client-side navigation: never an HTTP redirect, so the browser
@@ -50,18 +51,5 @@ onMounted(() => {
 </script>
 
 <template>
-  <nav class="syn-root-router" :aria-label="String(theme.locales[theme.mainLocale].label)">
-    <ul class="syn-root-router__list">
-      <li v-for="(href, key) in homes" :key="key" class="syn-root-router__item">
-        <a
-          class="syn-root-router__link"
-          :href="href"
-          :lang="theme.locales[key].lang"
-          :hreflang="theme.locales[key].lang"
-        >
-          {{ theme.locales[key].label }}
-        </a>
-      </li>
-    </ul>
-  </nav>
+  <!-- Language router only: no visible content, links are unnecessary. -->
 </template>

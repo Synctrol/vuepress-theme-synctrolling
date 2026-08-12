@@ -261,14 +261,14 @@ describe('synctrolTheme production integration', () => {
     const rootHtml = readFileSync(join(dest, 'index.html'), 'utf8')
     expect(rootHtml).toContain('location.replace')
     expect(rootHtml).toContain('synctrol:locale')
-    expect(rootHtml).toContain('href="/zh/"')
+    expect(rootHtml).toContain('"homes"')
   })
 
   it('honours a non-root base in the root router links', async () => {
     const app = await runBuild('/docs/')
     const rootHtml = readFileSync(join(app.dir.dest(), 'index.html'), 'utf8')
 
-    expect(rootHtml).toContain('href="/docs/zh/"')
+    expect(rootHtml).toContain('"/docs/zh/"')
     expect(rootHtml).toContain('"base":"/docs/"')
     expect(existsSync(join(app.dir.dest(), 'zh/index.html'))).toBe(true)
   })
@@ -378,7 +378,7 @@ describe('synctrolTheme production integration', () => {
     expect(detailCompiled!.url.routePath).not.toContain('/日本語/')
 
     const rootHtml = readFileSync(join(app.dir.dest(), 'index.html'), 'utf8')
-    expect(rootHtml).toContain(`href="/${encodedLocale}/"`)
+    expect(rootHtml).toContain(`"/${encodedLocale}/"`)
     expect(rootHtml).not.toContain('href="/日本語/"')
   })
 
@@ -475,7 +475,7 @@ describe('synctrolTheme production integration', () => {
     const rootHtml = readFileSync(join(app.dir.dest(), 'index.html'), 'utf8')
     expect(rootHtml).toContain('location.replace')
     expect(rootHtml).toContain('synctrol:locale')
-    expect(rootHtml).toContain('href="/zh/"')
+    expect(rootHtml).toContain('"homes"')
 
     // frontmatter.synctrol.contentAssets injected on content pages (empty map ok when no assets)
     const home = app.pages.find((page: Page) => page.path === '/zh/')
@@ -531,7 +531,7 @@ album:
     const indexHtml = readFileSync(join(dest, 'index.html'), 'utf8')
     expect(indexHtml).toContain('location.replace')
     expect(indexHtml).toContain('synctrol:locale')
-    expect(indexHtml).toContain('href="/zh/"')
+    expect(indexHtml).toContain('"homes"')
     assertNoCspMetaInjection(indexHtml)
 
     const pageHtml = readFileSync(
@@ -773,5 +773,9 @@ album:
     expect(existsSync(join(dest, 'sitemap.xml'))).toBe(true)
     expect(existsSync(join(dest, 'index.html'))).toBe(true)
     expect(existsSync(join(dest, 'synctrol-csp.json'))).toBe(true)
+
+    // The language-router root page must never appear in the sitemap.
+    const sitemap = readFileSync(join(dest, 'sitemap.xml'), 'utf8')
+    expect(sitemap).not.toContain('<loc>https://synctrol.com/</loc>')
   })
 })

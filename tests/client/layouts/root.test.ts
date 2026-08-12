@@ -22,20 +22,6 @@ function stubLocationReplace(): ReturnType<typeof vi.fn> {
 }
 
 describe('Root layout (language router)', () => {
-  it('renders the locale fallback links', () => {
-    const theme = fixtureThemeOptions()
-    const wrapper = mount(Root, {
-      global: {
-        provide: { [SYNCTROL_THEME_OPTIONS_KEY as symbol]: theme },
-      },
-    })
-    const links = wrapper.findAll('a.syn-root-router__link')
-    expect(links.map((link) => link.attributes('href'))).toEqual([
-      '/zh/',
-      '/en/',
-    ])
-  })
-
   it('redirects with a client-side replace to the stored locale home', async () => {
     const replace = stubLocationReplace()
     localStorage.setItem(LOCALE_STORAGE_KEY, 'en')

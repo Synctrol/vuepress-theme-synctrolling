@@ -140,7 +140,7 @@ describe('locale route compiler integration', () => {
       true,
     )
     expect(hidden.pages.some((page) => page.identity === 'news:secret')).toBe(false)
-    expect(hidden.rootRouterHtml).toContain('href="/docs/zh/"')
+    expect(hidden.rootRouterHtml).toContain('"/docs/zh/"')
     expect(
       hidden.pages.find((page) => page.identity === 'home' && page.locale === 'zh')
         ?.url.publicPath,

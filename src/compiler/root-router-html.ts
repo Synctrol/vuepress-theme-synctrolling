@@ -97,14 +97,6 @@ export function generateRootRouterHtml(input: RootRouterInput): string {
   ).text
   const homes = localeHomePublicPaths(input.options.locales, base)
 
-  const links = Object.entries(input.options.locales)
-    .map(([key, locale]) => {
-      const href = escapeHtml(homes[key]!)
-      const lang = escapeHtml(locale.lang)
-      return `      <li><a href="${href}" lang="${lang}" hreflang="${lang}">${escapeHtml(locale.label)}</a></li>`
-    })
-    .join('\n')
-
   const config = serializeForScript({
     mainLocale: input.options.mainLocale,
     base,
@@ -122,11 +114,6 @@ export function generateRootRouterHtml(input: RootRouterInput): string {
   <script>${buildRootRouterScript()}</script>
 </head>
 <body>
-  <nav aria-label="${escapeHtml(title)}">
-    <ul>
-${links}
-    </ul>
-  </nav>
 </body>
 </html>
 `
