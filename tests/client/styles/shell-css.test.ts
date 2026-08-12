@@ -197,9 +197,10 @@ describe('shell.css', () => {
 
   it('lays the nav drawer over the main area so bars and shell borders stay visible', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
-    expect(css).toMatch(/\.syn-main\s*\{[^}]*position:\s*relative/)
-    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*position:\s*absolute/)
-    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*inset:\s*0/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*position:\s*fixed/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*top:\s*var\(--syn-drawer-top/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*bottom:\s*var\(--syn-drawer-bottom/)
+    expect(css).not.toMatch(/\.syn-nav-drawer\s*\{[^}]*inset:/)
     // The drawer stays rendered so the fade can animate (visibility,
     // not display, toggles; the header icon morphs into a close icon).
     expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*visibility:\s*hidden/)
