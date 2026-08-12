@@ -30,7 +30,6 @@ const shellClass = computed(() => ({
       <NavDrawer />
     </main>
     <Navigation />
-    <div class="syn-side-panel" />
     <SiteFooter>
       <slot name="footer" />
       <SocialLinks />

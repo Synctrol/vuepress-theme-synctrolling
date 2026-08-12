@@ -49,7 +49,7 @@ describe('shell mobile contract', () => {
       /@media\s*\(\s*max-width:\s*768px\s*\)/,
     )
     expect(mobile).toMatch(
-      /\.syn-shell\s*>\s*\.syn-navigation\s*,\s*\.syn-shell\s*>\s*\.syn-side-panel\s*\{[^}]*display:\s*none/,
+      /\.syn-shell\s*>\s*\.syn-navigation\s*\{[^}]*display:\s*none/,
     )
   })
 })

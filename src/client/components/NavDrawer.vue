@@ -72,6 +72,5 @@ onUnmounted(() => {
     :aria-hidden="drawerOpen ? 'false' : 'true'"
   >
     <Navigation />
-    <div class="syn-nav-drawer__side-panel" />
   </div>
 </template>

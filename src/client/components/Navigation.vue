@@ -67,5 +67,8 @@ const items = computed(() =>
         </a>
       </li>
     </ul>
+    <div class="syn-navigation__side-panel">
+      <slot name="side-panel" />
+    </div>
   </nav>
 </template>

@@ -23,7 +23,7 @@ body {
   grid-template-areas:
     'header header'
     'main navigation'
-    'main side-panel'
+    'main navigation'
     'footer footer';
   grid-template-columns:
     minmax(0, 1.618fr)
@@ -153,14 +153,13 @@ body {
   flex-direction: column;
   background: var(--syn-deco-bg);
   color: var(--syn-deco-label-fg);
-  border-bottom: var(--syn-border-strong);
   padding: 0;
 }
 
 .syn-navigation__list {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1.618;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -225,13 +224,18 @@ body {
   color: var(--syn-deco-bg);
 }
 
-/* Right-column bottom area (reference cell-status position); keeps the
-   1.618fr : 1fr golden ratio via the grid rows. Content comes from the
-   consumer via slots/components later. */
-.syn-side-panel {
-  grid-area: side-panel;
+/* Right-column bottom area (reference cell-status position); child of the
+   nav so the golden ratio lives inside one flex column (1.618 : 1).
+   Horizontal-only padding: vertical padding would distort the flex
+   distribution (padding forms a minimum box). Content comes from the
+   consumer via the side-panel slot. */
+.syn-navigation__side-panel {
+  flex: 1;
   min-height: 0;
-  padding: 24px;
+  /* Separator via box-shadow: a real border would offset the flex
+     golden-ratio distribution (borders cannot shrink). */
+  box-shadow: inset 0 3px 0 currentColor;
+  padding: 0 24px;
 }
 
 .syn-site-footer {
@@ -396,16 +400,8 @@ body {
 .syn-nav-drawer .syn-navigation {
   display: flex;
   flex-direction: column;
-  flex: 1.618;
-  border-bottom: 0;
-}
-
-.syn-nav-drawer__side-panel {
   flex: 1;
-  min-height: 0;
-  /* Horizontal-only padding: vertical padding would distort the
-     flex golden-ratio distribution (padding forms a minimum box). */
-  padding: 0 24px;
+  border-bottom: 0;
 }
 
 :focus-visible {
@@ -441,8 +437,7 @@ body {
     bottom: 0;
   }
 
-  .syn-shell > .syn-navigation,
-  .syn-shell > .syn-side-panel {
+  .syn-shell > .syn-navigation {
     display: none;
   }
 }
