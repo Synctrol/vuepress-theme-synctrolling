@@ -1,27 +1,15 @@
 import type {
-  BuiltInPlatformType,
   ContentDefinitions,
   LocaleKey,
   NormalizedPlatformEntry,
   PlatformCategory,
 } from '../shared/types.js'
-import { fail } from './diagnostics.js'
+import type { PlatformTypeRegistration } from '../shared/options.js'
+import { resolvePlatformTypes } from '../platforms/registry.js'
+import { fail, isDiagnosticError } from './diagnostics.js'
 import { assertMultilanguage } from './multilanguage.js'
 
 type PlainRecord = Record<string, unknown>
-
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/
-
-const ALLOWED_FIELDS: Record<BuiltInPlatformType, readonly string[]> = {
-  link: ['platform', 'label', 'url'],
-  audio_player: ['platform', 'label', 'src', 'mime', 'autoplay'],
-  youtube_player: ['platform', 'label', 'videoId', 'start', 'autoplay'],
-  bilibili_player: ['platform', 'label', 'bvid', 'page', 'autoplay'],
-  apple_music_player: ['platform', 'label', 'url'],
-  spotify_player: ['platform', 'label', 'uri'],
-  soundcloud_player: ['platform', 'label', 'url'],
-  netease_player: ['platform', 'label', 'id', 'resourceType'],
-}
 
 function invalid(code: string, message: string, path: string): never {
   fail({
@@ -99,218 +87,6 @@ function copyOwnDataFields(value: unknown, path: string): PlainRecord {
   return copy
 }
 
-function isBuiltInPlatformType(value: string): value is BuiltInPlatformType {
-  return Object.hasOwn(ALLOWED_FIELDS, value)
-}
-
-function rejectUnknownFields(
-  entry: PlainRecord,
-  allowed: readonly string[],
-  path: string,
-): void {
-  for (const key of Object.getOwnPropertyNames(entry)) {
-    if (!allowed.includes(key)) {
-      invalid(
-        'UNKNOWN_FIELD',
-        `Unknown platform entry field "${key}"`,
-        path,
-      )
-    }
-  }
-}
-
-interface ValidatedHttpsUrl {
-  parsed: URL
-  value: string
-}
-
-function hasUserinfoSyntax(value: string): boolean {
-  const remainder = value.slice('https://'.length)
-  const authorityEnd = remainder.search(/[/?#]/)
-  const authority =
-    authorityEnd === -1 ? remainder : remainder.slice(0, authorityEnd)
-  return authority.includes('@')
-}
-
-function parseHttpsUrl(
-  value: unknown,
-  path: string,
-  field: string,
-): ValidatedHttpsUrl {
-  if (
-    typeof value !== 'string' ||
-    value.length === 0 ||
-    value.trim() !== value ||
-    CONTROL_CHARACTERS.test(value) ||
-    !/^https:\/\//i.test(value)
-  ) {
-    invalid(
-      'INVALID_PLATFORM_ENTRY',
-      `${field} must be an absolute HTTPS URL`,
-      path,
-    )
-  }
-
-  let parsed: URL
-  try {
-    parsed = new URL(value)
-  } catch {
-    invalid(
-      'INVALID_PLATFORM_ENTRY',
-      `${field} must be an absolute HTTPS URL`,
-      path,
-    )
-  }
-
-  if (parsed.protocol !== 'https:' || parsed.hostname.length === 0) {
-    invalid(
-      'INVALID_PLATFORM_ENTRY',
-      `${field} must be an absolute HTTPS URL`,
-      path,
-    )
-  }
-
-  if (
-    hasUserinfoSyntax(value) ||
-    parsed.username.length > 0 ||
-    parsed.password.length > 0
-  ) {
-    invalid(
-      'INVALID_PLATFORM_ENTRY',
-      `${field} must not contain credentials`,
-      path,
-    )
-  }
-
-  return { parsed, value }
-}
-
-function assertHttpsUrl(
-  value: unknown,
-  path: string,
-  field: string,
-): string {
-  return parseHttpsUrl(value, path, field).value
-}
-
-function invalidAudioSource(path: string): never {
-  invalid(
-    'INVALID_PLATFORM_ENTRY',
-    'audio_player.src must be a package-relative asset or absolute HTTPS URL',
-    path,
-  )
-}
-
-function decodePathSegment(segment: string, path: string): string {
-  let decoded = segment
-
-  for (let index = 0; index <= segment.length; index += 1) {
-    let next: string
-    try {
-      next = decodeURIComponent(decoded)
-    } catch {
-      invalidAudioSource(path)
-    }
-
-    if (next === decoded) {
-      return decoded
-    }
-    decoded = next
-  }
-
-  return decoded
-}
-
-function assertPackageRelativeAsset(value: string, path: string): string {
-  if (
-    value.length <= 2 ||
-    value.trim() !== value ||
-    CONTROL_CHARACTERS.test(value) ||
-    !value.startsWith('./') ||
-    value.includes('\\') ||
-    value.includes('?') ||
-    value.includes('#')
-  ) {
-    invalidAudioSource(path)
-  }
-
-  const relative = value.slice(2)
-  if (relative.startsWith('/') || relative.endsWith('/')) {
-    invalidAudioSource(path)
-  }
-
-  for (const segment of relative.split('/')) {
-    if (segment.length === 0) {
-      invalidAudioSource(path)
-    }
-
-    const decoded = decodePathSegment(segment, path)
-    if (
-      decoded === '.' ||
-      decoded === '..' ||
-      decoded.includes('/') ||
-      decoded.includes('\\') ||
-      decoded.includes('?') ||
-      decoded.includes('#') ||
-      CONTROL_CHARACTERS.test(decoded)
-    ) {
-      invalidAudioSource(path)
-    }
-  }
-
-  return value
-}
-
-function assertAudioSource(value: unknown, path: string): string {
-  if (typeof value !== 'string') {
-    invalidAudioSource(path)
-  }
-
-  if (/^https:/i.test(value)) {
-    return assertHttpsUrl(value, path, 'audio_player.src')
-  }
-
-  return assertPackageRelativeAsset(value, path)
-}
-
-function assertAudioMime(value: unknown, path: string): string {
-  if (typeof value !== 'string' || !value.startsWith('audio/')) {
-    invalid(
-      'INVALID_PLATFORM_ENTRY',
-      'audio_player.mime must be a string starting with audio/',
-      path,
-    )
-  }
-  return value
-}
-
-function assertAutoplay(value: unknown, path: string): boolean {
-  const autoplay = value === undefined ? false : value
-  if (typeof autoplay !== 'boolean') {
-    invalid(
-      'INVALID_PLATFORM_ENTRY',
-      'autoplay must be boolean',
-      path,
-    )
-  }
-  return autoplay
-}
-
-function optionalInteger(
-  value: unknown,
-  minimum: number,
-  path: string,
-  message: string,
-): number | undefined {
-  if (value === undefined) {
-    return undefined
-  }
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < minimum) {
-    invalid('INVALID_PLATFORM_ENTRY', message, path)
-  }
-  return value
-}
-
 function validateLabel(
   entry: PlainRecord,
   mainLocale: LocaleKey,
@@ -322,19 +98,13 @@ function validateLabel(
   return assertMultilanguage(entry.label, mainLocale, path, 'label')
 }
 
-function createBase(
-  platform: string,
-  label: ReturnType<typeof validateLabel>,
-): NormalizedPlatformEntry {
-  return label === undefined ? { platform } : { platform, label }
-}
-
 export function validatePlatformEntry(
   entry: unknown,
   defs: ContentDefinitions,
   mainLocale: LocaleKey,
   path: string,
   requiredCategory: PlatformCategory,
+  types: Record<string, PlatformTypeRegistration> = resolvePlatformTypes({}),
 ): NormalizedPlatformEntry {
   const raw = copyOwnDataFields(entry, path)
   const platform = raw.platform
@@ -372,154 +142,38 @@ export function validatePlatformEntry(
     )
   }
 
-  if (!isBuiltInPlatformType(definition.type)) {
-    invalid(
-      'UNKNOWN_PLATFORM_TYPE',
-      `Unknown platform type "${definition.type}"`,
+  const registration = types[definition.type]
+  if (!registration) {
+    fail({
+      severity: 'error',
+      code: 'UNKNOWN_PLATFORM_TYPE',
+      message: `Unknown platform type "${definition.type}"`,
       path,
-    )
+    })
   }
 
-  rejectUnknownFields(raw, ALLOWED_FIELDS[definition.type], path)
-  const base = createBase(platform, validateLabel(raw, mainLocale, path))
+  const label = validateLabel(raw, mainLocale, path)
 
-  switch (definition.type) {
-    case 'link':
-      return {
-        ...base,
-        url: assertHttpsUrl(raw.url, path, 'link.url'),
-      }
-
-    case 'audio_player': {
-      const src = assertAudioSource(raw.src, path)
-      const mime =
-        raw.mime === undefined ? undefined : assertAudioMime(raw.mime, path)
-      return {
-        ...base,
-        src,
-        ...(mime === undefined ? {} : { mime }),
-        autoplay: assertAutoplay(raw.autoplay, path),
-      }
-    }
-
-    case 'youtube_player': {
-      if (
-        typeof raw.videoId !== 'string' ||
-        !/^[A-Za-z0-9_-]{11}$/.test(raw.videoId)
-      ) {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'youtube_player.videoId must be exactly 11 [A-Za-z0-9_-] characters',
-          path,
-        )
-      }
-      const start = optionalInteger(
-        raw.start,
-        0,
+  try {
+    const normalized = registration.validate({
+      ...raw,
+      platform,
+      ...(label !== undefined ? { label } : {}),
+    })
+    return normalized as NormalizedPlatformEntry
+  } catch (error) {
+    if (isDiagnosticError(error) && error.diagnostics[0] !== undefined) {
+      const diagnostic = error.diagnostics[0]
+      fail({
+        ...diagnostic,
         path,
-        'youtube_player.start must be a non-negative integer',
-      )
-      return {
-        ...base,
-        videoId: raw.videoId,
-        ...(start === undefined ? {} : { start }),
-        autoplay: assertAutoplay(raw.autoplay, path),
-      }
+      })
     }
-
-    case 'bilibili_player': {
-      if (
-        typeof raw.bvid !== 'string' ||
-        !/^BV[A-Za-z0-9]{10}$/.test(raw.bvid)
-      ) {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'bilibili_player.bvid must be BV followed by ten ASCII letters or digits',
-          path,
-        )
-      }
-      const page = optionalInteger(
-        raw.page,
-        1,
-        path,
-        'bilibili_player.page must be an integer >= 1',
-      )
-      return {
-        ...base,
-        bvid: raw.bvid,
-        ...(page === undefined ? {} : { page }),
-        autoplay: assertAutoplay(raw.autoplay, path),
-      }
-    }
-
-    case 'apple_music_player': {
-      const { parsed, value } = parseHttpsUrl(
-        raw.url,
-        path,
-        'apple_music_player.url',
-      )
-      if (parsed.hostname !== 'music.apple.com') {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'apple_music_player.url must be HTTPS on music.apple.com',
-          path,
-        )
-      }
-      return { ...base, url: value }
-    }
-
-    case 'spotify_player':
-      if (
-        typeof raw.uri !== 'string' ||
-        !/^spotify:(album|track|playlist):[^:\s]+$/.test(raw.uri)
-      ) {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'spotify_player.uri must be spotify:album|track|playlist:<non-empty resource ID>',
-          path,
-        )
-      }
-      return { ...base, uri: raw.uri }
-
-    case 'soundcloud_player': {
-      const { parsed, value } = parseHttpsUrl(
-        raw.url,
-        path,
-        'soundcloud_player.url',
-      )
-      if (parsed.hostname !== 'soundcloud.com') {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'soundcloud_player.url must be HTTPS on soundcloud.com',
-          path,
-        )
-      }
-      return { ...base, url: value }
-    }
-
-    case 'netease_player':
-      if (typeof raw.id !== 'string' || !/^\d+$/.test(raw.id)) {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'netease_player.id must be a non-empty decimal digit string',
-          path,
-        )
-      }
-      if (
-        raw.resourceType !== 'song' &&
-        raw.resourceType !== 'album' &&
-        raw.resourceType !== 'playlist'
-      ) {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'netease_player.resourceType must be song|album|playlist',
-          path,
-        )
-      }
-      return {
-        ...base,
-        id: raw.id,
-        resourceType: raw.resourceType,
-      }
+    fail({
+      severity: 'error',
+      code: 'INVALID_PLATFORM_ENTRY',
+      message: error instanceof Error ? error.message : 'Invalid platform entry',
+      path,
+    })
   }
 }

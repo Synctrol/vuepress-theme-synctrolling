@@ -353,6 +353,15 @@ describe('resolveThemeOptions', () => {
     )
   })
 
+  it('rejects immediate platform loadStrategy', () => {
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        platforms: { loadStrategy: 'immediate' as 'interaction', types: {} },
+      }),
+    ).toThrow(/loadStrategy/)
+  })
+
   it('requires each platform registration to own its component field', () => {
     expect(() =>
       resolveRuntimeOptions({

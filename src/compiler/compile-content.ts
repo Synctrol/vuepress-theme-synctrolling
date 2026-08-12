@@ -6,6 +6,7 @@ import type {
   ContentManifest,
   LocaleKey,
 } from '../shared/types.js'
+import type { PlatformTypeRegistration } from '../shared/options.js'
 import { parseBook } from './book.js'
 import { fail, type SynctrolDiagnostic } from './diagnostics.js'
 import {
@@ -21,6 +22,8 @@ export interface CompileContentOptions {
   configDir: string
   mainLocale: LocaleKey
   definitionsPath?: string
+  /** Resolved built-in + custom platform type registry from theme options. */
+  platformTypes?: Record<string, PlatformTypeRegistration>
 }
 
 export interface CompileContentResult {
@@ -69,12 +72,28 @@ function validateOptions(
     invalidOptions('definitionsPath must be a non-empty string when provided')
   }
 
+  const platformTypes = raw.platformTypes
+  if (
+    platformTypes !== undefined &&
+    (typeof platformTypes !== 'object' ||
+      platformTypes === null ||
+      Array.isArray(platformTypes))
+  ) {
+    invalidOptions('platformTypes must be an object when provided')
+  }
+
   return {
     contentRoot: requiredString(raw, 'contentRoot'),
     sourceDir: requiredString(raw, 'sourceDir'),
     configDir: requiredString(raw, 'configDir'),
     mainLocale: requiredString(raw, 'mainLocale'),
     ...(definitionsPath === undefined ? {} : { definitionsPath }),
+    ...(platformTypes === undefined
+      ? {}
+      : {
+          platformTypes:
+            platformTypes as Record<string, PlatformTypeRegistration>,
+        }),
   }
 }
 
@@ -160,6 +179,7 @@ export function compileContent(
         item.bookYmlPath,
         definitions,
         validated.mainLocale,
+        validated.platformTypes,
       )
     }
 

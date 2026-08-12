@@ -72,9 +72,11 @@ export interface PlatformTypeRegistration<
   fallbackUrl?(entry: T): string | undefined
 }
 
+export type PlatformTypesConfig = Record<string, PlatformTypeRegistration>
+
 export interface PlatformsOptions {
   loadStrategy: 'interaction' | 'viewport'
-  types: Record<string, PlatformTypeRegistration>
+  types: PlatformTypesConfig
 }
 
 export interface SeoCollectionCopy {

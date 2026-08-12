@@ -11,6 +11,8 @@ import type {
   PlatformCategory,
   Track,
 } from '../shared/types.js'
+import type { PlatformTypeRegistration } from '../shared/options.js'
+import { resolvePlatformTypes } from '../platforms/registry.js'
 import { fail, isDiagnosticError } from './diagnostics.js'
 import { assertMultilanguage } from './multilanguage.js'
 import { validatePlatformEntry } from './platform-entry.js'
@@ -370,6 +372,7 @@ function validateBookLink(
   path: string,
   fieldPath: string,
   requiredCategory: PlatformCategory,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
 ): NormalizedPlatformEntry {
   try {
     return validatePlatformEntry(
@@ -378,6 +381,7 @@ function validateBookLink(
       mainLocale,
       path,
       requiredCategory,
+      platformTypes ?? resolvePlatformTypes({}),
     )
   } catch (error) {
     if (isDiagnosticError(error) && error.diagnostics[0] !== undefined) {
@@ -405,6 +409,7 @@ function parseLinks(
   path: string,
   fieldPath: string,
   requiredCategory: PlatformCategory,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
 ): NormalizedPlatformEntry[] | undefined {
   if (value === undefined) return undefined
   return readArray(value, path, fieldPath).map((entry, index) =>
@@ -415,6 +420,7 @@ function parseLinks(
       path,
       `${fieldPath}[${index}]`,
       requiredCategory,
+      platformTypes,
     ),
   )
 }
@@ -436,6 +442,7 @@ export function parseAlbumBook(
   defs: ContentDefinitions,
   mainLocale: LocaleKey,
   path: string,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
 ): AlbumBook {
   const raw = copyOwnDataFields(rawValue, path, 'book.yml')
   if (raw.type !== 'album') {
@@ -489,6 +496,7 @@ export function parseAlbumBook(
     path,
     'album.links',
     'digital',
+    platformTypes,
   )
   const discs = parseDiscs(
     album.discs,
@@ -517,6 +525,7 @@ function parseGiftItem(
   mainLocale: LocaleKey,
   path: string,
   fieldPath: string,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
 ): GiftItem {
   const raw = copyOwnDataFields(value, path, fieldPath)
   rejectUnknownFields(raw, GIFT_ITEM_FIELDS, path, fieldPath)
@@ -543,6 +552,7 @@ function parseGiftItem(
     path,
     `${fieldPath}.links`,
     'physical',
+    platformTypes,
   )
   const copyright = parseOptionalCopyright(
     raw.copyright,
@@ -570,6 +580,7 @@ export function parseGiftBook(
   defs: ContentDefinitions,
   mainLocale: LocaleKey,
   path: string,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
 ): GiftBook {
   const raw = copyOwnDataFields(rawValue, path, 'book.yml')
   if (raw.type !== 'gift') {
@@ -613,6 +624,7 @@ export function parseGiftBook(
         mainLocale,
         path,
         fieldPath,
+        platformTypes,
       )
       if (seenItemIds.has(parsed.id)) {
         invalid(
@@ -653,14 +665,15 @@ export function parseBook(
   bookYmlPath: string,
   defs: ContentDefinitions,
   mainLocale: LocaleKey,
+  platformTypes?: Record<string, PlatformTypeRegistration>,
 ): Book {
   const rawValue = loadYamlFile(bookYmlPath)
   const raw = copyOwnDataFields(rawValue, bookYmlPath, 'book.yml')
   if (raw.type === 'album') {
-    return parseAlbumBook(raw, defs, mainLocale, bookYmlPath)
+    return parseAlbumBook(raw, defs, mainLocale, bookYmlPath, platformTypes)
   }
   if (raw.type === 'gift') {
-    return parseGiftBook(raw, defs, mainLocale, bookYmlPath)
+    return parseGiftBook(raw, defs, mainLocale, bookYmlPath, platformTypes)
   }
 
   invalid(
