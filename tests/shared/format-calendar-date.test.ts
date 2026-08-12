@@ -8,6 +8,15 @@ describe('formatCalendarDate', () => {
     )
   })
 
+  it('ignores caller timeZone so calendar day cannot shift off-by-one', () => {
+    expect(
+      formatCalendarDate('2026-08-11', 'en-US', {
+        timeZone: 'America/Los_Angeles',
+        dateStyle: 'medium',
+      }),
+    ).toBe('Aug 11, 2026')
+  })
+
   it('returns input for invalid calendar strings', () => {
     expect(formatCalendarDate('not-a-date', 'en-US')).toBe('not-a-date')
   })

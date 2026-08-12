@@ -12,7 +12,7 @@ export function formatCalendarDate(
   const day = Number(match[3])
   const value = new Date(Date.UTC(year, month - 1, day))
   return new Intl.DateTimeFormat(localeLang, {
-    timeZone: 'UTC',
     ...dateFormat,
+    timeZone: 'UTC',
   }).format(value)
 }
