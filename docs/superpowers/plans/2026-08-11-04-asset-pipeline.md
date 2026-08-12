@@ -26,6 +26,7 @@ This plan was rewritten after a pre-execution consistency audit against shipped 
 12. **Adapter `toAssetPackageSource`** joins `CompiledContentPackage` + `RouteContentPackage` by matching `dir` / `identity` (assert equality). Declared paths come from the compiled package (book/manifest); locale Markdown bodies come from the routed package.
 13. **Task 10 (NEW) extends Plan 03 Task 12** `buildSite` + `theme.ts`: compile assets, write hashed files under `app.dir.dest()`, inject per-package map into `frontmatter.synctrol.contentAssets`, keep content/** filter + root-router `onGenerated`. Former Task 10 becomes Task 11.
 14. **Commands remain `npm test -- <path>`.**
+15. **Round-2 TS narrowing patch (docs only):** Task 4 narrows `ContentManifest` before `cover`/`artwork` access; Task 9 filters undefined `routed.locales` values; Task 10 theme integration assertions are concrete (not comment-only).
 
 ## Global Constraints
 
@@ -829,6 +830,7 @@ git commit -m "feat(assets): build hashed content asset paths for typed and home
 **Interfaces:**
 - Consumes: Plan 02 `CompiledContentPackage` / `Book` / platform entries with `src`
 - Produces: `collectPackageDeclaredPaths(pkg: CompiledContentPackage): string[]` — unique package-relative refs from `cover`, `artwork`, album/gift covers, and platform `src` when `src.startsWith('./')` (audio_player convention; tests use platform key `audio`)
+- **Strict narrowing:** `ContentManifest` is a discriminated union — Home has neither `cover` nor `artwork`. Access `cover` only after `'cover' in manifest`; access `artwork` only after `manifest.type === 'release'`. Home packages must not touch missing fields.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -934,6 +936,19 @@ describe('collectPackageDeclaredPaths', () => {
     }
     expect(collectPackageDeclaredPaths(pkg)).toEqual([])
   })
+
+  it('returns an empty list for home packages without reading cover/artwork', () => {
+    // HomeManifest has neither field — implementation must narrow before access.
+    const pkg: CompiledContentPackage = {
+      dir: '/content/home',
+      identity: 'home',
+      manifest: {
+        type: 'home',
+        draft: false,
+      },
+    }
+    expect(collectPackageDeclaredPaths(pkg)).toEqual([])
+  })
 })
 ```
 
@@ -985,11 +1000,13 @@ export function collectPackageDeclaredPaths(
   pkg: CompiledContentPackage,
 ): string[] {
   const paths: string[] = []
-  if (isRelativeCoverRef(pkg.manifest.cover)) {
-    pushUnique(paths, pkg.manifest.cover)
+  const { manifest } = pkg
+  // Narrow ContentManifest before optional fields — Home has neither cover nor artwork.
+  if ('cover' in manifest && isRelativeCoverRef(manifest.cover)) {
+    pushUnique(paths, manifest.cover)
   }
-  if (isRelativeCoverRef(pkg.manifest.artwork)) {
-    pushUnique(paths, pkg.manifest.artwork)
+  if (manifest.type === 'release' && isRelativeCoverRef(manifest.artwork)) {
+    pushUnique(paths, manifest.artwork)
   }
   if (pkg.book) {
     collectFromBook(pkg.book, paths)
@@ -1913,7 +1930,7 @@ git commit -m "feat(assets): add asset registry and export resolveContentAsset f
 - Consumes: Tasks 1–8
 - Produces:
   - `compileAssets(options: CompileAssetsOptions): AssetManifest`
-  - `toAssetPackageSource(compiled, routed): AssetPackageSource` — joins by `dir`/`identity` (assert both match); declared paths from compiled (manifest/book); locale Markdown from routed locales
+  - `toAssetPackageSource(compiled, routed): AssetPackageSource` — joins by `dir`/`identity` (assert both match); declared paths from compiled (manifest/book); locale Markdown from routed locales (`Partial<Record<…>>` — filter undefined values before reading `filePath`/`body`)
   - Markdown refs resolve relative to `dirname(markdown.filePath)`; declared refs relative to `packageDir`
   - Writes hashed files under `destDir`; never reads/writes `.vuepress/public`
   - Root package re-exports Node asset API from `./compiler/assets/index.js`
@@ -2059,6 +2076,35 @@ describe('toAssetPackageSource', () => {
       locales: {},
     }
     expect(() => toAssetPackageSource(compiled, routed)).toThrow(/dir|identity/i)
+  })
+
+  it('filters undefined Partial locale slots before mapping filePath/body', () => {
+    const compiled: CompiledContentPackage = {
+      dir: '/content/home',
+      identity: 'home',
+      manifest: { type: 'home', draft: false },
+    }
+    const routed: RouteContentPackage = {
+      dir: '/content/home',
+      identity: 'home',
+      type: 'home',
+      slug: null,
+      draft: false,
+      tags: [],
+      locales: {
+        zh: {
+          filePath: '/content/home/zh.md',
+          title: '首页',
+          draft: false,
+          body: '正文',
+        },
+        en: undefined,
+      },
+    }
+    const source = toAssetPackageSource(compiled, routed)
+    expect(source.localeMarkdown).toEqual([
+      { filePath: '/content/home/zh.md', body: '正文' },
+    ])
   })
 })
 ```
@@ -2246,6 +2292,7 @@ Expected: FAIL because modules are not defined.
 // src/compiler/assets/to-asset-package-source.ts
 import type {
   CompiledContentPackage,
+  LocaleMarkdown,
   RouteContentPackage,
 } from '../../shared/types.js'
 import type { AssetPackageSource } from '../../shared/asset-types.js'
@@ -2266,15 +2313,19 @@ export function toAssetPackageSource(
         `routed ${routed.identity}@${routed.dir})`,
     )
   }
+  // routed.locales is Partial<Record<…>> — filter undefined before filePath/body.
+  const localeMarkdown = Object.values(routed.locales)
+    .filter((markdown): markdown is LocaleMarkdown => markdown != null)
+    .map((markdown) => ({
+      filePath: markdown.filePath,
+      body: markdown.body,
+    }))
   return {
     packageDir: compiled.dir,
     type: routed.type,
     slug: routed.slug,
     declaredPaths: collectPackageDeclaredPaths(compiled),
-    localeMarkdown: Object.values(routed.locales).map((markdown) => ({
-      filePath: markdown.filePath,
-      body: markdown.body,
-    })),
+    localeMarkdown,
   }
 }
 ```
@@ -2528,31 +2579,86 @@ git commit -m "feat(assets): compile hashed assets and export Node asset API fro
 
 - [ ] **Step 1: Write / extend failing integration tests**
 
-Add assertions to `tests/compiler/theme.integration.test.ts` (extend existing `runBuild` fixture; add a content asset file under the temp site when needed):
+Add assertions to `tests/compiler/theme.integration.test.ts` (extend existing `runBuild` / `beforeEach` fixture; keep the same stub-bundler + `createBuildApp` patterns as the shipped file):
 
 ```ts
-// Additional cases (merge into the existing describe):
+// Additional cases (merge into the existing describe('synctrolTheme production integration')):
 
 it('injects frontmatter.synctrol.contentAssets and writes hashed content assets', async () => {
-  // Arrange: ensure content/home/assets/body.webp (or release cover) exists in the temp site
-  // Act: await runBuild()
-  // Assert:
-  // - a generated content page's frontmatter.synctrol.contentAssets is a Record
-  // - when the package declared ./assets/cover.webp (or markdown ./assets/...),
-  //   contentAssets['./assets/cover.webp'] matches /^\/assets\/content\/...[0-9a-f]{8}\./
-  // - existsSync(app.dir.dest(publicPathWithoutLeadingSlash)) === true for that asset
+  write(
+    'content/releases/first-release/content.yml',
+    'type: release\nslug: first-release\ndate: 2026-08-11\ncover: ./assets/cover.webp\n',
+  )
+  write('content/releases/first-release/assets/cover.webp', 'fake-webp-bytes')
+
+  const app = await runBuild()
+  const page = app.pages.find(
+    (candidate: Page) => candidate.path === '/zh/releases/first-release/',
+  )
+  expect(page).toBeDefined()
+
+  const synctrol = page!.frontmatter.synctrol as {
+    identity: string
+    contentAssets: Record<string, string>
+  }
+  expect(synctrol.identity).toBe('release:first-release')
+  expect(synctrol.contentAssets).toEqual(expect.any(Object))
+  expect(synctrol.contentAssets['./assets/cover.webp']).toMatch(
+    /^\/assets\/content\/release\/first-release\/cover\.[0-9a-f]{8}\.webp$/,
+  )
+
+  const publicPath = synctrol.contentAssets['./assets/cover.webp']
+  expect(existsSync(join(app.dir.dest(), publicPath.slice(1)))).toBe(true)
 })
 
 it('keeps Plan 03 Task 12 behaviors after asset wiring', async () => {
+  // Same contract shape as the existing "keeps the Plan 01 theme contract" case.
+  const theme = synctrolTheme({
+    siteUrl: 'https://synctrol.com',
+    mainLocale: 'zh',
+    copyright: '© Synctrol',
+    locales: { zh: { lang: 'zh-CN', label: '中文' } },
+    seo: {
+      name: 'Synctrol',
+      description: 'd',
+      defaultImage: '/i.png',
+      organization: { name: 'Synctrol', logo: '/l.png' },
+      collections: {
+        release: { title: 'R', description: 'r' },
+        news: { title: 'N', description: 'n' },
+      },
+    },
+  })
+  expect(theme.define.__SYNCTROL_THEME_OPTIONS__).toMatchObject({
+    siteUrl: 'https://synctrol.com',
+    showDrafts: false,
+  })
+
   const app = await runBuild()
-  const paths = app.pages.map((page) => page.path)
-  expect(paths.some((path) => path.startsWith('/content/'))).toBe(false)
-  expect(existsSync(join(app.dir.dest(), 'index.html'))).toBe(true) // root router
-  // pages still carry synctrol.identity / locale / etc.
+  const paths = app.pages.map((page: Page) => page.path)
+
+  // content/** filter retained
+  expect(paths.some((path: string) => path.startsWith('/content/'))).toBe(false)
+
+  // root router written
+  const rootHtml = readFileSync(join(app.dir.dest(), 'index.html'), 'utf8')
+  expect(rootHtml).toContain('location.replace')
+  expect(rootHtml).toContain('synctrol:locale')
+  expect(rootHtml).toContain('href="/zh/"')
+
+  // frontmatter.synctrol.contentAssets injected on content pages (empty map ok when no assets)
+  const home = app.pages.find((page: Page) => page.path === '/zh/')
+  expect(home).toBeDefined()
+  const homeSynctrol = home!.frontmatter.synctrol as {
+    identity: string
+    contentAssets: Record<string, string>
+  }
+  expect(homeSynctrol.identity).toBe('home')
+  expect(homeSynctrol.contentAssets).toEqual(expect.any(Object))
 })
 
 it('allows root-absolute seo.defaultImage without requiring a file', async () => {
-  // Existing themeOptions using defaultImage: '/i.png' must still build
+  // runBuild() already uses defaultImage: '/images/og.png' — must still succeed.
   await expect(runBuild()).resolves.toBeTruthy()
 })
 ```
