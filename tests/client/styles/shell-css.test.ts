@@ -62,6 +62,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-navigation__link\s*\{[^}]*text-decoration:\s*none/)
     expect(css).toMatch(/\.syn-navigation__link:hover[^{]*\{[^}]*background:\s*var\(--syn-deco-symbol-bg\)/)
     expect(css).toMatch(/\.syn-navigation__link:hover[^{]*\{[^}]*color:\s*var\(--syn-deco-bg\)/)
+    expect(css).toMatch(/\.syn-navigation__link:focus-visible[^{]*\{[^}]*background:\s*var\(--syn-deco-symbol-bg\)/)
+    expect(css).toMatch(/\.syn-navigation__link:focus-visible[^{]*\{[^}]*color:\s*var\(--syn-deco-bg\)/)
     expect(css).toMatch(/\.syn-navigation__item\s*\+\s*\.syn-navigation__item\s*\{[^}]*border-block-start:\s*var\(--syn-border-strong\)/)
   })
 })
