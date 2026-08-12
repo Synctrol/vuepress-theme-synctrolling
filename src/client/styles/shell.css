@@ -79,8 +79,36 @@
 
 .syn-navigation {
   grid-area: navigation;
+  background: var(--syn-deco-bg);
+  color: var(--syn-deco-label-fg);
   border-bottom: var(--syn-border-strong);
-  padding: 16px;
+  padding: 0;
+}
+
+.syn-navigation__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.syn-navigation__item + .syn-navigation__item {
+  border-block-start: var(--syn-border-strong);
+}
+
+.syn-navigation__link {
+  display: block;
+  padding: 20px 24px;
+  color: var(--syn-deco-label-fg);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 2px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.syn-navigation__link:hover,
+.syn-navigation__link:focus-visible {
+  background: var(--syn-deco-symbol-bg);
+  color: var(--syn-deco-bg);
 }
 
 .syn-site-footer {
