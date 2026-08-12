@@ -323,6 +323,39 @@ describe('synctrolTheme production integration', () => {
     expect(existsSync(join(app.dir.dest(), publicPath.slice(1)))).toBe(true)
   })
 
+  it('does not compile assets for draft packages when showDrafts is false', async () => {
+    write(
+      'content/releases/secret/content.yml',
+      'type: release\nslug: secret\ndate: 2026-08-10\ndraft: true\ncover: ./assets/missing.webp\n',
+    )
+    write(
+      'content/releases/secret/zh.md',
+      '---\ntitle: Secret\n---\n<img src=./assets/bad.webp>\n',
+    )
+    write('content/releases/secret/en.md', '---\ntitle: Secret\n---\nDraft\n')
+    write(
+      'content/releases/first-release/content.yml',
+      'type: release\nslug: first-release\ndate: 2026-08-11\ncover: ./assets/cover.webp\n',
+    )
+    write('content/releases/first-release/assets/cover.webp', 'fake-webp-bytes')
+
+    const app = await runBuild()
+    expect(app.pages.some((page: Page) => page.path.includes('secret'))).toBe(
+      false,
+    )
+
+    const page = app.pages.find(
+      (candidate: Page) => candidate.path === '/zh/releases/first-release/',
+    )
+    expect(page).toBeDefined()
+    const synctrol = page!.frontmatter.synctrol as {
+      contentAssets: Record<string, string>
+    }
+    expect(synctrol.contentAssets['./assets/cover.webp']).toMatch(
+      /^\/assets\/content\/release\/first-release\/cover\.[0-9a-f]{8}\.webp$/,
+    )
+  })
+
   it('keeps Plan 03 Task 12 behaviors after asset wiring', async () => {
     // Same contract shape as the existing "keeps the Plan 01 theme contract" case.
     const theme = synctrolTheme({

@@ -8,7 +8,7 @@ import { resolveThemeOptions } from '../shared/options.js'
 import type { CompiledPage } from '../shared/route-types.js'
 import type { RouteContentPackage } from '../shared/types.js'
 import { compileAssets } from './assets/compile-assets.js'
-import { toAssetPackageSource } from './assets/to-asset-package-source.js'
+import { selectAssetPackageSources } from './assets/select-asset-package-sources.js'
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
 
 function isContentSourcePage(page: Page): boolean {
@@ -49,16 +49,14 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           : { definitionsPath: resolved.definitionsPath }),
       })
 
-      // themeAssetPaths may be [] until a theme static root is configured;
-      // themeAssetsRoot is only consulted when that list is non-empty.
-      const assetSources = built.compiledPackages.map((compiled) => {
-        const routed = built!.packages.find(
-          (pkg) => pkg.dir === compiled.dir && pkg.identity === compiled.identity,
-        )
-        if (!routed) {
-          throw new Error(`Missing routed package for ${compiled.identity}`)
-        }
-        return toAssetPackageSource(compiled, routed)
+      // Only packages that contribute published pages enter asset compilation
+      // (Plan 03 availability). Skipped drafts must not fail on missing assets
+      // or raw HTML. themeAssetPaths may be [] until a theme static root is
+      // configured; themeAssetsRoot is only consulted when that list is non-empty.
+      const assetSources = selectAssetPackageSources({
+        compiledPackages: built.compiledPackages,
+        packages: built.packages,
+        pages: built.site.pages,
       })
 
       const assetManifest = compileAssets({
