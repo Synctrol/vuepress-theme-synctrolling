@@ -1,0 +1,13 @@
+{
+  "name": "synctrol-theme-consumer-smoke",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vuepress build ."
+  },
+  "devDependencies": {
+    "vue": "^3.5.0",
+    "vuepress": "^2.0.0-rc.24",
+    "vuepress-theme-synctrolling": "file:../../../.."
+  }
+}
