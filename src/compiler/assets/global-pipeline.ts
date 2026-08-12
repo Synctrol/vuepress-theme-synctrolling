@@ -9,11 +9,11 @@ import {
 import { hashFileContents, insertContentHash } from './hash.js'
 import { resolveSafePath } from './safe-path.js'
 
-/** Config-relative = no leading `/` and not an http(s) URL. */
+/** Config-relative = no leading `/` and not an http(s) scheme prefix. */
 export function isConfigRelativeAssetRef(value: string): boolean {
   if (!value) return false
   if (value.startsWith('/')) return false
-  if (/^https?:\/\//i.test(value)) return false
+  if (/^https?:/i.test(value)) return false
   return true
 }
 

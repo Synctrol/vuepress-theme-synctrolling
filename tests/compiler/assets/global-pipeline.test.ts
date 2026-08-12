@@ -28,6 +28,12 @@ describe('isConfigRelativeAssetRef', () => {
     expect(isConfigRelativeAssetRef('https://cdn.example.com/a.webp')).toBe(false)
     expect(isConfigRelativeAssetRef('http://cdn.example.com/a.webp')).toBe(false)
   })
+
+  it('rejects any http(s) scheme prefix, not only with //', () => {
+    expect(isConfigRelativeAssetRef('https:cdn.example.com/a.webp')).toBe(false)
+    expect(isConfigRelativeAssetRef('HTTP:foo')).toBe(false)
+    expect(isConfigRelativeAssetRef('http:')).toBe(false)
+  })
 })
 
 describe('collectGlobalOptionRefs', () => {
