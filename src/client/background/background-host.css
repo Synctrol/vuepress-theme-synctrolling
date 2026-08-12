@@ -13,12 +13,11 @@
   background-color: var(--syn-bg);
 }
 
-/* Content above decorative background — do not raise the whole .syn-shell
-   (dock/drawer keep Plan 05 z-index: 20 / 40). */
-.syn-shell > .syn-header,
-.syn-shell > .syn-main,
-.syn-shell > .syn-navigation,
-.syn-shell > .syn-site-footer {
+/* The whole shell, borders included, must paint above the fixed
+   decorative background (the reference site raises its .grid the same
+   way). The drawer is inside the shell's stacking context and keeps its
+   own z-index, so nothing needs to escape this context. */
+.syn-shell {
   position: relative;
   z-index: 1;
 }

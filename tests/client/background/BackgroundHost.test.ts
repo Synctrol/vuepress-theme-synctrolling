@@ -34,16 +34,15 @@ describe('BackgroundHost', () => {
   })
 
   it('keeps shell content stacked above the fixed background layer', () => {
-    // Mount minimal shell + host so stacking CSS is asserted (content above z-index:0).
+    // Mount minimal shell + host so stacking CSS is asserted (shell above z-index:0).
     const runtime = new BackgroundRuntime({ backgrounds: {} })
     const root = document.createElement('div')
     root.innerHTML = `
       <div class="syn-shell">
         <header class="syn-header"></header>
-        <main class="syn-main"><div class="syn-main__inner">content</div></main>
+        <main class="syn-main"><section class="cell cell-title">content</section></main>
         <nav class="syn-navigation"></nav>
         <footer class="syn-site-footer"></footer>
-        <div class="syn-shell__dock"></div>
       </div>
     `
     document.body.appendChild(root)
@@ -55,12 +54,10 @@ describe('BackgroundHost', () => {
     })
 
     const bg = getComputedStyle(wrapper.get('.syn-background').element)
-    const main = getComputedStyle(root.querySelector('.syn-main') as HTMLElement)
-    const header = getComputedStyle(root.querySelector('.syn-header') as HTMLElement)
+    const shell = getComputedStyle(root.querySelector('.syn-shell') as HTMLElement)
     expect(bg.zIndex).toBe('0')
-    expect(Number(main.zIndex)).toBeGreaterThan(Number(bg.zIndex))
-    expect(Number(header.zIndex)).toBeGreaterThan(Number(bg.zIndex))
-    expect(main.position).toMatch(/relative|sticky|absolute|fixed/)
+    expect(Number(shell.zIndex)).toBeGreaterThan(Number(bg.zIndex))
+    expect(shell.position).toMatch(/relative|sticky|absolute|fixed/)
     wrapper.unmount()
     root.remove()
     hostMount.remove()
