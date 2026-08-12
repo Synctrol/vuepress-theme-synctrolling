@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { YouTubePlayerEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { YouTubePlayerPlatform } from '../../client/components/platforms/renderers/YouTubePlayerPlatform.js'
 import {
   asEntryMap,
   assertAutoplay,
@@ -41,7 +40,7 @@ export const youtubePlayerType: PlatformTypeRegistration<YouTubePlayerEntry> = {
       autoplay: assertAutoplay(entry.autoplay),
     }
   },
-  component: createStubRenderer('YouTubePlayerPlatform') as Component,
+  component: YouTubePlayerPlatform,
   cspOrigins() {
     return ['https://www.youtube.com']
   },

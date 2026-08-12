@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { SpotifyPlayerEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { SpotifyPlayerPlatform } from '../../client/components/platforms/renderers/SpotifyPlayerPlatform.js'
 import {
   asEntryMap,
   createBase,
@@ -29,7 +28,7 @@ export const spotifyPlayerType: PlatformTypeRegistration<SpotifyPlayerEntry> = {
     const label = optionalLabel(entry)
     return { ...createBase(platform, label), uri: entry.uri }
   },
-  component: createStubRenderer('SpotifyPlayerPlatform') as Component,
+  component: SpotifyPlayerPlatform,
   cspOrigins() {
     return ['https://open.spotify.com']
   },

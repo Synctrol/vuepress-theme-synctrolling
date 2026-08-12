@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { AppleMusicPlayerEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { AppleMusicPlayerPlatform } from '../../client/components/platforms/renderers/AppleMusicPlayerPlatform.js'
 import {
   asEntryMap,
   createBase,
@@ -32,7 +31,7 @@ export const appleMusicPlayerType: PlatformTypeRegistration<AppleMusicPlayerEntr
       const label = optionalLabel(entry)
       return { ...createBase(platform, label), url: value }
     },
-    component: createStubRenderer('AppleMusicPlayerPlatform') as Component,
+    component: AppleMusicPlayerPlatform,
     cspOrigins() {
       return ['https://embed.music.apple.com']
     },

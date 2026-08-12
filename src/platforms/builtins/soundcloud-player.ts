@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { SoundCloudPlayerEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { SoundCloudPlayerPlatform } from '../../client/components/platforms/renderers/SoundCloudPlayerPlatform.js'
 import {
   asEntryMap,
   createBase,
@@ -32,7 +31,7 @@ export const soundcloudPlayerType: PlatformTypeRegistration<SoundCloudPlayerEntr
       const label = optionalLabel(entry)
       return { ...createBase(platform, label), url: value }
     },
-    component: createStubRenderer('SoundCloudPlayerPlatform') as Component,
+    component: SoundCloudPlayerPlatform,
     cspOrigins() {
       return ['https://w.soundcloud.com']
     },

@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { NeteasePlayerEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { NeteasePlayerPlatform } from '../../client/components/platforms/renderers/NeteasePlayerPlatform.js'
 import {
   asEntryMap,
   createBase,
@@ -40,7 +39,7 @@ export const neteasePlayerType: PlatformTypeRegistration<NeteasePlayerEntry> = {
       resourceType: entry.resourceType,
     }
   },
-  component: createStubRenderer('NeteasePlayerPlatform') as Component,
+  component: NeteasePlayerPlatform,
   cspOrigins() {
     return ['https://music.163.com']
   },

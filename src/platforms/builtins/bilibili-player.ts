@@ -1,8 +1,7 @@
-import type { Component } from 'vue'
 import type { BilibiliPlayerEntry } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
 import { buildFallbackUrl } from '../urls.js'
-import { createStubRenderer } from '../../client/components/platforms/renderers/placeholders.js'
+import { BilibiliPlayerPlatform } from '../../client/components/platforms/renderers/BilibiliPlayerPlatform.js'
 import {
   asEntryMap,
   assertAutoplay,
@@ -42,7 +41,7 @@ export const bilibiliPlayerType: PlatformTypeRegistration<BilibiliPlayerEntry> =
         autoplay: assertAutoplay(entry.autoplay),
       }
     },
-    component: createStubRenderer('BilibiliPlayerPlatform') as Component,
+    component: BilibiliPlayerPlatform,
     cspOrigins() {
       return ['https://player.bilibili.com']
     },
