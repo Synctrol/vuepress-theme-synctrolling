@@ -8,7 +8,6 @@ import { generateRootRouterHtml } from '../../../src/compiler/root-router-html'
 import { parseContentManifest } from '../../../src/compiler/manifest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
 import { BackgroundRuntime } from '../../../src/client/background/runtime'
-import { themeOptions } from '../../helpers/route-fixtures'
 import type { ContentType } from '../../../src/shared/types'
 import type { SynctrolThemeOptions } from '../../../src/shared/options'
 
@@ -60,6 +59,18 @@ describe('background theme config and exclusions', () => {
     expect(resolved.backgrounds).toEqual({})
   })
 
+  it('rejects unknown background keys such as splash', () => {
+    expect(() =>
+      resolveThemeOptions({
+        ...baseInput,
+        backgrounds: {
+          ...exampleBackgrounds,
+          splash: exampleBackgrounds.home,
+        } as SynctrolThemeOptions['backgrounds'],
+      }),
+    ).toThrow(/Unknown field options\.backgrounds\.splash/)
+  })
+
   it('rejects background in content.yml via Plan 02 schema', () => {
     const root = mkdtempSync(join(tmpdir(), 'synctrol-bg-manifest-'))
     temporaryRoots.add(root)
@@ -78,7 +89,10 @@ describe('background theme config and exclusions', () => {
 
   it('root language router HTML does not mount or import backgrounds', () => {
     const html = generateRootRouterHtml({
-      options: themeOptions(),
+      options: resolveThemeOptions({
+        ...baseInput,
+        backgrounds: exampleBackgrounds,
+      }),
       base: '/',
     })
     expect(html).not.toMatch(/syn-background/i)
