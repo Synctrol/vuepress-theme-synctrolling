@@ -279,8 +279,10 @@ body {
   white-space: nowrap;
   border: var(--syn-border-strong);
   border-radius: var(--syn-radius);
-  background: var(--syn-bg);
-  color: var(--syn-fg);
+  /* Invert relative to the bar: white chip on the black bar (light),
+     black chip on the white bar (dark). */
+  background: var(--syn-bar-fg);
+  color: var(--syn-bar-bg);
   font: inherit;
   font-size: 12px;
   line-height: 1;

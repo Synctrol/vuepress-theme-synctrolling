@@ -151,6 +151,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-language__list\s*\{[^}]*bottom:\s*40px/)
     expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*white/)
     expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*color:\s*black/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*background:\s*var\(--syn-bar-fg\)/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*color:\s*var\(--syn-bar-bg\)/)
     expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*letter-spacing:\s*1px/)
     expect(css).toMatch(/\.syn-language__option\s*\{[^}]*letter-spacing:\s*1px/)
     expect(css).toMatch(/\.syn-language__toggle:hover[^{]*\{[^}]*text-decoration:\s*underline/)
