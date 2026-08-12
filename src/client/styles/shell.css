@@ -18,6 +18,8 @@ body {
 .syn-shell {
   min-height: 100dvh;
   display: grid;
+  border-left: var(--syn-border-strong);
+  border-right: var(--syn-border-strong);
   grid-template-areas:
     'header header'
     'main navigation'

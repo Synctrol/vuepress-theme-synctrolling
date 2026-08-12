@@ -20,6 +20,11 @@ describe('shell.css', () => {
     expect(css).toMatch(/body\s*\{[^}]*margin:\s*0/)
   })
 
+  it('draws the reference left/right borders along the content grid', () => {
+    expect(css).toMatch(/\.syn-shell\s*\{[^}]*border-left:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-shell\s*\{[^}]*border-right:\s*var\(--syn-border-strong\)/)
+  })
+
   it('lays the footer bar out like the reference bottom bar with the language switcher inside', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*display:\s*flex/)
