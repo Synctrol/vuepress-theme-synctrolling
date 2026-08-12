@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useId } from 'vue'
 import { persistLocalePreference } from '../i18n/locale-alternates.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
 
@@ -9,7 +9,8 @@ const activeIndex = ref(0)
 const rootRef = ref<HTMLElement | null>(null)
 const toggleRef = ref<HTMLButtonElement | null>(null)
 const listboxRef = ref<HTMLElement | null>(null)
-const listboxId = 'syn-language-listbox'
+const instanceId = useId()
+const listboxId = `syn-language-listbox-${instanceId}`
 
 const alternates = computed(() => shell.localeAlternates)
 
@@ -19,7 +20,7 @@ const activeOptionId = computed(() => {
 })
 
 function optionId(targetLocale: string): string {
-  return `syn-language-option-${targetLocale}`
+  return `syn-language-option-${instanceId}-${targetLocale}`
 }
 
 function close(): void {

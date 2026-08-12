@@ -63,12 +63,13 @@ describe('NavDrawer', () => {
     const closeBtn = wrapper.get('.syn-nav-drawer__close').element as HTMLButtonElement
     const links = wrapper.findAll('.syn-navigation__link')
     expect(links.length).toBeGreaterThan(0)
-    const lastLink = links[links.length - 1]!.element as HTMLAnchorElement
 
     // Trap container is the dialog root so Close is first focusable
     expect(document.activeElement).toBe(closeBtn)
 
-    lastLink.focus()
+    // Last focusable is the in-drawer language switcher toggle
+    const lastFocusable = wrapper.get('.syn-language__toggle').element as HTMLButtonElement
+    lastFocusable.focus()
     dialog.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }),
     )

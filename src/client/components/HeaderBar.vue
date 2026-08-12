@@ -29,7 +29,22 @@ function toggleMenu(): void {
         :aria-label="messages.menu"
         @click="toggleMenu"
       >
-        {{ messages.menu }}
+        <svg
+          class="syn-header__menu-icon"
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+        <span class="syn-visually-hidden">{{ messages.menu }}</span>
       </button>
     </div>
   </header>
