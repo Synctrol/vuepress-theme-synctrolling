@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createPage } from 'vuepress/core'
 import type { App, Page, ThemeObject } from 'vuepress/core'
+import type { HeadConfig } from 'vuepress/shared'
 import { buildColorModeBootScript } from '../client/color-mode/boot-script.js'
 import { collectCspFromEntries } from '../platforms/collect-csp.js'
 import { resolvePlatformTypes } from '../platforms/registry.js'
@@ -11,6 +12,7 @@ import { resolveMultilanguage } from '../shared/multilanguage.js'
 import type { SynctrolThemeOptions } from '../shared/options.js'
 import { resolveThemeOptions } from '../shared/options.js'
 import type { CompiledPage } from '../shared/route-types.js'
+import type { HeadTag } from '../shared/seo/types.js'
 import type { RouteContentPackage } from '../shared/types.js'
 import { compileAssets } from './assets/compile-assets.js'
 import { selectAssetPackageSources } from './assets/select-asset-package-sources.js'
@@ -23,6 +25,21 @@ import { registerHomeFormatters } from './markdown/home-formatters.js'
 import { buildNewsFrontmatterForPage } from './news/attach-news-page-data.js'
 import { buildPageFrontmatterForPage } from './page/attach-page-page-data.js'
 import { buildReleaseFrontmatterForPage } from './release/inject-release-frontmatter.js'
+import {
+  buildSeoContentContext,
+  emitSeoAndFeeds,
+  type EmitSeoAndFeedsResult,
+} from './seo/index.js'
+
+type VuePressHeadTag = HeadConfig
+
+function toVuePressHead(tags: readonly HeadTag[]): VuePressHeadTag[] {
+  return tags.map((tag) =>
+    tag.text === undefined
+      ? ([tag.tag, tag.attrs ?? {}] as HeadConfig)
+      : ([tag.tag, tag.attrs ?? {}, tag.text] as HeadConfig),
+  )
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -48,6 +65,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
   const clientOptions = toClientThemeOptions(resolved)
   const boot = buildColorModeBootScript(resolved.defaultColorMode)
   let built: BuiltSite | undefined
+  let seoAndFeeds: EmitSeoAndFeedsResult | undefined
 
   return {
     name: 'vuepress-theme-synctrolling',
@@ -91,6 +109,30 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
         destDir: app.dir.dest(),
       })
 
+      const seoPackageDirs = new Set(
+        built.site.pages.flatMap((page) =>
+          page.packagePath === undefined ? [] : [page.packagePath],
+        ),
+      )
+      const seoContent = buildSeoContentContext({
+        assetManifest,
+        // Only packages that contribute published pages: skipped drafts are
+        // excluded from asset compilation (Plan 04) and must not fail SEO
+        // cover resolution for missing hashed assets.
+        packages: built.packages.filter((pkg) => seoPackageDirs.has(pkg.dir)),
+        compiledPackages: built.compiledPackages.filter((pkg) =>
+          seoPackageDirs.has(pkg.dir),
+        ),
+        definitions: built.definitions,
+        options: resolved,
+      })
+      seoAndFeeds = emitSeoAndFeeds({
+        site: built.site,
+        options: resolved,
+        content: seoContent,
+        base: app.options.base,
+      })
+
       // VuePress globs every markdown file under the source dir, which would
       // otherwise publish the content tree at /content/**. Pages with a null
       // filePathRelative (the automatic 404) are kept.
@@ -101,6 +143,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       const packages = built.packages
       const compiledPackages = built.compiledPackages
       const platformDefinitions = built.definitions.platforms
+      const emittedSeo = seoAndFeeds
 
       for (const compiled of allPages) {
         const contentAssets =
@@ -178,17 +221,27 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           packages,
         })
 
+        const seoKey = `${compiled.locale}:${compiled.url.routePath}`
+        const seoForPage = emittedSeo.pageSeo.get(seoKey)
+        const headForPage = emittedSeo.headTagsByRoute.get(seoKey) ?? []
+
         const page = await createPage(app, {
           // VuePress sanitizes and re-encodes this itself; Task 3's routable
           // gate guarantees the result equals compiled.url.routePath.
           path: decodeURI(compiled.url.routePath),
           content: bodyFor(compiled, byDir),
           frontmatter: {
-            lang: resolved.locales[compiled.locale]?.lang ?? compiled.locale,
-            title: compiled.title,
-            ...(compiled.description === undefined
-              ? {}
-              : { description: compiled.description }),
+            lang:
+              seoForPage?.lang ??
+              resolved.locales[compiled.locale]?.lang ??
+              compiled.locale,
+            title: seoForPage?.title ?? compiled.title,
+            ...(seoForPage?.description === undefined
+              ? compiled.description === undefined
+                ? {}
+                : { description: compiled.description }
+              : { description: seoForPage.description }),
+            head: toVuePressHead(headForPage),
             synctrol: {
               identity: compiled.identity,
               locale: compiled.locale,
@@ -233,6 +286,12 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       const target = app.dir.dest('index.html')
       mkdirSync(dirname(target), { recursive: true })
       writeFileSync(target, built.site.rootRouterHtml, 'utf8')
+
+      for (const file of seoAndFeeds?.filesToWrite ?? []) {
+        const feedTarget = app.dir.dest(file.outputPath)
+        mkdirSync(dirname(feedTarget), { recursive: true })
+        writeFileSync(feedTarget, file.contents, 'utf8')
+      }
 
       const types = resolvePlatformTypes(resolved.platforms.types)
       const platformTypes = Object.fromEntries(

@@ -750,4 +750,28 @@ album:
     expect(homeSynctrol.platformDefinitions).toEqual(expect.any(Object))
     expect(homeSynctrol.release).toBeUndefined()
   })
+
+  it('attaches SEO head tags and writes rss/sitemap while preserving root router and CSP', async () => {
+    write('content/news/alpha/content.yml', 'type: news\nslug: alpha\ndate: 2026-08-11\ntags: [release]\n')
+    write('content/news/alpha/zh.md', '---\ntitle: Alpha\ndescription: Alpha desc\n---\n正文\n')
+    write('content/news/alpha/en.md', '---\ntitle: Alpha EN\ndescription: Alpha EN desc\n---\nBody\n')
+
+    const app = await runBuild()
+    const page = app.pages.find((candidate: Page) => candidate.path === '/en/news/alpha/')
+    expect(page).toBeDefined()
+    expect(page!.frontmatter.title).toBe('Alpha EN')
+    expect(page!.frontmatter.head).toEqual(
+      expect.arrayContaining([
+        ['link', { rel: 'canonical', href: 'https://synctrol.com/en/news/alpha/' }],
+        ['meta', { property: 'og:type', content: 'article' }],
+      ]),
+    )
+
+    const dest = app.dir.dest()
+    expect(existsSync(join(dest, 'en/rss.xml'))).toBe(true)
+    expect(existsSync(join(dest, 'zh/rss.xml'))).toBe(true)
+    expect(existsSync(join(dest, 'sitemap.xml'))).toBe(true)
+    expect(existsSync(join(dest, 'index.html'))).toBe(true)
+    expect(existsSync(join(dest, 'synctrol-csp.json'))).toBe(true)
+  })
 })

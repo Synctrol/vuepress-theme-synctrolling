@@ -12,6 +12,17 @@ export type {
 } from './shared/background.js'
 export * from './compiler/index.js'
 export * from './compiler/assets/index.js'
+export * from './compiler/seo/index.js'
+export type {
+  HeadTag,
+  HreflangAlternate,
+  JsonLdNode,
+  OpenGraphData,
+  PageSeo,
+  RssItem,
+  SeoAssetContext,
+  SeoContentContext,
+} from './shared/seo/types.js'
 
 export { resolvePlatformTypes } from './platforms/registry.js'
 export { formatMessage } from './platforms/format-message.js'

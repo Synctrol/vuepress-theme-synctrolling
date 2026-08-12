@@ -8,11 +8,14 @@ import type {
 } from '../src/compiler/index'
 import {
   assertNoCspMetaInjection,
+  buildPageSeo,
+  buildSeoContentContext,
   collectPackageDeclaredPaths,
   compileAssets,
   compileContent,
   createDiagnostic,
   discoverContentPackages,
+  emitSeoAndFeeds,
   enMessages,
   fail,
   formatMessage,
@@ -105,6 +108,12 @@ describe('root public exports', () => {
     expect(Object.keys(resolvePlatformTypes({}))).toEqual(
       expect.arrayContaining(['youtube_player', 'bilibili_player', 'link']),
     )
+  })
+
+  it('exposes SEO emit helpers from the package root', () => {
+    expect(typeof buildPageSeo).toBe('function')
+    expect(typeof buildSeoContentContext).toBe('function')
+    expect(typeof emitSeoAndFeeds).toBe('function')
   })
 
   it('exposes PlatformEmbed and PlatformLinks from the client entry (no SFC re-exports)', () => {
