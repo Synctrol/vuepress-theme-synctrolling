@@ -32,6 +32,7 @@
     "assert:pack": "node scripts/assert-pack-contents.mjs",
     "assert:exports": "node scripts/smoke-built-exports.mjs && node scripts/assert-exports-resolve.mjs",
     "test:consumer-smoke": "node scripts/run-consumer-smoke.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
     "prepublishOnly": "node scripts/prepublish-check.mjs"
   },
   "repository": {
