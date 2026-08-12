@@ -3,3 +3,8 @@ dist/
 coverage/
 *.tgz
 .DS_Store
+.idea/
+
+# VuePress runtime artifacts (site source + consumer fixture)
+**/.vuepress/.temp/
+**/.vuepress/.cache/
