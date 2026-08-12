@@ -243,7 +243,22 @@ body {
   border-top: var(--syn-border-strong);
   /* Desktop: blend with the page background instead of the deco column. */
   background: var(--syn-bg);
-  padding: 24px;
+  padding: 20px;
+}
+
+/* With a link cloud, split into equal 1fr halves around the divider so
+   the divider sits at the exact vertical center whatever the content
+   sizes are. */
+.syn-navigation__side-panel:has(.syn-link-cloud) {
+  display: grid;
+  grid-template-rows: 1fr auto 1fr;
+  align-items: center;
+  justify-items: center;
+}
+
+/* Expose the divider and list as direct panel children. */
+.syn-link-cloud {
+  display: contents;
 }
 
 .syn-link-cloud__list {

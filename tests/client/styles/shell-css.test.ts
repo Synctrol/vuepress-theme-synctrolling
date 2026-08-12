@@ -58,6 +58,9 @@ describe('shell.css', () => {
     expect(css).not.toMatch(/\.syn-link-cloud__link\s*\{[^}]*background:/)
     expect(css).toMatch(/\.syn-link-cloud__divider\s*\{[^}]*width:\s*120px/)
     expect(css).toMatch(/\.syn-link-cloud__divider\s*\{[^}]*height:\s*1px/)
+    expect(css).toMatch(/\.syn-navigation__side-panel:has\(\.syn-link-cloud\)\s*\{[^}]*grid-template-rows:\s*1fr\s*auto\s*1fr/)
+    expect(css).toMatch(/\.syn-link-cloud\s*\{[^}]*display:\s*contents/)
+    expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*padding:\s*20px/)
   })
 
   it('styles the home logo with reference .logo/.logo-sub classes and full-width title cell', () => {
@@ -124,7 +127,7 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*align-items:\s*center/)
     expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*justify-content:\s*center/)
     expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*border-top:\s*var\(--syn-border-strong\)/)
-    expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*padding:\s*24px/)
+    expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*padding:\s*20px/)
     expect(css).not.toMatch(/\.syn-nav-drawer__side-panel/)
     expect(css).not.toMatch(/\.syn-side-panel/)
     expect(css).toMatch(/\.syn-navigation\s*\{[^}]*background:\s*var\(--syn-deco-bg\)/)
