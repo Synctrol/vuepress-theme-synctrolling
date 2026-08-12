@@ -7,7 +7,7 @@ import Navigation from './Navigation.vue'
 
 const drawerOpen = inject(SYNCTROL_DRAWER_OPEN_KEY) as Ref<boolean>
 const { messages } = useLocaleShell()
-const panelRef = ref<HTMLElement | null>(null)
+const drawerRef = ref<HTMLElement | null>(null)
 let trap: FocusTrap | null = null
 let opener: HTMLElement | null = null
 
@@ -22,19 +22,23 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
-watch(drawerOpen, async (open) => {
-  if (open) {
-    opener = document.activeElement as HTMLElement | null
-    requestAnimationFrame(() => {
-      if (!panelRef.value) return
-      trap = createFocusTrap(panelRef.value, { restoreFocus: opener })
-      trap.activate()
-    })
-  } else {
-    trap?.deactivate()
-    trap = null
-  }
-})
+watch(
+  drawerOpen,
+  async (open) => {
+    if (open) {
+      opener = document.activeElement as HTMLElement | null
+      requestAnimationFrame(() => {
+        if (!drawerRef.value) return
+        trap = createFocusTrap(drawerRef.value, { restoreFocus: opener })
+        trap.activate()
+      })
+    } else {
+      trap?.deactivate()
+      trap = null
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
@@ -48,6 +52,7 @@ onUnmounted(() => {
 
 <template>
   <div
+    ref="drawerRef"
     class="syn-nav-drawer"
     role="dialog"
     aria-modal="true"
@@ -61,7 +66,7 @@ onUnmounted(() => {
     >
       {{ messages.close }}
     </button>
-    <div ref="panelRef" class="syn-nav-drawer__panel">
+    <div class="syn-nav-drawer__panel">
       <Navigation />
     </div>
   </div>
