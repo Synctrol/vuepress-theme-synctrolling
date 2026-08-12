@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { persistLocalePreference } from '../i18n/locale-alternates.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
 
@@ -8,6 +8,7 @@ const open = ref(false)
 const activeIndex = ref(0)
 const rootRef = ref<HTMLElement | null>(null)
 const toggleRef = ref<HTMLButtonElement | null>(null)
+const listboxRef = ref<HTMLElement | null>(null)
 const listboxId = 'syn-language-listbox'
 
 const alternates = computed(() => shell.localeAlternates)
@@ -27,7 +28,7 @@ function close(): void {
   toggleRef.value?.focus()
 }
 
-function openList(preferredIndex?: number): void {
+async function openList(preferredIndex?: number): Promise<void> {
   const currentIdx = alternates.value.findIndex(
     (item) => item.locale === locale.value,
   )
@@ -37,11 +38,13 @@ function openList(preferredIndex?: number): void {
     activeIndex.value = currentIdx >= 0 ? currentIdx : 0
   }
   open.value = true
+  await nextTick()
+  listboxRef.value?.focus()
 }
 
 function toggle(): void {
   if (open.value) close()
-  else openList()
+  else void openList()
 }
 
 function select(href: string, targetLocale: string, event: Event): void {
@@ -64,17 +67,20 @@ function moveActive(delta: number): void {
 }
 
 function onToggleKeydown(event: KeyboardEvent): void {
-  if (!open.value) {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      if (event.key === 'ArrowUp') {
-        openList(Math.max(alternates.value.length - 1, 0))
-      } else {
-        openList(0)
-      }
+  if (open.value) return
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (event.key === 'ArrowUp') {
+      void openList(Math.max(alternates.value.length - 1, 0))
+    } else {
+      void openList(0)
     }
-    return
   }
+}
+
+function onListboxKeydown(event: KeyboardEvent): void {
+  if (!open.value) return
 
   switch (event.key) {
     case 'ArrowDown':
@@ -136,7 +142,6 @@ onUnmounted(() => {
       aria-haspopup="listbox"
       :aria-expanded="open ? 'true' : 'false'"
       :aria-controls="listboxId"
-      :aria-activedescendant="open ? activeOptionId : undefined"
       :aria-label="messages.language"
       @click="toggle"
       @keydown="onToggleKeydown"
@@ -144,11 +149,15 @@ onUnmounted(() => {
       {{ localeLabel }}
     </button>
     <ul
+      ref="listboxRef"
       :id="listboxId"
       class="syn-language__list"
       :class="{ 'syn-language__list--open': open }"
       role="listbox"
+      :tabindex="open ? 0 : -1"
+      :aria-activedescendant="open ? activeOptionId : undefined"
       :aria-hidden="open ? 'false' : 'true'"
+      @keydown="onListboxKeydown"
     >
       <li
         v-for="item in alternates"
