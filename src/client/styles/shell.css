@@ -16,7 +16,7 @@ body {
 }
 
 .syn-shell {
-  min-height: 100dvh;
+  height: 100dvh;
   display: grid;
   border-left: var(--syn-border-strong);
   border-right: var(--syn-border-strong);
@@ -79,8 +79,10 @@ body {
 .syn-main {
   grid-area: main;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
   border-right: var(--syn-border-strong);
   padding: 24px 16px;
 }
@@ -345,6 +347,13 @@ body {
 @media (max-width: 768px) {
   .syn-shell {
     display: block;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .syn-header {
+    position: sticky;
+    top: 0;
   }
 
   .syn-header__menu {
@@ -354,6 +363,11 @@ body {
   .syn-main {
     border-right: 0;
     border-bottom: var(--syn-border-strong);
+  }
+
+  .syn-site-footer {
+    position: sticky;
+    bottom: 0;
   }
 
   .syn-shell > .syn-navigation {

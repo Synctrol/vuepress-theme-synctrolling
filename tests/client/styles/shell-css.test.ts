@@ -16,6 +16,18 @@ describe('shell.css', () => {
     expect(css).toContain('minmax(280px, 1fr)')
   })
 
+  it('keeps the shell at viewport height and scrolls content internally', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-shell\s*\{[^}]*height:\s*100dvh/)
+    expect(css).toMatch(/\.syn-main\s*\{[^}]*overflow-y:\s*auto/)
+    const idx = css.indexOf('@media (max-width: 768px)')
+    expect(idx).toBeGreaterThan(-1)
+    const mobile = css.slice(idx)
+    expect(mobile).toMatch(/\.syn-shell\s*\{[^}]*height:\s*auto/)
+    expect(mobile).toMatch(/\.syn-header\s*\{[^}]*position:\s*sticky/)
+    expect(mobile).toMatch(/\.syn-site-footer\s*\{[^}]*position:\s*sticky/)
+  })
+
   it('resets the body margin so the bars hug the viewport edges', () => {
     expect(css).toMatch(/body\s*\{[^}]*margin:\s*0/)
   })
