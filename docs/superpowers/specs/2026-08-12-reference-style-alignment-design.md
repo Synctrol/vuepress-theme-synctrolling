@@ -103,14 +103,16 @@ mirroring the reference's no-explicit-choice fallback (same values as dark).
 - `.syn-navigation`: `background: var(--syn-deco-bg); color: var(--syn-deco-label-fg)`
   (the right column becomes the reference's deco/link-panel column).
 - `.syn-navigation__link`: `13px; letter-spacing: 2px;` full-width block;
-  `padding: 14px 16px` (reference link-panel scale); hover/focus-visible:
+  `padding: 20px 24px` (reference desktop link-panel padding; `14px 16px` is
+  the ≤640px mobile value); hover/focus-visible:
   `background: var(--syn-deco-symbol-bg); color: var(--syn-deco-bg)`
   (reference inversion). Remove default underline decoration; keep
   `text-decoration: none`.
 - Between links: `3px` separator via `border-top: var(--syn-border-strong)`
-  on items (reference `.link-panel + .link-panel`), with the first item also
-  separated from the column top (reference has `3px` top border on the panel
-  stack).
+  on items (reference `.link-panel + .link-panel`); the first item has NO
+  top border (the header's `border-bottom` provides the top edge, exactly
+  like the reference where the top bar's `border-bottom` borders the first
+  panel).
 
 ### 4. Typography metrics (home logo + footer status)
 
