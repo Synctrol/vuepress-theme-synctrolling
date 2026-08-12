@@ -81,8 +81,8 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'synctrol-theme-'))
   write('content/definitions.yml', 'tags:\n  release:\n    title:\n      zh: 作品\n      en: Releases\n')
   write('content/home/content.yml', 'type: home\n')
-  write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n首页正文\n')
-  write('content/home/en.md', '---\ntitle: Home\ndescription: SEO\n---\nHome body\n')
+  write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n')
+  write('content/home/en.md', '---\ntitle: Home\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\nHome body\n')
   write('content/releases/first-release/content.yml', 'type: release\nslug: first-release\ndate: 2026-08-11\n')
   write('content/releases/first-release/zh.md', '---\ntitle: 第一张专辑\n---\n正文\n')
   write('content/releases/first-release/en.md', '---\ntitle: First Album\n---\nBody\n')
@@ -296,7 +296,7 @@ describe('synctrolTheme production integration', () => {
       'content/definitions.yml',
       'tags:\n  release:\n    title:\n      日本語: 作品\n',
     )
-    write('content/home/日本語.md', '---\ntitle: ホーム\ndescription: SEO\n---\n本文\n')
+    write('content/home/日本語.md', '---\ntitle: ホーム\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n本文\n')
     write('content/releases/作品/content.yml', 'type: release\nslug: 作品\ndate: 2026-08-09\n')
     write('content/releases/作品/日本語.md', '---\ntitle: 作品\n---\n本文\n')
 

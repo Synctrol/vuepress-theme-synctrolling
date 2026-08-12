@@ -23,8 +23,8 @@ function seedSite(): void {
   )
 
   write('content/home/content.yml', 'type: home\n')
-  write('content/home/zh.md', '---\ntitle: 首页\ndescription: 主页 SEO\n---\n首页正文\n')
-  write('content/home/en.md', '---\ntitle: Home\ndescription: Home SEO\n---\nHome body\n')
+  write('content/home/zh.md', '---\ntitle: 首页\ndescription: 主页 SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n')
+  write('content/home/en.md', '---\ntitle: Home\ndescription: Home SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\nHome body\n')
 
   write(
     'content/releases/first-release/content.yml',
@@ -165,7 +165,7 @@ describe('locale route compiler integration', () => {
   it('fails the build when the main-locale Home is unpublishable', () => {
     writeFileSync(
       join(root, 'content/home/zh.md'),
-      '---\ntitle: 首页\ndescription: 主页 SEO\ndraft: true\n---\n首页正文\n',
+      '---\ntitle: 首页\ndescription: 主页 SEO\ndraft: true\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n',
       'utf8',
     )
 

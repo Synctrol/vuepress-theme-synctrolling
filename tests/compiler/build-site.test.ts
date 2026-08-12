@@ -18,7 +18,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'synctrol-buildsite-'))
   write('content/definitions.yml', 'tags:\n  release:\n    title:\n      zh: 作品\n      en: Releases\n')
   write('content/home/content.yml', 'type: home\n')
-  write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n首页正文\n')
+  write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n')
   write('content/news/launch/content.yml', 'type: news\nslug: launch\ndate: 2026-08-10\ntags:\n  - release\n')
   write('content/news/launch/zh.md', '---\ntitle: 发布\n---\n发布正文\n')
 })
