@@ -10,6 +10,14 @@ const { messages } = useLocaleShell()
 const drawerRef = ref<HTMLElement | null>(null)
 let trap: FocusTrap | null = null
 let opener: HTMLElement | null = null
+let activateRaf = 0
+
+function cancelActivateRaf(): void {
+  if (activateRaf) {
+    cancelAnimationFrame(activateRaf)
+    activateRaf = 0
+  }
+}
 
 function close(): void {
   drawerOpen.value = false
@@ -27,12 +35,15 @@ watch(
   async (open) => {
     if (open) {
       opener = document.activeElement as HTMLElement | null
-      requestAnimationFrame(() => {
-        if (!drawerRef.value) return
+      cancelActivateRaf()
+      activateRaf = requestAnimationFrame(() => {
+        activateRaf = 0
+        if (!drawerOpen.value || !drawerRef.value) return
         trap = createFocusTrap(drawerRef.value, { restoreFocus: opener })
         trap.activate()
       })
     } else {
+      cancelActivateRaf()
       trap?.deactivate()
       trap = null
     }
@@ -46,6 +57,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  cancelActivateRaf()
   trap?.deactivate()
 })
 </script>

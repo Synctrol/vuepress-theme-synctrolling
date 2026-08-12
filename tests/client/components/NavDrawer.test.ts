@@ -76,4 +76,33 @@ describe('NavDrawer', () => {
 
     wrapper.unmount()
   })
+
+  it('cancels pending trap activate when closed before rAF', async () => {
+    document.body.innerHTML = '<button id="outside">outside</button>'
+    const outside = document.getElementById('outside') as HTMLButtonElement
+    outside.focus()
+
+    const drawerOpen = ref(false)
+    const wrapper = mountShell(NavDrawer, {
+      locale: 'en',
+      attachTo: document.body,
+      global: {
+        provide: {
+          [SYNCTROL_DRAWER_OPEN_KEY as symbol]: drawerOpen,
+        },
+      },
+    })
+
+    drawerOpen.value = true
+    await nextTick()
+    drawerOpen.value = false
+    await nextTick()
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+    const closeBtn = wrapper.get('.syn-nav-drawer__close').element as HTMLButtonElement
+    expect(document.activeElement).not.toBe(closeBtn)
+    expect(document.activeElement).toBe(outside)
+
+    wrapper.unmount()
+  })
 })
