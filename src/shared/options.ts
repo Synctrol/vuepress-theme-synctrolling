@@ -1,3 +1,4 @@
+import type { Component } from 'vue'
 import { enMessages, zhMessages } from './messages.js'
 import {
   assertRouteSegment,
@@ -66,9 +67,9 @@ export interface PlatformTypeRegistration<
   T extends PlatformEntryBase = PlatformEntryBase,
 > {
   validate(entry: unknown): T
-  component: unknown
+  component: Component
   cspOrigins(entry: T): string[]
-  fallbackUrl?(entry: T): string
+  fallbackUrl?(entry: T): string | undefined
 }
 
 export interface PlatformsOptions {
