@@ -5,10 +5,21 @@ import { useLocaleShell } from '../composables/useLocaleShell.js'
 
 const { messages, localeLabel, shell, locale } = useLocaleShell()
 const open = ref(false)
+const activeIndex = ref(0)
 const rootRef = ref<HTMLElement | null>(null)
 const toggleRef = ref<HTMLButtonElement | null>(null)
+const listboxId = 'syn-language-listbox'
 
 const alternates = computed(() => shell.localeAlternates)
+
+const activeOptionId = computed(() => {
+  const item = alternates.value[activeIndex.value]
+  return item ? optionId(item.locale) : undefined
+})
+
+function optionId(targetLocale: string): string {
+  return `syn-language-option-${targetLocale}`
+}
 
 function close(): void {
   if (!open.value) return
@@ -16,8 +27,21 @@ function close(): void {
   toggleRef.value?.focus()
 }
 
+function openList(preferredIndex?: number): void {
+  const currentIdx = alternates.value.findIndex(
+    (item) => item.locale === locale.value,
+  )
+  if (preferredIndex !== undefined) {
+    activeIndex.value = preferredIndex
+  } else {
+    activeIndex.value = currentIdx >= 0 ? currentIdx : 0
+  }
+  open.value = true
+}
+
 function toggle(): void {
-  open.value = !open.value
+  if (open.value) close()
+  else openList()
 }
 
 function select(href: string, targetLocale: string, event: Event): void {
@@ -25,6 +49,62 @@ function select(href: string, targetLocale: string, event: Event): void {
   persistLocalePreference(window.localStorage, targetLocale)
   open.value = false
   window.location.assign(href)
+}
+
+function activateActive(event: Event): void {
+  const item = alternates.value[activeIndex.value]
+  if (!item) return
+  select(item.href, item.locale, event)
+}
+
+function moveActive(delta: number): void {
+  const count = alternates.value.length
+  if (count === 0) return
+  activeIndex.value = (activeIndex.value + delta + count) % count
+}
+
+function onToggleKeydown(event: KeyboardEvent): void {
+  if (!open.value) {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (event.key === 'ArrowUp') {
+        openList(Math.max(alternates.value.length - 1, 0))
+      } else {
+        openList(0)
+      }
+    }
+    return
+  }
+
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault()
+      moveActive(1)
+      break
+    case 'ArrowUp':
+      event.preventDefault()
+      moveActive(-1)
+      break
+    case 'Home':
+      event.preventDefault()
+      activeIndex.value = 0
+      break
+    case 'End':
+      event.preventDefault()
+      activeIndex.value = Math.max(alternates.value.length - 1, 0)
+      break
+    case 'Enter':
+    case ' ':
+      event.preventDefault()
+      activateActive(event)
+      break
+    case 'Escape':
+      event.preventDefault()
+      close()
+      break
+    default:
+      break
+  }
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -53,27 +133,39 @@ onUnmounted(() => {
       ref="toggleRef"
       type="button"
       class="syn-language__toggle"
+      aria-haspopup="listbox"
       :aria-expanded="open ? 'true' : 'false'"
+      :aria-controls="listboxId"
+      :aria-activedescendant="open ? activeOptionId : undefined"
       :aria-label="messages.language"
       @click="toggle"
+      @keydown="onToggleKeydown"
     >
       {{ localeLabel }}
     </button>
     <ul
+      :id="listboxId"
       class="syn-language__list"
       :class="{ 'syn-language__list--open': open }"
       role="listbox"
       :aria-hidden="open ? 'false' : 'true'"
     >
-      <li v-for="item in alternates" :key="item.locale" role="option">
-        <a
+      <li
+        v-for="item in alternates"
+        :key="item.locale"
+        role="presentation"
+      >
+        <button
+          type="button"
           class="syn-language__option"
-          :href="item.href"
-          :aria-current="item.locale === locale ? 'page' : undefined"
+          role="option"
+          :id="optionId(item.locale)"
+          :aria-selected="item.locale === locale ? 'true' : 'false'"
+          tabindex="-1"
           @click="select(item.href, item.locale, $event)"
         >
           {{ item.label }}
-        </a>
+        </button>
       </li>
     </ul>
   </div>
