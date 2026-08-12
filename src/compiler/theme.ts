@@ -1,7 +1,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createPage } from 'vuepress/core'
 import type { App, Page, ThemeObject } from 'vuepress/core'
+import { buildColorModeBootScript } from '../client/color-mode/boot-script.js'
 import { toClientThemeOptions } from '../shared/client-options.js'
 import type { SynctrolThemeOptions } from '../shared/options.js'
 import { resolveThemeOptions } from '../shared/options.js'
@@ -10,6 +12,8 @@ import type { RouteContentPackage } from '../shared/types.js'
 import { compileAssets } from './assets/compile-assets.js'
 import { selectAssetPackageSources } from './assets/select-asset-package-sources.js'
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function isContentSourcePage(page: Page): boolean {
   const relative = page.filePathRelative
@@ -31,14 +35,18 @@ function bodyFor(
 export function synctrolTheme(options: SynctrolThemeOptions) {
   const resolved = resolveThemeOptions(options)
   const clientOptions = toClientThemeOptions(resolved)
+  const boot = buildColorModeBootScript(resolved.defaultColorMode)
   let built: BuiltSite | undefined
 
   return {
     name: 'vuepress-theme-synctrolling',
+    clientConfigFile: resolve(__dirname, '../client/config.js'),
     define: {
       __SYNCTROL_THEME_OPTIONS__: clientOptions,
     },
     onInitialized: async (app: App): Promise<void> => {
+      app.siteData.head.push(['script', {}, boot])
+
       built = buildSite({
         sourceDir: app.dir.source(),
         configDir: app.dir.source('.vuepress'),
@@ -79,6 +87,12 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       for (const compiled of built.site.pages) {
         const contentAssets =
           assetManifest.contentPublicPaths[compiled.identity] ?? {}
+        const alternates = built.site.pages
+          .filter((p) => p.identity === compiled.identity)
+          .map((p) => ({
+            locale: p.locale,
+            publicPath: p.url.publicPath,
+          }))
         const page = await createPage(app, {
           // VuePress sanitizes and re-encodes this itself; Task 3's routable
           // gate guarantees the result equals compiled.url.routePath.
@@ -100,6 +114,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
               bodyLocale: compiled.bodyLocale,
               canonicalLocale: compiled.canonicalLocale,
               contentAssets,
+              alternates,
             },
           },
         })
