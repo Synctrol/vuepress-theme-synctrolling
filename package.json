@@ -18,7 +18,7 @@
     "src"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-client-assets.mjs",
     "test:typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test:build-smoke": "npm run build && node scripts/smoke-built-exports.mjs",
     "test": "npm run test:typecheck && vitest run",
@@ -30,6 +30,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vue/test-utils": "^2.4.11",
+    "happy-dom": "^17.6.3",
     "typescript": "^5.7.0",
     "vite": "^6.4.3",
     "vitest": "^4.1.10",

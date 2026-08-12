@@ -3,12 +3,13 @@ import {
   normalizeLanguageTag,
   toLocaleTable,
 } from '../shared/match-browser-locale.js'
+import { LOCALE_STORAGE_KEY } from '../shared/locale-storage.js'
 import { resolveMultilanguage } from '../shared/multilanguage.js'
 import type { ResolvedSynctrolThemeOptions } from '../shared/options.js'
 import { joinPublicPath, normalizeBase } from '../shared/route-path.js'
 import { encodeRouteSegment } from './path-suffix.js'
 
-export const LOCALE_STORAGE_KEY = 'synctrol:locale'
+export { LOCALE_STORAGE_KEY }
 
 export interface RootRouterInput {
   options: Pick<
