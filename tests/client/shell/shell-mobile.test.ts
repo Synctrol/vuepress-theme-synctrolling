@@ -39,10 +39,10 @@ describe('shell mobile contract', () => {
     expect(root.find('.syn-nav-drawer .syn-navigation').exists()).toBe(true)
   })
 
-  it('encodes mobile flow and dock clearance as padding in CSS', () => {
+  it('encodes mobile flow without dock clearance padding in CSS', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toContain('@media (max-width: 768px)')
-    expect(css).toContain('padding-bottom: var(--syn-dock-content-clearance)')
+    expect(css).not.toContain('padding-bottom: var(--syn-dock-content-clearance)')
     // Isolate the ≤768px block brace-aware so a desktop-level hide rule cannot pass.
     const mobile = extractMediaBlock(
       css,

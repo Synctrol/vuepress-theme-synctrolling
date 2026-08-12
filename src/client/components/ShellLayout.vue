@@ -31,10 +31,9 @@ const shellClass = computed(() => ({
     <Navigation />
     <SiteFooter>
       <slot name="footer" />
+      <SocialLinks />
       <LanguageSwitcher />
     </SiteFooter>
-    <div class="syn-shell__dock" aria-hidden="true" />
-    <SocialLinks />
     <NavDrawer />
   </div>
 </template>

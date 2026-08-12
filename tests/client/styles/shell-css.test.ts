@@ -11,10 +11,13 @@ describe('shell.css', () => {
     expect(css).toContain("'main navigation'")
     expect(css).toContain("'main .'")
     expect(css).toContain("'footer footer'")
-    expect(css).toContain("'dock dock'")
+    expect(css).not.toContain("'dock dock'")
     expect(css).toContain('minmax(0, 1.618fr)')
     expect(css).toContain('minmax(280px, 1fr)')
-    expect(css).toContain('var(--syn-dock-content-clearance)')
+  })
+
+  it('resets the body margin so the bars hug the viewport edges', () => {
+    expect(css).toMatch(/body\s*\{[^}]*margin:\s*0/)
   })
 
   it('lays the footer bar out like the reference bottom bar with the language switcher inside', () => {
@@ -24,6 +27,15 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*justify-content:\s*space-between/)
     expect(css).not.toMatch(/\.syn-language\s*\{[^}]*position:\s*fixed/)
     expect(css).toMatch(/\.syn-language\s*\{[^}]*position:\s*relative/)
+  })
+
+  it('renders the social links as chips inside the footer bar', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).not.toMatch(/\.syn-social-links\s*\{[^}]*position:\s*fixed/)
+    expect(css).not.toMatch(/\.syn-shell__dock/)
+    expect(css).toMatch(/\.syn-social-links\s*\{[^}]*margin:\s*0 0 0 auto/)
+    expect(css).toMatch(/\.syn-social-links__link\s*\{[^}]*background:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/:root\[data-theme='dark'\]\s*\.syn-social-links__icon\s*\{[^}]*filter:\s*invert\(1\)/)
   })
 
   it('styles the home logo with reference .logo/.logo-sub classes and full-width title cell', () => {
@@ -36,13 +48,11 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-formatter--home-logo\s*\{[^}]*display:\s*contents/)
   })
 
-  it('uses the mobile breakpoint at 768px and dock safe-area tokens', () => {
+  it('uses the mobile breakpoint at 768px and keeps the dock control tokens', () => {
     expect(css).toContain('@media (max-width: 768px)')
-    expect(css).toContain('var(--syn-dock-bottom)')
-    expect(css).toContain('var(--syn-dock-left)')
-    expect(css).toContain('var(--syn-dock-right)')
     expect(css).toContain('var(--syn-dock-gap)')
     expect(css).toContain('var(--syn-dock-control-size)')
+    expect(css).not.toContain('var(--syn-dock-content-clearance)')
     expect(css).toContain('@media (max-width: 360px)')
   })
 

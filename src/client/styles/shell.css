@@ -1,4 +1,8 @@
 /* src/client/styles/shell.css */
+body {
+  margin: 0;
+}
+
 .syn-visually-hidden {
   position: absolute;
   width: 1px;
@@ -18,8 +22,7 @@
     'header header'
     'main navigation'
     'main .'
-    'footer footer'
-    'dock dock';
+    'footer footer';
   grid-template-columns:
     minmax(0, 1.618fr)
     minmax(280px, 1fr);
@@ -27,8 +30,7 @@
     auto
     minmax(0, 1.618fr)
     minmax(0, 1fr)
-    auto
-    var(--syn-dock-content-clearance);
+    auto;
   color: var(--syn-fg);
   background: transparent;
   font-family: var(--syn-font-body);
@@ -137,27 +139,13 @@
   min-height: 0;
 }
 
-.syn-shell__dock {
-  grid-area: dock;
-  pointer-events: none;
-}
-
 .syn-social-links {
-  position: fixed;
-  bottom: var(--syn-dock-bottom);
-  z-index: 20;
-  pointer-events: auto;
-  left: var(--syn-dock-left);
   display: flex;
-  flex-wrap: wrap-reverse;
+  flex-wrap: wrap;
   gap: var(--syn-dock-gap);
-  max-width: calc(
-    100vw - var(--syn-dock-left) - var(--syn-dock-right) - 40vw -
-      (2 * var(--syn-dock-gap))
-  );
-  list-style: none;
-  margin: 0;
+  margin: 0 0 0 auto;
   padding: 0;
+  list-style: none;
 }
 
 .syn-social-links__link {
@@ -166,6 +154,8 @@
   height: var(--syn-dock-control-size);
   border: var(--syn-border-strong);
   border-radius: var(--syn-radius);
+  background: var(--syn-bg);
+  color: var(--syn-fg);
 }
 
 .syn-social-links__link:hover,
@@ -192,6 +182,10 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+:root[data-theme='dark'] .syn-social-links__icon {
+  filter: invert(1);
 }
 
 .syn-language {
@@ -294,7 +288,6 @@
 @media (max-width: 768px) {
   .syn-shell {
     display: block;
-    padding-bottom: var(--syn-dock-content-clearance);
   }
 
   .syn-header__menu {
@@ -307,10 +300,6 @@
   }
 
   .syn-shell > .syn-navigation {
-    display: none;
-  }
-
-  .syn-shell__dock {
     display: none;
   }
 }
