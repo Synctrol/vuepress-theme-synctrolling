@@ -25,7 +25,8 @@ export interface BuildReleaseDetailModelInput {
   book: Book | undefined
   messages: LocaleMessages
   mainLocale: LocaleKey
-  releaseIndexHref: string
+  /** Real release index publicPath, or null when index is disabled / missing. */
+  releaseIndexHref: string | null
   resolveArtwork: (pkg: RouteContentPackage) => ResolvedAsset | undefined
   resolveAlbumCover: (relativePath: string) => ResolvedAsset
   resolveGiftItemCover?: (relativePath: string) => ResolvedAsset
@@ -53,11 +54,13 @@ export function buildReleaseDetailModel(
   const { page, pkg, book, messages } = input
   const sections: ReleaseDetailSection[] = []
 
-  sections.push({
-    kind: 'return-link',
-    href: input.releaseIndexHref,
-    label: messages.returnToReleases,
-  })
+  if (input.releaseIndexHref !== null) {
+    sections.push({
+      kind: 'return-link',
+      href: input.releaseIndexHref,
+      label: messages.returnToReleases,
+    })
+  }
 
   sections.push({
     kind: 'title-date',

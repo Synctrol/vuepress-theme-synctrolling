@@ -1,5 +1,6 @@
 import type { AssetManifest, ResolvedAsset } from '../../shared/asset-types.js'
 import type { RouteContentPackage } from '../../shared/types.js'
+import { isConfigRelativeAssetRef } from '../assets/global-pipeline.js'
 
 export function resolvedFromPublicPath(
   manifest: AssetManifest,
@@ -56,6 +57,10 @@ export function resolveArtworkPlaceholder(
   artworkPlaceholder: string | undefined,
 ): ResolvedAsset | undefined {
   if (!artworkPlaceholder) return undefined
+  // Root-absolute and http(s) refs are not hashed — pass through as-is.
+  if (!isConfigRelativeAssetRef(artworkPlaceholder)) {
+    return resolvedFromPublicPath(manifest, artworkPlaceholder)
+  }
   const publicPath =
     manifest.globalPublicPaths[artworkPlaceholder] ??
     manifest.globalPublicPaths[

@@ -252,6 +252,58 @@ describe('buildReleaseIndexModel', () => {
     expect(model!.tiles[0].showDraftBadge).toBe(true)
   })
 
+  it('ignores detail pages from other locales (defense in depth)', () => {
+    // Put matching locale first and wrong locale last so a naive Map overwrite
+    // would pick English; filtering by collection locale must keep 中文.
+    const model = buildReleaseIndexModel({
+      collectionPage: collectionPage(['release:a']),
+      detailPages: [
+        releaseDetailPage({
+          identity: 'release:a',
+          locale: 'zh',
+          slug: 'a',
+          title: '中文标题',
+          url: {
+            routePath: '/zh/releases/a/',
+            outputPath: 'zh/releases/a/index.html',
+            publicPath: '/zh/releases/a/',
+            absoluteUrl: 'https://synctrol.com/zh/releases/a/',
+          },
+        }),
+        releaseDetailPage({
+          identity: 'release:a',
+          locale: 'en',
+          slug: 'a',
+          title: 'English title must not win',
+          url: {
+            routePath: '/en/releases/a/',
+            outputPath: 'en/releases/a/index.html',
+            publicPath: '/en/releases/a/',
+            absoluteUrl: 'https://synctrol.com/en/releases/a/',
+          },
+        }),
+      ],
+      packages: [
+        releasePkg({ slug: 'a', date: '2026-08-11', artwork: './assets/a.webp' }),
+      ],
+      releaseOptions: {
+        urlSegment: 'releases',
+        index: {
+          enabled: true,
+          pagination: 12,
+          mobileGridColumns: 2,
+          desktopGridColumns: 3,
+        },
+      },
+      resolveArtwork,
+      resolvePlaceholder,
+      showDrafts: false,
+    })
+    expect(model!.tiles).toHaveLength(1)
+    expect(model!.tiles[0].title).toBe('中文标题')
+    expect(model!.tiles[0].href).toBe('/zh/releases/a/')
+  })
+
   it('honors collection page slice from route compiler pagination', () => {
     const model = buildReleaseIndexModel({
       collectionPage: collectionPage(['release:b'], 2, 2),

@@ -169,4 +169,32 @@ describe('buildReleaseDetailModel', () => {
     })
     expect(model.showDraftBadge).toBe(true)
   })
+
+  it('omits return-link when releaseIndexHref is null (index disabled / no real collection)', () => {
+    const model = buildReleaseDetailModel({
+      page: releaseDetailPage(),
+      pkg: { ...basePkg, artwork: undefined, cover: undefined },
+      book: undefined,
+      messages: zhMessages,
+      mainLocale: 'zh',
+      releaseIndexHref: null,
+      resolveArtwork: () => undefined,
+      resolveAlbumCover: () => {
+        throw new Error('should not resolve album covers')
+      },
+      resolvePlaceholder: () => undefined,
+      releaseOptions: {
+        ...releaseOptions,
+        index: { ...releaseOptions.index, enabled: false },
+      },
+      showDrafts: false,
+      formatDate: (d) => d,
+    })
+    expect(model.sections.map((s) => s.kind)).toEqual([
+      'title-date',
+      'artwork',
+      'markdown',
+    ])
+    expect(model.sections.some((s) => s.kind === 'return-link')).toBe(false)
+  })
 })

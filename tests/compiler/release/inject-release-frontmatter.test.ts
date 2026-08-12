@@ -273,6 +273,48 @@ describe('buildReleaseFrontmatterForPage', () => {
     }
   })
 
+  it('omits return-link on detail when releaseIndexHrefForLocale returns null', () => {
+    const detail = releaseDetailPage()
+    const pkg: RouteContentPackage = {
+      dir: '/content/releases/first-release',
+      identity: 'release:first-release',
+      type: 'release',
+      slug: 'first-release',
+      date: '2026-08-11',
+      draft: false,
+      tags: [],
+      locales: {},
+    }
+    const result = buildReleaseFrontmatterForPage({
+      compiled: detail,
+      allPages: [detail],
+      packages: [pkg],
+      compiledPackages: [],
+      assetManifest: {
+        assets: [],
+        bySourcePath: {},
+        contentPublicPaths: {},
+        globalPublicPaths: {},
+      },
+      releaseOptions: {
+        ...releaseOptions,
+        index: { ...releaseOptions.index, enabled: false },
+      },
+      showDrafts: false,
+      mainLocale: 'zh',
+      messages: zhMessages,
+      collectionTitle: '作品',
+      formatDate: (d) => d,
+      releaseIndexHrefForLocale: () => null,
+    })
+    expect(result?.kind).toBe('detail')
+    if (result?.kind === 'detail') {
+      expect(result.model.sections.some((s) => s.kind === 'return-link')).toBe(
+        false,
+      )
+    }
+  })
+
   it('returns null for non-release pages', () => {
     const home: CompiledPage = {
       identity: 'home',

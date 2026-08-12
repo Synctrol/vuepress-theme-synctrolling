@@ -43,8 +43,12 @@ export function buildReleaseIndexModel(
     throw new Error('release-collection page missing collection metadata')
   }
 
+  // Defense in depth: only same-locale detail pages may populate tiles.
+  const locale = input.collectionPage.locale
   const detailByIdentity = new Map(
-    input.detailPages.map((p) => [p.identity, p] as const),
+    input.detailPages
+      .filter((p) => p.locale === locale)
+      .map((p) => [p.identity, p] as const),
   )
 
   const tiles: ReleaseIndexTile[] = []

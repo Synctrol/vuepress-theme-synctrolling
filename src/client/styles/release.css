@@ -55,6 +55,10 @@
     linear-gradient(currentColor, currentColor) center / 3px 40% no-repeat;
 }
 
+.syn-release-detail {
+  position: relative;
+}
+
 .syn-release-detail-artwork {
   max-width: var(--syn-artwork-width);
   width: 100%;

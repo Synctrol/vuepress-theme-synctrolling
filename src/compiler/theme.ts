@@ -137,10 +137,9 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
                 p.contentType === 'release-collection' &&
                 p.collection?.page === 1,
             )
-            return (
-              index?.url.publicPath ??
-              `/${locale}/${resolved.release.urlSegment}/`
-            )
+            // Only a real emitted collection page yields a return link.
+            // When index is disabled (or missing), return null — no synthetic href.
+            return index?.url.publicPath ?? null
           },
         })
 

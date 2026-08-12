@@ -28,7 +28,7 @@ export interface BuildReleaseFrontmatterInput {
   messages: LocaleMessages
   collectionTitle: string
   formatDate: (yyyyMmDd: string, locale: LocaleKey) => string
-  releaseIndexHrefForLocale: (locale: LocaleKey) => string
+  releaseIndexHrefForLocale: (locale: LocaleKey) => string | null
 }
 
 function findBook(
