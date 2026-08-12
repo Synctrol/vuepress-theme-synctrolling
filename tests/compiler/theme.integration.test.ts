@@ -7,6 +7,7 @@ import type { App, Bundler, Page } from 'vuepress/core'
 import { sanitizeFileName } from 'vuepress/utils'
 import { buildSite } from '../../src/compiler/build-site'
 import { encodePathSegment } from '../../src/compiler/path-suffix'
+import { assertNoCspMetaInjection } from '../../src/compiler/platforms/write-csp-artifact'
 import { enMessages } from '../../src/shared/messages'
 import {
   resolveThemeOptions,
@@ -490,5 +491,53 @@ describe('synctrolTheme production integration', () => {
   it('allows root-absolute seo.defaultImage without requiring a file', async () => {
     // runBuild() already uses defaultImage: '/images/og.png' — must still succeed.
     await expect(runBuild()).resolves.toBeTruthy()
+  })
+
+  it('writes synctrol-csp.json on generate without CSP meta and keeps root router', async () => {
+    write(
+      'content/definitions.yml',
+      `tags:
+  release:
+    title:
+      zh: 作品
+      en: Releases
+platforms:
+  youtube:
+    category: digital
+    type: youtube_player
+    name: YouTube
+`,
+    )
+    write(
+      'content/releases/first-release/book.yml',
+      `type: album
+title: First Album
+album:
+  links:
+    - platform: youtube
+      videoId: dQw4w9WgXcQ
+`,
+    )
+
+    const app = await runBuild()
+    const dest = app.dir.dest()
+    const cspPath = join(dest, 'synctrol-csp.json')
+    expect(existsSync(cspPath)).toBe(true)
+    const csp = JSON.parse(readFileSync(cspPath, 'utf8')) as {
+      'frame-src': string[]
+    }
+    expect(csp['frame-src']).toContain('https://www.youtube.com')
+
+    const indexHtml = readFileSync(join(dest, 'index.html'), 'utf8')
+    expect(indexHtml).toContain('location.replace')
+    expect(indexHtml).toContain('synctrol:locale')
+    expect(indexHtml).toContain('href="/zh/"')
+    assertNoCspMetaInjection(indexHtml)
+
+    const pageHtml = readFileSync(
+      join(dest, 'zh/releases/first-release/index.html'),
+      'utf8',
+    )
+    assertNoCspMetaInjection(pageHtml)
   })
 })

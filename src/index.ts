@@ -12,3 +12,15 @@ export type {
 } from './shared/background.js'
 export * from './compiler/index.js'
 export * from './compiler/assets/index.js'
+
+export { resolvePlatformTypes } from './platforms/registry.js'
+export { formatMessage } from './platforms/format-message.js'
+export {
+  writeSynctrolCspJson,
+  assertNoCspMetaInjection,
+} from './compiler/platforms/write-csp-artifact.js'
+export type {
+  PlatformTypeRegistration,
+  PlatformsOptions,
+  PlatformTypesConfig,
+} from './shared/options.js'

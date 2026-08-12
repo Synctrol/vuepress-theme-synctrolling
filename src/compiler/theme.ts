@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url'
 import { createPage } from 'vuepress/core'
 import type { App, Page, ThemeObject } from 'vuepress/core'
 import { buildColorModeBootScript } from '../client/color-mode/boot-script.js'
+import { collectCspFromEntries } from '../platforms/collect-csp.js'
+import { resolvePlatformTypes } from '../platforms/registry.js'
 import { toClientThemeOptions } from '../shared/client-options.js'
 import type { SynctrolThemeOptions } from '../shared/options.js'
 import { resolveThemeOptions } from '../shared/options.js'
@@ -13,6 +15,8 @@ import { compileAssets } from './assets/compile-assets.js'
 import { selectAssetPackageSources } from './assets/select-asset-package-sources.js'
 import { createSynctrolBackgroundsVitePlugin } from './backgrounds/vite-plugin.js'
 import { buildSite, SYNCTROL_CONTENT_DIR, type BuiltSite } from './build-site.js'
+import { collectVisiblePlatformEntries } from './platforms/collect-visible-platform-entries.js'
+import { writeSynctrolCspJson } from './platforms/write-csp-artifact.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -140,9 +144,29 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
     },
     onGenerated: (app: App): void => {
       if (built === undefined) return
+
       const target = app.dir.dest('index.html')
       mkdirSync(dirname(target), { recursive: true })
       writeFileSync(target, built.site.rootRouterHtml, 'utf8')
+
+      const types = resolvePlatformTypes(resolved.platforms.types)
+      const platformTypes = Object.fromEntries(
+        Object.entries(built.definitions.platforms).map(([key, def]) => [
+          key,
+          def.type,
+        ]),
+      )
+      const entries = collectVisiblePlatformEntries({
+        compiledPackages: built.compiledPackages,
+        packages: built.packages,
+        pages: built.site.pages,
+        platformTypes,
+      })
+      const csp = collectCspFromEntries(entries, types)
+      writeSynctrolCspJson(app.dir.dest(), csp)
+      console.log(
+        `[vuepress-theme-synctrolling] synctrol-csp.json: ${csp['frame-src'].length} frame-src, ${csp['media-src'].length} media-src, ${csp['connect-src'].length} connect-src`,
+      )
     },
   } satisfies ThemeObject
 }

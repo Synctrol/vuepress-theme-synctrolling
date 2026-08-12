@@ -7,6 +7,7 @@ import type {
   SynctrolDiagnostic,
 } from '../src/compiler/index'
 import {
+  assertNoCspMetaInjection,
   collectPackageDeclaredPaths,
   compileAssets,
   compileContent,
@@ -14,19 +15,23 @@ import {
   discoverContentPackages,
   enMessages,
   fail,
+  formatMessage,
   isDiagnosticError,
   loadContentDefinitions,
   parseBook,
   parseContentManifest,
   resolveMultilanguage,
   resolveDefinitionsPath,
+  resolvePlatformTypes,
   resolveThemeOptions,
   SynctrolDiagnosticError,
   toAssetPackageSource,
   validatePlatformEntry,
+  writeSynctrolCspJson,
   zhMessages,
 } from '../src/index'
 import type { CompiledContentPackage } from '../src/index'
+import * as clientApi from '../src/client/index'
 
 describe('root public exports', () => {
   it('exposes messages, the multilanguage resolver, and option resolution', () => {
@@ -84,6 +89,24 @@ describe('root public exports', () => {
     expect(compilerApi).not.toHaveProperty('compileAssets')
     expect(compilerApi).not.toHaveProperty('toAssetPackageSource')
     expect(compilerApi).not.toHaveProperty('collectPackageDeclaredPaths')
+  })
+
+  it('exposes platform registry and CSP helpers from the package root', () => {
+    expect(typeof resolvePlatformTypes).toBe('function')
+    expect(typeof formatMessage).toBe('function')
+    expect(typeof writeSynctrolCspJson).toBe('function')
+    expect(typeof assertNoCspMetaInjection).toBe('function')
+    expect(Object.keys(resolvePlatformTypes({}))).toEqual(
+      expect.arrayContaining(['youtube_player', 'bilibili_player', 'link']),
+    )
+  })
+
+  it('exposes PlatformEmbed and PlatformLinks from the client entry (no SFC re-exports)', () => {
+    expect(clientApi).toHaveProperty('PlatformEmbed')
+    expect(clientApi).toHaveProperty('PlatformLinks')
+    expect(clientApi).toHaveProperty('resolveContentAsset')
+    expect(clientApi).not.toHaveProperty('Layout')
+    expect(clientApi).not.toHaveProperty('BackgroundHost')
   })
 
   it('exposes compiler and compiled-package type contracts', () => {
