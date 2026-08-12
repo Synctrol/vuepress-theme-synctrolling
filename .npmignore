@@ -1,0 +1,13 @@
+# .npmignore - defense in depth; package.json "files" is source of truth.
+tests/
+docs/
+src/
+scripts/
+.github/
+.superpowers/
+*.tgz
+vitest.config.ts
+tsconfig.json
+tsconfig.test.json
+.env
+.env.*
