@@ -78,7 +78,7 @@ onUnmounted(() => {
       </p>
       <button
         type="button"
-        class="syn-nav-drawer__close syn-bar-chip"
+        class="syn-nav-drawer__close"
         @click="close"
       >
         <svg

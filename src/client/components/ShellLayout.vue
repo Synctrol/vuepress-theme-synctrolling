@@ -27,6 +27,7 @@ const shellClass = computed(() => ({
       <section class="cell cell-title">
         <slot />
       </section>
+      <NavDrawer />
     </main>
     <Navigation />
     <SiteFooter>
@@ -34,6 +35,5 @@ const shellClass = computed(() => ({
       <SocialLinks />
       <LanguageSwitcher />
     </SiteFooter>
-    <NavDrawer />
   </div>
 </template>

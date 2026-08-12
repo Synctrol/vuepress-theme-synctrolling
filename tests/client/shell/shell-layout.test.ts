@@ -46,6 +46,8 @@ describe('ShellLayout', () => {
     const section = main.find('section.cell.cell-title')
     expect(section.exists()).toBe(true)
     expect(section.find('.syn-main-probe').exists()).toBe(true)
+    // The drawer overlays the main area (bars and shell borders stay visible)
+    expect(main.find('.syn-nav-drawer').exists()).toBe(true)
     const footer = wrapper.get('footer.syn-site-footer')
     expect(footer.find('.syn-language').exists()).toBe(true)
     expect(footer.find('.syn-social-links').exists()).toBe(true)

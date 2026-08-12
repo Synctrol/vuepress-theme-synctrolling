@@ -160,7 +160,15 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*font-size:\s*12px/)
     expect(css).toMatch(/\.syn-language__option\s*\{[^}]*letter-spacing:\s*1px/)
     expect(css).toMatch(/\.syn-language__toggle:hover[^{]*\{[^}]*text-decoration:\s*underline/)
-    expect(css).toMatch(/\.syn-nav-drawer__close\s*\{[^}]*letter-spacing:\s*1px/)
+    expect(css).toMatch(/\.syn-nav-drawer__close\s*\{[^}]*background:\s*transparent/)
+    expect(css).toMatch(/\.syn-nav-drawer__close\s*\{[^}]*border:\s*0/)
+  })
+
+  it('lays the nav drawer over the main area so bars and shell borders stay visible', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-main\s*\{[^}]*position:\s*relative/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*position:\s*absolute/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\{[^}]*inset:\s*0/)
   })
 
   it('adds the reference 640px mobile breakpoint', () => {
