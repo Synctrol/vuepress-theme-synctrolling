@@ -19,3 +19,8 @@ export {
   type CompileContentOptions,
   type CompileContentResult,
 } from './compile-content.js'
+export {
+  buildReleaseIndexModel,
+  buildReleaseDetailModel,
+  buildReleaseFrontmatterForPage,
+} from './release/index.js'

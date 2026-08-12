@@ -113,6 +113,31 @@ export function releaseDetailPage(
   }
 }
 
+export function releaseCollectionPage(
+  overrides: Partial<CompiledPage> & {
+    collection: NonNullable<CompiledPage['collection']>
+  },
+): CompiledPage {
+  return {
+    identity: 'release-index',
+    locale: 'zh',
+    contentType: 'release-collection',
+    url: {
+      routePath: '/zh/releases/',
+      outputPath: 'zh/releases/index.html',
+      publicPath: '/zh/releases/',
+      absoluteUrl: 'https://synctrol.com/zh/releases/',
+    },
+    isFallback: false,
+    isDraft: false,
+    noindex: false,
+    bodyLocale: 'zh',
+    canonicalLocale: 'zh',
+    title: '作品',
+    ...overrides,
+  }
+}
+
 export function messageFor(locale: LocaleKey) {
   return locale === 'en' ? enMessages : zhMessages
 }
