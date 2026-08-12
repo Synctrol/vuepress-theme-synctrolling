@@ -40,6 +40,15 @@ export interface SocialLinksOptions {
   items: SocialLink[]
 }
 
+export interface LinkCloudItem {
+  label: Multilanguage
+  href: string
+}
+
+export interface LinkCloudOptions {
+  items: LinkCloudItem[]
+}
+
 export interface ReleaseOptions {
   urlSegment: UrlSegment
   index: {
@@ -117,6 +126,7 @@ export interface SynctrolThemeOptions {
   }
   navigation?: NavigationOptions
   socialLinks?: SocialLinksOptions
+  linkCloud?: LinkCloudOptions
   release?: ReleaseOptions
   news?: NewsOptions
   platforms?: PlatformsOptions
@@ -143,6 +153,7 @@ export interface ResolvedSynctrolThemeOptions {
   feeds: { rss: boolean; sitemap: boolean }
   navigation: NavigationOptions
   socialLinks: SocialLinksOptions
+  linkCloud?: LinkCloudOptions
   release: ReleaseOptions
   news: NewsOptions
   platforms: PlatformsOptions
@@ -336,6 +347,15 @@ export function resolveThemeOptions(
         url: item.url,
       })),
     },
+    linkCloud:
+      input.linkCloud === undefined
+        ? undefined
+        : {
+            items: input.linkCloud.items.map((item) => ({
+              label: copyMultilanguage(item.label),
+              href: item.href,
+            })),
+          },
     release,
     news,
     platforms: {

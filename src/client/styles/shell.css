@@ -236,12 +236,36 @@ body {
 .syn-navigation__side-panel {
   min-height: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   border-top: var(--syn-border-strong);
   /* Desktop: blend with the page background instead of the deco column. */
   background: var(--syn-bg);
   padding: 24px;
+}
+
+.syn-link-cloud__list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.syn-link-cloud__link {
+  font-size: 16px;
+  color: var(--syn-fg);
+  text-decoration: underline;
+}
+
+.syn-link-cloud__divider {
+  width: 120px;
+  height: 1px;
+  background: var(--syn-fg);
 }
 
 .syn-site-footer {
@@ -268,7 +292,8 @@ body {
 .syn-social-links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--syn-dock-gap);
+  /* 18px horizontal gap, keep the vertical (row) gap unchanged. */
+  gap: var(--syn-dock-gap) 18px;
   margin: 0;
   padding: 0;
   list-style: none;

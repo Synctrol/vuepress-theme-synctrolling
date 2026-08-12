@@ -1,5 +1,6 @@
 import { enMessages } from './messages.js'
 import type {
+  LinkCloudItem,
   NavigationItem,
   PlatformTypeRegistration,
   SeoCollectionCopy,
@@ -25,6 +26,7 @@ const TOP_LEVEL_FIELDS = [
   'feeds',
   'navigation',
   'socialLinks',
+  'linkCloud',
   'release',
   'news',
   'platforms',
@@ -39,6 +41,8 @@ const NAVIGATION_FIELDS = ['items', 'externalTarget'] as const
 const NAVIGATION_ITEM_FIELDS = ['label', 'href', 'icon'] as const
 const SOCIAL_LINKS_FIELDS = ['items'] as const
 const SOCIAL_LINK_FIELDS = ['label', 'icon', 'url'] as const
+const LINK_CLOUD_FIELDS = ['items'] as const
+const LINK_CLOUD_ITEM_FIELDS = ['label', 'href'] as const
 const RELEASE_FIELDS = ['urlSegment', 'index', 'artworkPlaceholder'] as const
 const RELEASE_INDEX_FIELDS = [
   'enabled',
@@ -341,6 +345,31 @@ function validateSocialLinks(value: unknown, mainLocale: string): void {
   }
 }
 
+function validateLinkCloudItem(
+  value: unknown,
+  index: number,
+  mainLocale: string,
+): asserts value is LinkCloudItem {
+  const field = `options.linkCloud.items[${index}]`
+  assertPlainObject(value, field)
+  assertKnownFields(value, LINK_CLOUD_ITEM_FIELDS, field)
+  validateMultilanguage(value.label, `${field}.label`, mainLocale)
+  assertNonEmptyString(value.href, `${field}.href`)
+}
+
+function validateLinkCloud(value: unknown, mainLocale: string): void {
+  if (value === undefined) return
+  assertPlainObject(value, 'options.linkCloud')
+  assertKnownFields(value, LINK_CLOUD_FIELDS, 'options.linkCloud')
+
+  if (value.items !== undefined) {
+    assertArray(value.items, 'options.linkCloud.items')
+    value.items.forEach((item, index) =>
+      validateLinkCloudItem(item, index, mainLocale),
+    )
+  }
+}
+
 function validateRelease(value: unknown): void {
   if (value === undefined) return
   assertPlainObject(value, 'options.release')
@@ -550,6 +579,7 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
   validateFeeds(input.feeds)
   validateNavigation(input.navigation, input.mainLocale)
   validateSocialLinks(input.socialLinks, input.mainLocale)
+  validateLinkCloud(input.linkCloud, input.mainLocale)
   validateRelease(input.release)
   validateNews(input.news)
   validatePlatforms(input.platforms)

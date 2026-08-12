@@ -51,10 +51,13 @@ describe('shell.css', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).not.toMatch(/\.syn-social-links\s*\{[^}]*position:\s*fixed/)
     expect(css).not.toMatch(/\.syn-shell__dock/)
-    expect(css).toMatch(/\.syn-social-links\s*\{[^}]*margin:\s*0/)
-    expect(css).not.toMatch(/\.syn-social-links__link\s*\{[^}]*border:/)
-    expect(css).not.toMatch(/\.syn-social-links__link\s*\{[^}]*background:/)
-    expect(css).toMatch(/:root\[data-theme='dark'\]\s*\.syn-social-links__icon\s*\{[^}]*filter:\s*invert\(1\)/)
+    expect(css).toMatch(/\.syn-social-links\s*\{[^}]*gap:\s*var\(--syn-dock-gap\)\s*18px/)
+    expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*flex-direction:\s*column/)
+    expect(css).toMatch(/\.syn-link-cloud__link\s*\{[^}]*font-size:\s*16px/)
+    expect(css).toMatch(/\.syn-link-cloud__link\s*\{[^}]*text-decoration:\s*underline/)
+    expect(css).not.toMatch(/\.syn-link-cloud__link\s*\{[^}]*background:/)
+    expect(css).toMatch(/\.syn-link-cloud__divider\s*\{[^}]*width:\s*120px/)
+    expect(css).toMatch(/\.syn-link-cloud__divider\s*\{[^}]*height:\s*1px/)
   })
 
   it('styles the home logo with reference .logo/.logo-sub classes and full-width title cell', () => {

@@ -57,6 +57,14 @@ export default defineUserConfig({
         },
       ],
     },
+    linkCloud: {
+      items: [
+        { label: { zh: '文档', en: 'Docs' }, href: '/docs/' },
+        { label: { zh: '博客', en: 'Blog' }, href: '/blog/' },
+        { label: { zh: '联系方式', en: 'Contact' }, href: '/contact/' },
+        { label: { zh: '支持', en: 'Support' }, href: '/support/' },
+      ],
+    },
     seo: {
       name: { zh: 'Consumer Smoke', en: 'Consumer Smoke' },
       description: {

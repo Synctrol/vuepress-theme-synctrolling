@@ -1,4 +1,5 @@
 import type {
+  LinkCloudOptions,
   NavigationOptions,
   NewsOptions,
   PlatformsOptions,
@@ -23,6 +24,7 @@ export interface ClientSynctrolThemeOptions {
   footbarText?: Multilanguage
   navigation: NavigationOptions
   socialLinks: SocialLinksOptions
+  linkCloud?: LinkCloudOptions
   release: ReleaseOptions
   news: NewsOptions
   platforms: ClientPlatformsOptions
@@ -73,6 +75,15 @@ function copySocialLinks(
       label: copyMultilanguage(item.label),
       icon: item.icon,
       url: item.url,
+    })),
+  }
+}
+
+function copyLinkCloud(linkCloud: LinkCloudOptions): LinkCloudOptions {
+  return {
+    items: linkCloud.items.map((item) => ({
+      label: copyMultilanguage(item.label),
+      href: item.href,
     })),
   }
 }
@@ -169,6 +180,9 @@ export function toClientThemeOptions(
       : { footbarText: copyMultilanguage(resolved.footbarText) }),
     navigation: copyNavigation(resolved.navigation),
     socialLinks: copySocialLinks(resolved.socialLinks),
+    ...(resolved.linkCloud === undefined
+      ? {}
+      : { linkCloud: copyLinkCloud(resolved.linkCloud) }),
     release: copyRelease(resolved.release),
     news: copyNews(resolved.news),
     platforms: {
