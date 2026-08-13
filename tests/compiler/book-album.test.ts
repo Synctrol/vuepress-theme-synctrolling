@@ -609,12 +609,13 @@ describe('parseAlbumBook mapping safety and isolation', () => {
     ['album', 'covers'],
     ['disc', 'tracks'],
     ['track', 'duration'],
+    ['credit', 'producer'],
   ])('rejects a %s accessor without executing it', (level, field) => {
     let getterCalled = false
     const accessed: Record<string, unknown> =
       level === 'top-level'
         ? { type: 'album', album: {} }
-        : level === 'album'
+        : level === 'album' || level === 'credit'
           ? {}
           : level === 'disc'
             ? { title: 'Disc' }
@@ -632,11 +633,13 @@ describe('parseAlbumBook mapping safety and isolation', () => {
         ? accessed
         : level === 'album'
           ? { type: 'album', title: 'Album', album: accessed }
-          : level === 'disc'
-            ? minimalRaw({ discs: [accessed] })
-            : minimalRaw({
-                discs: [{ title: 'Disc', tracks: [accessed] }],
-              })
+          : level === 'credit'
+            ? { ...minimalRaw(), credit: accessed }
+            : level === 'disc'
+              ? minimalRaw({ discs: [accessed] })
+              : minimalRaw({
+                  discs: [{ title: 'Disc', tracks: [accessed] }],
+                })
 
     expectDiagnostic(
       () => parseDirect(raw),
@@ -645,9 +648,11 @@ describe('parseAlbumBook mapping safety and isolation', () => {
         ? 'title'
         : level === 'album'
           ? `album.${field}`
-          : level === 'disc'
-            ? `album.discs[0].${field}`
-            : `album.discs[0].tracks[0].${field}`,
+          : level === 'credit'
+            ? `credit.${field}`
+            : level === 'disc'
+              ? `album.discs[0].${field}`
+              : `album.discs[0].tracks[0].${field}`,
       directPath,
     )
     expect(getterCalled).toBe(false)

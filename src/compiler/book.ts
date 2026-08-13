@@ -186,16 +186,6 @@ function parseStringArray(
   })
 }
 
-function parseOptionalStringArray(
-  value: unknown,
-  path: string,
-  fieldPath: string,
-): string[] | undefined {
-  return value === undefined
-    ? undefined
-    : parseStringArray(value, path, fieldPath)
-}
-
 function parseArtists(
   value: unknown,
   path: string,
@@ -258,15 +248,12 @@ function parseCredit(
   path: string,
 ): BookCredit | undefined {
   if (value === undefined) return undefined
-  if (!isPlainMapping(value, path, 'credit')) {
-    invalid('INVALID_BOOK', 'credit must be a plain mapping', path)
-  }
+  const raw = copyOwnDataFields(value, path, 'credit')
+  rejectUnknownFields(raw, BOOK_CREDIT_KEYS, path, 'credit')
   const credit: BookCredit = {}
-  for (const key of Reflect.ownKeys(value)) {
-    if (typeof key !== 'string' || !BOOK_CREDIT_KEYS.includes(key as BookCreditKey)) {
-      invalid('UNKNOWN_FIELD', `Unknown field "credit.${String(key)}"`, path)
-    }
-    const entry = (value as PlainRecord)[key]
+  for (const key of Reflect.ownKeys(raw)) {
+    if (typeof key !== 'string') continue
+    const entry = raw[key]
     if (typeof entry !== 'string') {
       invalid('INVALID_BOOK', `credit.${key} must be a string`, path)
     }
