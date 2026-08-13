@@ -1,4 +1,9 @@
-import type { AssetPath, Book, NormalizedPlatformEntry } from '../types.js'
+import type {
+  AssetPath,
+  Book,
+  BookCredit,
+  NormalizedPlatformEntry,
+} from '../types.js'
 import type { ResolvedAsset } from '../asset-types.js'
 import type { NumberedDisc } from './numbering.js'
 
@@ -61,64 +66,45 @@ export interface ResolvedText {
   lang?: string
 }
 
-export type ReleaseDetailSection =
-  | { kind: 'return-link'; href: string; label: string }
-  | {
-      kind: 'title-date'
-      title: string
-      date: string
-      dateLabel: string
-      titleLang?: string
-    }
-  | {
-      kind: 'artwork'
-      artworkKind: ReleaseArtworkKind
-      artwork?: ResolvedAsset
-      alt: string
-    }
-  | {
-      kind: 'book-identity'
-      bookType: 'album' | 'gift'
-      title: ResolvedText
-      desc?: ResolvedText
-      authors?: string[]
-      copyright?: string
-    }
-  | {
-      kind: 'album-body'
-      order: ['links', 'covers', 'discs']
-      links: NormalizedPlatformEntry[]
-      covers: ResolvedAsset[]
-      discs: NumberedDisc[]
-      labels: {
-        platformLinks: string
-        covers: string
-        tracklist: string
-        disc: string
-        track: string
-      }
-    }
-  | {
-      kind: 'gift-body'
-      items: Array<{
-        id: string
-        title: ResolvedText
-        desc?: ResolvedText
-        covers: ResolvedAsset[]
-        links: NormalizedPlatformEntry[]
-        copyright?: string
-        coverOrder: 'before-links'
-        linksHoisted: false
-      }>
-      labels: { giftItems: string; covers: string; platformLinks: string }
-    }
-  | { kind: 'markdown'; bodyLang: string }
+export interface ReleaseAlbumBookData {
+  type: 'album'
+  title: ResolvedText
+  copyright?: string
+  credit?: BookCredit
+  previewLinks: NormalizedPlatformEntry[]
+  platformLinks: NormalizedPlatformEntry[]
+  covers: ResolvedAsset[]
+  discs: NumberedDisc[]
+}
+
+export interface ReleaseGiftItemData {
+  id: string
+  title: ResolvedText
+  desc?: ResolvedText
+  covers: ResolvedAsset[]
+  previewLinks: NormalizedPlatformEntry[]
+  platformLinks: NormalizedPlatformEntry[]
+  copyright?: string
+}
+
+export interface ReleaseGiftBookData {
+  type: 'gift'
+  title: ResolvedText
+  copyright?: string
+  credit?: BookCredit
+  items: ReleaseGiftItemData[]
+}
 
 export interface ReleaseDetailModel {
-  sections: ReleaseDetailSection[]
   showDraftBadge: boolean
   draftLabel: string
   includedInIndex: true
+  artwork: {
+    kind: ReleaseArtworkKind
+    artwork?: ResolvedAsset
+    alt: string
+  }
+  book?: ReleaseAlbumBookData | ReleaseGiftBookData
 }
 
 /** Injected into frontmatter.synctrol.release */
@@ -133,5 +119,4 @@ export type SynctrolReleaseFrontmatter =
   | {
       kind: 'detail'
       model: ReleaseDetailModel
-      authorsLabel: string
     }

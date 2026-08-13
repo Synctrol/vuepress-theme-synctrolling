@@ -25,8 +25,6 @@ export function asset(
 export function albumBook(overrides: Partial<AlbumBook> = {}): AlbumBook {
   return {
     title: { zh: '第一张专辑', en: 'First Album' },
-    desc: 'SYNCTROL First Release',
-    authors: ['Synctrol'],
     copyright: '© 2026 Synctrol',
     album: {
       covers: ['./assets/front.webp', './assets/back.webp'],
@@ -65,7 +63,6 @@ export function albumBook(overrides: Partial<AlbumBook> = {}): AlbumBook {
 export function giftBook(overrides: Partial<GiftBook> = {}): GiftBook {
   return {
     title: { zh: '周边系列', en: 'Merchandise' },
-    desc: { zh: '周边介绍', en: 'Merchandise description' },
     gift: {
       items: [
         {

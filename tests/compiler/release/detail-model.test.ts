@@ -1,13 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildReleaseDetailModel } from '../../../src/compiler/release/detail-model'
-import {
-  albumBook,
-  asset,
-  giftBook,
-  releaseDetailPage,
-  zhMessages,
-} from '../../helpers/release-fixtures'
-import type { RouteContentPackage } from '../../../src/shared/types'
+import { albumBook, asset, giftBook, releaseDetailPage, zhMessages } from '../../helpers/release-fixtures'
+import { builtInPlatformTypes } from '../../../src/platforms/builtins/index'
+import type { RouteContentPackage, ContentDefinitions } from '../../../src/shared/types'
 
 const basePkg: RouteContentPackage = {
   dir: '/content/releases/first-release',
@@ -22,179 +17,146 @@ const basePkg: RouteContentPackage = {
   locales: {},
 }
 
-const releaseOptions = {
-  urlSegment: 'releases',
-  index: {
-    enabled: true,
-    pagination: 12,
-    mobileGridColumns: 2,
-    desktopGridColumns: 3,
-  },
-} as const
+const definitions: ContentDefinitions['platforms'] = {
+  soundcloud: { category: 'digital', type: 'soundcloud_player', name: 'SoundCloud' },
+  bilibili: { category: 'digital', type: 'bilibili_player', name: { zh: '哔哩哔哩', en: 'Bilibili' } },
+  taobao: { category: 'physical', type: 'link', name: '淘宝' },
+}
 
 describe('buildReleaseDetailModel', () => {
-  it('orders sections: return, title/date, artwork, book identity, type body, markdown marker', () => {
+  it('produces the injected context shape for an album book', () => {
+    const book = albumBook({
+      credit: { catalogNumber: 'DVSP-0327', illustrator: 'タイキ' },
+      album: {
+        covers: ['./assets/front.webp'],
+        links: [
+          { platform: 'soundcloud', url: 'https://soundcloud.com/synctrol/x' },
+          { platform: 'bilibili', bvid: 'BV1xxxxxxxxx', page: 1, autoplay: false },
+        ],
+        discs: [
+          {
+            title: { zh: '第一碟', en: 'Disc One' },
+            tracks: [
+              { title: { zh: '第一曲', en: 'Track One' }, artists: ['Synctrol'], duration: 272 },
+            ],
+          },
+        ],
+      },
+    })
     const model = buildReleaseDetailModel({
       page: releaseDetailPage(),
       pkg: basePkg,
-      book: albumBook(),
+      book,
       messages: zhMessages,
       mainLocale: 'zh',
-      releaseIndexHref: '/zh/releases/',
-      resolveArtwork: () =>
-        asset('/assets/content/release/first-release/album-entry.hash.webp'),
-      resolveAlbumCover: (path) =>
-        asset(
-          `/assets/content/release/first-release/${path.replace('./assets/', '')}`,
-        ),
+      definitions,
+      platformTypes: builtInPlatformTypes,
+      resolveArtwork: () => asset('/assets/content/release/first-release/album-entry.hash.webp'),
+      resolveAlbumCover: (p) => asset(`/assets/content/release/first-release/${p.replace('./assets/', '')}`),
+      resolveGiftItemCover: (p) => asset(`/assets/content/release/first-release/${p.replace('./assets/', '')}`),
       resolvePlaceholder: () => undefined,
-      releaseOptions,
       showDrafts: false,
-      formatDate: (d) => d,
     })
 
-    expect(model.sections.map((s) => s.kind)).toEqual([
-      'return-link',
-      'title-date',
-      'artwork',
-      'book-identity',
-      'album-body',
-      'markdown',
-    ])
-    expect(model.sections[0]).toMatchObject({
-      kind: 'return-link',
-      href: '/zh/releases/',
-      label: '返回作品列表',
-    })
-    expect(model.sections[1]).toMatchObject({
-      kind: 'title-date',
-      title: '第一张专辑',
-      date: '2026-08-11',
-    })
-    expect(model.sections[2]).toMatchObject({
-      kind: 'artwork',
-      artworkKind: 'artwork',
-    })
-    expect(model.sections[3]).toMatchObject({
-      kind: 'book-identity',
-      bookType: 'album',
-    })
-    expect(model.sections[4]).toMatchObject({
-      kind: 'album-body',
-      order: ['links', 'covers', 'discs'],
-    })
-    expect(model.sections[5]).toEqual({
-      kind: 'markdown',
-      bodyLang: 'zh',
-    })
+    expect(model.includedInIndex).toBe(true)
     expect(model.showDraftBadge).toBe(false)
-    expect('jsonLd' in model).toBe(false)
+    expect(model.artwork).toMatchObject({ kind: 'artwork' })
+    expect(model.book).toMatchObject({
+      type: 'album',
+      title: { text: '第一张专辑' },
+      copyright: '© 2026 Synctrol',
+      credit: { catalogNumber: 'DVSP-0327', illustrator: 'タイキ' },
+    })
+    expect(model.book?.type === 'album' && model.book.previewLinks.map((e) => e.platform)).toEqual(['soundcloud'])
+    expect(model.book?.type === 'album' && model.book.platformLinks.map((e) => e.platform)).toEqual(['bilibili'])
+    expect(model.book?.type === 'album' && model.book.covers).toHaveLength(1)
+    expect(model.book?.type === 'album' && model.book.discs[0].tracks[0].number).toBe(1)
   })
 
-  it('omits book identity and type body when book.yml is absent but keeps markdown marker', () => {
+  it('builds gift items with split links and keeps item desc', () => {
+    const book = giftBook({
+      gift: {
+        items: [
+          {
+            id: 'poster',
+            title: { zh: '纪念海报', en: 'Poster' },
+            desc: { zh: '限量', en: 'Limited' },
+            covers: ['./assets/poster-front.webp'],
+            links: [{ platform: 'taobao', url: 'https://item.taobao.com/example' }],
+          },
+        ],
+      },
+    })
     const model = buildReleaseDetailModel({
       page: releaseDetailPage(),
-      pkg: { ...basePkg, artwork: undefined, cover: './assets/article-cover.webp' },
+      pkg: { ...basePkg, artwork: undefined },
+      book,
+      messages: zhMessages,
+      mainLocale: 'zh',
+      definitions,
+      platformTypes: builtInPlatformTypes,
+      resolveArtwork: () => undefined,
+      resolveAlbumCover: (p) => asset(p),
+      resolveGiftItemCover: (p) => asset(p),
+      resolvePlaceholder: () => undefined,
+      showDrafts: false,
+    })
+
+    expect(model.artwork).toMatchObject({ kind: 'empty-frame' })
+    expect(model.book?.type === 'gift' && model.book.items).toHaveLength(1)
+    expect(model.book?.type === 'gift' && model.book.items[0]).toMatchObject({
+      id: 'poster',
+      title: { text: '纪念海报' },
+      desc: { text: '限量' },
+    })
+    expect(model.book?.type === 'gift' && model.book.items[0].platformLinks.map((e) => e.platform)).toEqual(['taobao'])
+  })
+
+  it('omits book but keeps artwork and draft flags when book.yml is absent', () => {
+    const model = buildReleaseDetailModel({
+      page: releaseDetailPage({ isDraft: true }),
+      pkg: basePkg,
       book: undefined,
       messages: zhMessages,
       mainLocale: 'zh',
-      releaseIndexHref: '/zh/releases/',
-      resolveArtwork: () => undefined,
+      definitions,
+      platformTypes: builtInPlatformTypes,
+      resolveArtwork: () => asset('/entry.webp'),
       resolveAlbumCover: () => {
         throw new Error('should not resolve album covers without a book')
       },
+      resolveGiftItemCover: () => {
+        throw new Error('should not resolve gift covers without a book')
+      },
       resolvePlaceholder: () => undefined,
-      releaseOptions,
-      showDrafts: false,
-      formatDate: (d) => d,
-    })
-    expect(model.sections.map((s) => s.kind)).toEqual([
-      'return-link',
-      'title-date',
-      'artwork',
-      'markdown',
-    ])
-    expect(model.sections[2]).toMatchObject({
-      kind: 'artwork',
-      artworkKind: 'empty-frame',
-    })
-    expect(model.includedInIndex).toBe(true)
-  })
-
-  it('builds gift body payload with per-item covers then links', () => {
-    const model = buildReleaseDetailModel({
-      page: releaseDetailPage({ title: '周边系列' }),
-      pkg: basePkg,
-      book: giftBook(),
-      messages: zhMessages,
-      mainLocale: 'zh',
-      releaseIndexHref: '/zh/releases/',
-      resolveArtwork: () => asset('/a.webp'),
-      resolveAlbumCover: () => asset('/ignored.webp'),
-      resolveGiftItemCover: (path) =>
-        asset(
-          `/assets/content/release/first-release/${path.replace('./assets/', '')}`,
-        ),
-      resolvePlaceholder: () => undefined,
-      releaseOptions,
       showDrafts: true,
-      formatDate: (d) => d,
     })
-    expect(model.sections.map((s) => s.kind)).toContain('gift-body')
-    const gift = model.sections.find((s) => s.kind === 'gift-body') as {
-      kind: 'gift-body'
-      items: Array<{ id: string; coverOrder: 'before-links'; linksHoisted: false }>
-    }
-    expect(gift.items[0]).toMatchObject({
-      id: 'poster',
-      coverOrder: 'before-links',
-      linksHoisted: false,
-    })
-  })
-
-  it('shows draft badge on detail when showDrafts and page is draft', () => {
-    const model = buildReleaseDetailModel({
-      page: releaseDetailPage({ isDraft: true, noindex: true }),
-      pkg: { ...basePkg, draft: true },
-      book: undefined,
-      messages: zhMessages,
-      mainLocale: 'zh',
-      releaseIndexHref: '/zh/releases/',
-      resolveArtwork: () => asset('/a.webp'),
-      resolveAlbumCover: () => asset('/c.webp'),
-      resolvePlaceholder: () => undefined,
-      releaseOptions,
-      showDrafts: true,
-      formatDate: (d) => d,
-    })
+    expect(model.book).toBeUndefined()
     expect(model.showDraftBadge).toBe(true)
+    expect(model.draftLabel).toBe('草稿')
+    expect(model.artwork.kind).toBe('artwork')
   })
 
-  it('omits return-link when releaseIndexHref is null (index disabled / no real collection)', () => {
+  it('falls back to the placeholder artwork when package artwork is missing', () => {
     const model = buildReleaseDetailModel({
       page: releaseDetailPage(),
-      pkg: { ...basePkg, artwork: undefined, cover: undefined },
+      pkg: { ...basePkg, artwork: undefined },
       book: undefined,
       messages: zhMessages,
       mainLocale: 'zh',
-      releaseIndexHref: null,
+      definitions,
+      platformTypes: builtInPlatformTypes,
       resolveArtwork: () => undefined,
       resolveAlbumCover: () => {
-        throw new Error('should not resolve album covers')
+        throw new Error('unused')
       },
-      resolvePlaceholder: () => undefined,
-      releaseOptions: {
-        ...releaseOptions,
-        index: { ...releaseOptions.index, enabled: false },
+      resolveGiftItemCover: () => {
+        throw new Error('unused')
       },
+      resolvePlaceholder: () => asset('/placeholder.webp'),
       showDrafts: false,
-      formatDate: (d) => d,
     })
-    expect(model.sections.map((s) => s.kind)).toEqual([
-      'title-date',
-      'artwork',
-      'markdown',
-    ])
-    expect(model.sections.some((s) => s.kind === 'return-link')).toBe(false)
+    expect(model.artwork.kind).toBe('placeholder')
+    expect(model.artwork.artwork?.publicPath).toBe('/placeholder.webp')
   })
 })
