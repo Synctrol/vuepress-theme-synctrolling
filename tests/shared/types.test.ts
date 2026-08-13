@@ -19,12 +19,10 @@ const LOCALE_MESSAGE_KEYS = [
   'home',
   'language',
   'themeModeAnnouncement',
-  'returnToReleases',
   'published',
   'previousPage',
   'nextPage',
   'updated',
-  'authors',
   'album',
   'tracklist',
   'disc',
@@ -41,6 +39,15 @@ const LOCALE_MESSAGE_KEYS = [
   'emptyNews',
   'paginatedTitle',
   'tagArchiveTitle',
+  'previewSectionTitle',
+  'creditCatalogNumber',
+  'creditIllustrator',
+  'creditDesigner',
+  'creditMastering',
+  'creditMix',
+  'creditWebDesign',
+  'creditProducer',
+  'creditSpecialThanks',
 ] as const satisfies readonly (keyof LocaleMessages)[]
 
 type ListedLocaleMessageKey = (typeof LOCALE_MESSAGE_KEYS)[number]

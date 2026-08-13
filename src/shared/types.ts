@@ -34,12 +34,10 @@ export interface LocaleMessages {
   home: string
   language: string
   themeModeAnnouncement: string
-  returnToReleases: string
   published: string
   previousPage: string
   nextPage: string
   updated: string
-  authors: string
   album: string
   tracklist: string
   disc: string
@@ -56,6 +54,15 @@ export interface LocaleMessages {
   emptyNews: string
   paginatedTitle: string
   tagArchiveTitle: string
+  previewSectionTitle: string
+  creditCatalogNumber: string
+  creditIllustrator: string
+  creditDesigner: string
+  creditMastering: string
+  creditMix: string
+  creditWebDesign: string
+  creditProducer: string
+  creditSpecialThanks: string
 }
 
 export interface LocaleOptions {
@@ -201,11 +208,25 @@ export type BuiltInPlatformEntry =
   | SoundCloudPlayerEntry
   | NeteasePlayerEntry
 
+export const BOOK_CREDIT_KEYS = [
+  'catalogNumber',
+  'illustrator',
+  'designer',
+  'mastering',
+  'mix',
+  'webDesign',
+  'producer',
+  'specialThanks',
+] as const
+
+export type BookCreditKey = (typeof BOOK_CREDIT_KEYS)[number]
+
+export type BookCredit = Partial<Record<BookCreditKey, string>>
+
 export interface BookBase {
   title: Multilanguage
-  desc?: Multilanguage
-  authors?: string[]
   copyright?: string
+  credit?: BookCredit
 }
 
 export interface Track {
