@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - 重写中文 README：按步骤说明如何安装和配置主题；标明仅供 Synctrol 团队使用，改设计请自行 fork。
 
+### Fixed
+
+- 消费端冒烟检查与现行根语言路由器对齐：根页只做跳转，不再要求可见语言链接。
+
 ## [0.1.0] - 2026-08-11
 
 ### Added
