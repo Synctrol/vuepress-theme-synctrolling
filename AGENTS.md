@@ -1,16 +1,17 @@
-# vuepress-theme-synctrolling
+# AGENTS
 
-Synctrol-specific VuePress 2 theme for multilingual release, news, page, SEO, feed, and static-site publishing. This package is the theme; Synctrol.com is a separate consumer site.
+本文件是 `vuepress-theme-synctrolling` 的主题权威说明，供编码代理与维护者使用。
 
-Requires Node.js `^20.9.0 || >=22.0.0`, Vue `^3.5.0`, and VuePress `^2.0.0-rc.24`.
+`README.md` 中的「主题功能 / 主题重要概念 / 主题配置方法 / 主题使用要求」四节必须与本文件对应章节逐字同步。改其中一份时必须改另一份，并由 `tests/publish/theme-docs.test.ts` 锁定。
 
-主题功能、概念、配置与使用要求以 `AGENTS.md` 为权威说明；下列四节与该文件保持同步。
+## 仓库约定
 
-## Install
-
-```bash
-npm install vuepress-theme-synctrolling vue@^3.5.0 vuepress@^2.0.0-rc.24
-```
+- 本仓库发布的是主题 npm 包，不是 Synctrol.com。不要把本仓库的构建产物当成官网部署。
+- 这是专用主题：不要新增配色、圆角、断点、壳层几何或展示字体的自由定制项。品牌 token 固定在 `src/client/styles/tokens.css`。
+- 源码使用 TypeScript NodeNext：`src/**` 内部 import 必须带 `.js` 后缀。
+- `npm test` 只跑源码/单元测试。依赖 `dist/`、`npm pack` 或消费端安装的检查走 `npm run build` 之后的 `assert:*` / `test:consumer-smoke`。
+- 已废弃的公开选项：`copyright` 已更名为 `topbarText`；首页 Markdown 底栏 formatter 已由 `footbarText` 取代。文档与示例不得再示范这两项旧契约。
+- 根语言路由器页面不再输出可见语言链接；`/` 只做 `location.replace()` 跳转。Sitemap 不含该根页。
 
 ## 主题功能
 
@@ -307,7 +308,7 @@ import 'vuepress-theme-synctrolling/styles.css'
 - Display typography 默认使用 `'Archivo Black', 'Arial Black', Arial, ...`。可用 `featureFont` 覆盖展示字体栈。The npm package does not ship an Archivo Black WOFF2 yet because no licensed binary is tracked in this repository. 消费站点如需该字体，应自行托管或通过 `head` 引入。
 - `.vuepress/public` 只放固定文件名资源（如 `CNAME`、`robots.txt`）。社交默认图与组织 logo 走全局哈希资源管线。
 
-## Develop
+## 开发
 
 ```bash
 npm install
@@ -318,3 +319,14 @@ npm run assert:pack
 npm run assert:exports
 npm run test:consumer-smoke
 ```
+
+主要目录：
+
+| 路径 | 职责 |
+| --- | --- |
+| `src/shared/` | 选项、类型、多语言、消息默认值 |
+| `src/compiler/` | 内容发现、路由、资源、SEO、feeds、根路由器 |
+| `src/client/` | 壳层、布局、背景运行时、平台渲染 |
+| `tests/` | 与源码结构对应的契约测试；`tests/publish/` 锁定包文档 |
+
+改主题行为时先补测试。不要为了文档示例重新引入已删除的公开选项或根页语言链接。
