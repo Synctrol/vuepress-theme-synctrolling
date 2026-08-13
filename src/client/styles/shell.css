@@ -123,9 +123,9 @@ body {
    inverted relative to the bar, bordered, fits the bar height. */
 .syn-bar-chip {
   min-height: var(--syn-dock-control-size);
-  margin-block: 2px;
+  padding-block: 2px;
   box-sizing: border-box;
-  border: var(--syn-border-strong);
+  border: 0;
   border-radius: var(--syn-radius);
   background: var(--syn-bar-fg);
   color: var(--syn-bar-bg);
@@ -137,7 +137,7 @@ body {
 
 .syn-theme-mode__button {
   font-size: 12px;
-  padding: 0 8px;
+  padding-inline: 8px;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -402,7 +402,7 @@ body {
 
 .syn-language__toggle {
   max-width: 40vw;
-  padding: 0 8px;
+  padding-inline: 8px;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
