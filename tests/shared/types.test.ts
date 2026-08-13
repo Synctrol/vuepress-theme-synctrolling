@@ -16,6 +16,7 @@ const LOCALE_MESSAGE_KEYS = [
   'auto',
   'menu',
   'close',
+  'home',
   'language',
   'themeModeAnnouncement',
   'returnToReleases',

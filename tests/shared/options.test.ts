@@ -440,7 +440,7 @@ describe('resolveThemeOptions', () => {
     })
 
     expect(options.locales.zh.messages.draft).toBe(zhMessages.draft)
-    expect(Object.keys(options.locales.zh.messages)).toHaveLength(31)
+    expect(Object.keys(options.locales.zh.messages)).toHaveLength(32)
     expect(
       Object.values(options.locales.zh.messages).every(
         (message) => typeof message === 'string',

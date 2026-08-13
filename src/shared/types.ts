@@ -31,6 +31,7 @@ export interface LocaleMessages {
   auto: string
   menu: string
   close: string
+  home: string
   language: string
   themeModeAnnouncement: string
   returnToReleases: string

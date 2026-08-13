@@ -7,7 +7,7 @@ const keys = Object.keys(enMessages) as Array<keyof LocaleMessages>
 describe('default locale messages', () => {
   it('exports complete chinese and english catalogs with the same keys', () => {
     expect(Object.keys(zhMessages).sort()).toEqual(keys.sort())
-    expect(keys).toHaveLength(31)
+    expect(keys).toHaveLength(32)
   })
 
   it('uses the approved english translation-unavailable copy', () => {

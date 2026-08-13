@@ -18,6 +18,26 @@ describe('HeaderBar', () => {
     expect(wrapper.find('.syn-theme-mode').exists()).toBe(true)
   })
 
+  it('renders the home button before the topbar text with the locale home href', () => {
+    const wrapper = mountShell(HeaderBar, {
+      locale: 'en',
+      global: {
+        provide: {
+          [SYNCTROL_DRAWER_OPEN_KEY as symbol]: ref(false),
+        },
+      },
+    })
+    const home = wrapper.get('.syn-header__home')
+    expect(home.attributes('href')).toBe('/en/')
+    expect(home.attributes('aria-label')).toBe('Home')
+    expect(home.find('.syn-header__home-icon').exists()).toBe(true)
+    const leading = wrapper.get('.syn-header__leading')
+    const firstLink = leading.find('.syn-header__home')
+    const firstText = leading.findAll('.syn-topbar-text')
+    expect(firstLink.exists()).toBe(true)
+    expect(firstText.length).toBe(1)
+  })
+
   it('toggles the drawer via the hamburger button', async () => {
     const drawerOpen = ref(false)
     const wrapper = mountShell(HeaderBar, {

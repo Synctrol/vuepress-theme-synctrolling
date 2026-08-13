@@ -69,6 +69,25 @@ body {
   gap: 12px;
 }
 
+.syn-header__leading {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.syn-header__home {
+  display: inline-flex;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+
+.syn-header__home-icon {
+  display: block;
+}
+
 .syn-header__menu {
   display: none;
   background: transparent;
@@ -104,6 +123,7 @@ body {
    inverted relative to the bar, bordered, fits the bar height. */
 .syn-bar-chip {
   min-height: var(--syn-dock-control-size);
+  margin-block: 2px;
   box-sizing: border-box;
   border: var(--syn-border-strong);
   border-radius: var(--syn-radius);
