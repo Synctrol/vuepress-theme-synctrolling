@@ -151,12 +151,6 @@ const localeOption = computed(
 )
 const formatDate = (date: string) =>
   formatCalendarDate(date, localeOption.value.lang, localeOption.value.dateFormat)
-const platformMessages = computed(() => ({
-  platformLinks: localeMessages.value.platformLinks,
-  activateEmbed: localeMessages.value.activateEmbed,
-  embedFailed: localeMessages.value.embedFailed,
-  openExternal: localeMessages.value.openExternal,
-}))
 </script>
 
 <template>
@@ -173,13 +167,12 @@ const platformMessages = computed(() => ({
     <ReleaseDetail
       v-else-if="release?.kind === 'detail'"
       :model="release.model"
-      :authors-label="release.authorsLabel"
       :locale="locale"
       :main-locale="theme.mainLocale"
       :definitions="platformDefinitions"
       :types="platformTypes"
       :load-strategy="theme.platforms.loadStrategy"
-      :platform-messages="platformMessages"
+      :messages="localeMessages"
     />
     <NewsIndexLayout
       v-else-if="news?.kind === 'index'"
