@@ -1,12 +1,12 @@
 # vuepress-theme-synctrolling
 
-Synctrol-specific VuePress 2 theme for multilingual release, news, page, SEO, feed, and static-site publishing. This package is the theme; Synctrol.com is a separate consumer site.
+这是 Synctrol 音乐团队站点使用的 VuePress 2 专用主题，用来发布多语言作品、新闻和页面，并生成搜索引擎信息与订阅源。
 
-Requires Node.js `^20.9.0 || >=22.0.0`, Vue `^3.5.0`, and VuePress `^2.0.0-rc.24`.
+本仓库只发布主题包。官网 Synctrol.com 是另一份使用本主题的站点，不要把这个仓库的构建结果当成官网去部署。
 
-主题功能、概念、配置与使用要求以 `AGENTS.md` 为权威说明；下列四节与该文件保持同步。
+运行环境：Node.js `^20.9.0 || >=22.0.0`、Vue `^3.5.0`、VuePress `^2.0.0-rc.24`。
 
-## Install
+## 安装
 
 ```bash
 npm install vuepress-theme-synctrolling vue@^3.5.0 vuepress@^2.0.0-rc.24
@@ -14,77 +14,44 @@ npm install vuepress-theme-synctrolling vue@^3.5.0 vuepress@^2.0.0-rc.24
 
 ## 主题功能
 
-本包是面向 Synctrol 音乐团队站点的专用 VuePress 2 主题，不是通用文档主题。黑白工业视觉、黄金分割壳层、3px 边框与直角几何固定在主题内。消费站点通过内容包和主题选项运营站点，而不是改主题外观。
+这不是通用文档主题。黑白配色、黄金分割版面、粗边框和直角都写死在主题里。站点作者通过内容和配置来运营网站，而不是去改外观。
 
-主题提供：
+你可以发布四种内容：
 
-1. **四种内容类型**：`home`（语言首页）、`release`（作品）、`news`（新闻）、`page`（团队、成员与普通页）。
-2. **多语言发布**：所有内容路由带 locale 前缀；缺失译文时生成回退页；可用 `showDrafts` 预览草稿。
-3. **根语言路由器**：在站点根 `/index.html` 按「已保存语言 → 浏览器语言 → `mainLocale`」选择语言首页，并以 `location.replace()` 跳转。
-4. **作品系统**：方图索引网格、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。
-5. **新闻系统**：按日期倒序的索引、标签归档、分页。
-6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
-7. **按内容类型加载的背景模块**：Home / Release / News / Page 各自对应一个 TypeScript 背景入口。
-8. **资源管线**：内容包、全局与主题资源输出带内容哈希的 URL，并应用 VuePress `base`。
-9. **SEO 与订阅**：canonical、Open Graph、仅真实译文的 `hreflang`、JSON-LD、各语言 `/{locale}/rss.xml`、站点 `sitemap.xml`。
-10. **平台 CSP 审计产物**：构建写出 `synctrol-csp.json`（`frame-src` / `media-src` / `connect-src`），不注入 CSP meta。
+- **首页**（`home`）：每个语言一个入口页，用来放标识和口号。
+- **作品**（`release`）：方图列表和详情。详情可以附一张专辑或周边手册，并挂上播放器或购买链接。
+- **新闻**（`news`）：按日期排列，支持标签和分页。
+- **页面**（`page`）：团队介绍、成员介绍等普通页，不会自动汇总成列表。
+
+站点始终按语言前缀访问，例如 `/zh/`、`/en/`。某语言还没有译文时，会显示主语言正文，并标明尚未翻译。开发时可以打开草稿预览。
+
+打开网站根地址时，主题会生成**根语言路由器**：按「上次选择的语言 → 浏览器语言 → 站点主语言」跳到对应语言首页。这个根页没有可见的语言链接，也不会写进站点地图。
+
+页面共用同一套外壳：顶栏文案和明暗模式、右侧导航（含社交图标和链接云）、底栏文案和语言切换。每种内容类型可以挂自己的背景。图片和文件会带上内容哈希。主题还会写出各语言的订阅源、整站站点地图，以及一份供部署方核对的平台安全策略清单 `synctrol-csp.json`。
 
 ## 主题重要概念
 
-### 内容包
+**内容包**是主题识别内容的最小单位。某个目录里只要有 `content.yml`，它就是一个包。同目录下的 `zh.md`、`en.md` 是各语言正文。作品包还可以再放一份 `book.yml`。文件夹怎么摆都不决定网址，内容包也不能套在另一个内容包里面。
 
-含 `content.yml` 的目录就是一个内容包。同目录下的 `{localeKey}.md` 是该语言正文；`book.yml` 仅允许出现在 `release` 包中。扫描递归普通目录，但内容包不能嵌套。源目录层级不决定类型或 URL。
+**语言键**（例如 `zh`、`en`）同时决定源文件名、网址前缀，以及多语言字段怎么取值。`lang`（例如 `zh-CN`）只用来标注网页语言，并匹配浏览器语言。VuePress 自己的 `locales` 路径要和主题语言键对齐，例如 `'/zh/'` 对应 `zh`。
 
-### 语言键与 `lang`
+多语言文案可以写成一句通用字符串，也可以按语言写成对象。对象必须包含主语言；缺了的语言会回退到主语言，并标出实际语言。自定义路径 `path` 是例外：没写的语言走该类型的默认路径，不会去借用主语言的自定义路径。
 
-`locales` 的 key 同时控制源文件名（`zh.md`）、URL 前缀（`/zh/`）以及多语言字段的查找键。`lang`（如 `zh-CN`）只用于 HTML 语言标注和浏览器语言匹配。VuePress `locales` 的 path 应与主题 locale key 对齐，例如 `'/zh/'` 对应 `zh`。
+首页的身份固定为 `home`。其他内容的身份是「类型 + 别名」，例如 `release:first-album`。不写别名时，就用文件夹名字。最终地址是：VuePress 的 `base` + 语言前缀 + 该页路径。`siteUrl` 用来拼搜索引擎和订阅源需要的绝对地址，必须是不带尾斜杠的网站源点。
 
-### `Multilanguage`
+三类图各管各的，不会互相顶替：
 
-```ts
-type Multilanguage = string | Record<LocaleKey, string>
-```
+- `cover`：文章引用和社交分享图，不进作品列表方图。
+- `artwork`：作品列表和详情的主图。
+- 专辑手册里的封面组：只出现在专辑详情里。
 
-标量字符串对所有语言生效。对象按当前 locale key 取值，缺失时回退到 `mainLocale`；回退文本会带实际语言的 `lang` 标注。对象必须包含 `mainLocale` 条目。`content.yml` 的 `path` 例外：缺失语言使用该类型的默认路径，绝不复用主语言的自定义 path。
+首页不能写 `cover`，社交图用站点配置里的默认图。背景只能在主题配置里按内容类型指定，单篇内容改不了。播放器和外链只能写在作品手册里：数字平台放专辑链接，实体平台放周边条目链接。
 
-### 身份与 URL
-
-Home 的身份固定为 `home`。其他包的身份是 `{type}:{slug}`；省略 `slug` 时使用包目录名。最终 URL 为 `VuePress base + /{locale} + path suffix`。`siteUrl`（无尾斜杠的 http(s) origin）拼出 canonical、Open Graph、RSS 与 Sitemap 使用的绝对地址。
-
-默认 path suffix：
-
-| 页面 | suffix |
-| --- | --- |
-| Home | `/` |
-| Release 索引 | `/{release.urlSegment}/` |
-| Release 详情 | `/{release.urlSegment}/{slug}/` |
-| News 索引 | `/{news.urlSegment}/` |
-| News 详情 | `/{news.urlSegment}/{slug}/` |
-| News 标签索引 | `/{news.urlSegment}/{news.tags.urlSegment}/` |
-| News 标签归档 | `/{news.urlSegment}/{news.tags.urlSegment}/{tag}/` |
-| Page 详情 | `/{slug}/` |
-
-分页从第 2 页起使用 `/page/{page}/`。第 1 页始终是集合或标签的索引路由。
-
-### 封面角色
-
-- `cover`：文章式引用与社交分享图；不进入作品索引方图。
-- `artwork`：作品索引与详情主图。
-- `book.yml → album.covers`：专辑封面组。
-
-三者互不回退。News / Page 使用 `cover` 作为列表或页头图以及 Open Graph。Home 禁止 `cover`，社交图使用 `seo.defaultImage`。
-
-### 背景与平台
-
-背景只在主题配置里按内容类型指定，内容包不能选择或覆盖。平台条目只允许写在 `book.yml` 的 `album.links`（数字平台）和 `gift.items[].links`（实体平台）；`content.yml` 没有顶层 `links`。
-
-### 壳层文案
-
-`topbarText` 渲染在顶栏；`footbarText` 渲染在底栏。首页可见标识来自 `::: home-logo` formatter，其 frontmatter `title` 只用于 SEO，不作为首页 Logo。
+顶栏文字来自 `topbarText`，底栏文字来自 `footbarText`。首页屏幕上的标识来自 `home-logo` 区块；首页 Markdown 开头的标题只给搜索引擎用，不会当成标识显示。
 
 ## 主题配置方法
 
-在 `.vuepress/config.ts` 中调用 `synctrolTheme()`：
+在 `.vuepress/config.ts` 里启用主题：
 
 ```ts
 import { defineUserConfig } from 'vuepress'
@@ -107,8 +74,8 @@ export default defineUserConfig({
       zh: { lang: 'zh-CN', label: '中文', messages: zhMessages },
       en: { lang: 'en-US', label: 'English', messages: enMessages },
     },
-    topbarText: 'Copyright Your Team',
-    footbarText: '敬请期待 · STAY TUNED',
+    topbarText: '版权所有',
+    footbarText: '敬请期待',
     featureFont:
       "'Archivo Black', 'Arial Black', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
     navigation: {
@@ -127,12 +94,10 @@ export default defineUserConfig({
       ],
     },
     linkCloud: {
-      items: [
-        { label: { zh: '文档', en: 'Docs' }, href: '/docs/' },
-      ],
+      items: [{ label: { zh: '文档', en: 'Docs' }, href: '/docs/' }],
     },
     seo: {
-      name: { zh: 'Example', en: 'Example' },
+      name: { zh: '示例站点', en: 'Example' },
       description: { zh: '站点简介', en: 'Site description' },
       defaultImage: './assets/social-default.svg',
       organization: { name: 'Example', logo: './assets/logo.svg' },
@@ -151,36 +116,27 @@ export default defineUserConfig({
 })
 ```
 
-### 主题选项
-
-必填：`siteUrl`、`mainLocale`、`locales`、`topbarText`、`seo`。
+必填项是 `siteUrl`、`mainLocale`、`locales`、`topbarText` 和 `seo`。常用可选项：
 
 | 选项 | 默认 | 说明 |
 | --- | --- | --- |
-| `definitionsPath` | `<sourceDir>/content/definitions.yml` | 标签与平台定义文件；相对 VuePress 配置文件解析 |
-| `showDrafts` | `false` | 为 `true` 时生成草稿页并在列表中显示草稿标记 |
-| `defaultColorMode` | `'auto'` | `'auto' \| 'light' \| 'dark'`；仅在用户尚未保存选择时生效 |
-| `footbarText` | 未设置 | 底栏文案；未设置则底栏左侧为空 |
-| `featureFont` | token 默认栈 | 应用到 Logo、顶栏/底栏文案与导航链接的 CSS `font-family` |
-| `feeds.rss` / `feeds.sitemap` | `true` | 关闭后仍保留 canonical、Open Graph、JSON-LD、`hreflang` |
-| `navigation.items` | `[]` | 内部 href 以 `/` 开头、相对语言根，例如 `/releases/` |
-| `navigation.externalTarget` | `'_blank'` | `'_blank' \| '_self'` |
-| `socialLinks.items` | `[]` | 侧栏图标链接；`icon` 相对 VuePress 配置文件 |
-| `linkCloud.items` | 未设置 | 侧栏文字链接云 |
-| `release.urlSegment` | `'releases'` | 所有语言共用的作品 URL 段 |
-| `release.index.pagination` | `12` | 正整数或 `false`（单页不分页） |
-| `release.index.mobileGridColumns` | `2` | 1–3 |
-| `release.index.desktopGridColumns` | `3` | 1–6 |
-| `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段 |
-| `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
-| `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；不支持立即加载 embed |
-| `backgrounds` | 空 | `{ home, release, news, page }` 各自 `() => import('./backgrounds/...')` |
+| `definitionsPath` | 内容根下的 `definitions.yml` | 标签和平台定义文件 |
+| `showDrafts` | 关闭 | 打开后会生成草稿页，并在列表里打草稿标记 |
+| `defaultColorMode` | 跟随系统 | 用户还没自己选过时的明暗模式 |
+| `footbarText` | 不显示 | 底栏左侧文案 |
+| `featureFont` | 主题默认展示字体 | 作用在标识、顶栏底栏和导航上 |
+| `feeds.rss` / `feeds.sitemap` | 开启 | 关掉后仍保留页面级搜索引擎信息 |
+| `navigation.items` | 空 | 内部链接写成 `/releases/` 这种相对语言根的路径 |
+| `socialLinks.items` | 空 | 侧栏图标链接 |
+| `linkCloud.items` | 不显示 | 侧栏文字链接 |
+| `release.urlSegment` | `releases` | 作品网址段，所有语言共用 |
+| `news.urlSegment` | `news` | 新闻网址段，所有语言共用 |
+| `platforms.loadStrategy` | 点击后再加载 | 也可以改成进入视口后再加载，不能一进页就加载 |
+| `backgrounds` | 空背景 | 按首页 / 作品 / 新闻 / 页面分别指定背景模块 |
 
-`zh` / `en` 的 `messages` 可部分覆盖主题内置文案；其他 locale key 必须提供完整 `LocaleMessages`。未知选项字段是构建错误。
+中文和英文可以只覆盖部分界面文案；其他语言必须把全部文案写齐。多写了主题不认识的配置字段，构建会失败。
 
-### 内容目录
-
-默认内容根是 VuePress source 下的 `content/`：
+内容默认放在站点源码里的 `content/`：
 
 ```text
 content/
@@ -208,59 +164,12 @@ content/
         └── en.md
 ```
 
-`definitions.yml` 声明新闻标签与平台：
-
-```yaml
-tags:
-  release:
-    title:
-      zh: 作品发布
-      en: Releases
-platforms:
-  youtube:
-    category: digital
-    type: youtube_player
-    name: YouTube
-  taobao:
-    category: physical
-    type: link
-    name:
-      zh: 淘宝
-      en: Taobao
-```
-
-内容包清单示例：
-
-```yaml
-# home/content.yml
-type: home
-draft: false
-```
-
-```yaml
-# releases/my-release/content.yml
-type: release
-slug: my-release
-date: 2026-08-11
-artwork: ./assets/artwork.webp
-cover: ./assets/article-cover.webp
-```
-
-```yaml
-# news/hello/content.yml
-type: news
-slug: hello
-date: 2026-08-11
-tags:
-  - release
-```
-
-首页 Markdown 必须包含 `home-logo` formatter：
+`definitions.yml` 用来声明新闻标签和平台。内容包的 `content.yml` 写类型、别名、日期、标签和图片。首页 Markdown 必须包含标识区块：
 
 ```md
 ---
 title: 站点名
-description: 首页 SEO 摘要
+description: 首页给搜索引擎用的摘要
 ---
 
 ::: home-logo
@@ -271,43 +180,32 @@ AND DESCRIBE SOUND
 :::
 ```
 
-内置平台类型：`link`、`audio_player`、`youtube_player`、`bilibili_player`、`apple_music_player`、`spotify_player`、`soundcloud_player`、`netease_player`。可在 `platforms.types` 注册自定义类型（`validate` / `component` / `cspOrigins` / 可选 `fallbackUrl`）。YAML 不得提供任意 HTML、脚本或 iframe 模板。
+内置平台类型包括外链、本地音频，以及 YouTube、B 站、Apple Music、Spotify、SoundCloud、网易云。也可以在配置里注册自定义平台，但不能在内容里直接塞网页代码、脚本或内嵌框。
 
-### 仅 token 的 CSS 导出
+如果只想用主题的颜色和字体变量，可以单独引入：
 
 ```ts
 import 'vuepress-theme-synctrolling/styles.css'
 ```
 
-`vuepress-theme-synctrolling/styles.css` 是 tokens-only 导出，指向 `dist/client/styles/tokens.css`。普通 VuePress 站点应让主题 client config 加载完整样式栈，而不是只引入这一文件。
+这个入口**只导出设计令牌**。正常用主题时不必单独引入，主题自己会加载完整样式。
 
 ## 主题使用要求
 
-运行时与包契约：
+- 使用 Node.js `^20.9.0 || >=22.0.0`、Vue `^3.5.0`、VuePress `^2.0.0-rc.24`。
+- `siteUrl` 必须是不带路径、查询、锚点和尾斜杠的 `http` 或 `https` 源点。
+- 自定义域名把 VuePress 的 `base` 设为 `'/'`。如果发在仓库子路径上，写成 `'/仓库名/'` 这种带尾斜杠的形式。
+- VuePress 的 `locales` 必须覆盖主题里配置的每一种语言。
+- 全站只能有一个可发布的首页；每个语言的首页都要有 `home-logo` 区块。首页不能自定义路径。
+- 所有内容页都带语言前缀。
+- 引用了未声明的标签或平台、写了未知字段、套了内容包、同类型别名重复、最终地址冲突、图片文件缺失，构建都会失败。
+- 日期必须写成 `YYYY-MM-DD`；更新日不能早于发布日。
+- 展示字体默认走 Archivo Black 这一套字体栈，也可以用 `featureFont` 改。npm 包**不附带** Archivo Black 的 WOFF2 文件，仓库里也没有可分发的授权字体。要用的话，请在自己的站点里托管，或通过页面头部引入。
+- `.vuepress/public` 只放文件名必须固定的东西，例如域名文件。社交默认图和组织标志会走带哈希的资源通道。
 
-- Node.js `^20.9.0 || >=22.0.0`
-- Vue `^3.5.0`
-- VuePress `^2.0.0-rc.24`
-- 本包是主题；Synctrol.com 是独立的消费站点。不要把本仓库部署为官网。
+## 开发
 
-配置与托管：
-
-1. `siteUrl` 必填，必须是无路径、无查询、无 hash、无尾斜杠的绝对 `http:` / `https:` origin。
-2. 自定义域名使用 VuePress `base: '/'`。项目页托管使用带尾斜杠的子路径，例如 `/repo-name/`。
-3. 主题发出 root language router：根 `/index.html` 按已保存 locale、浏览器语言、然后 `mainLocale` 选择语言首页，并调用 `location.replace()`。该根页没有可见语言链接，也不进入 Sitemap。
-4. VuePress `locales` 必须覆盖每一个主题 locale key，path 形如 `'/{localeKey}/'`。
-
-内容与构建：
-
-- 必须恰好有一个可发布的 Home 包；每个语言首页 Markdown 必须包含 `::: home-logo`。
-- 多语言开启时，所有内容页都带 locale 前缀；Home 不能自定义 path。
-- 引用未声明的 tag / platform、未知 YAML 字段、嵌套内容包、同类型重复 slug、最终路由冲突、缺失资源都会导致构建失败。
-- `date` / `updated` 必须是 `YYYY-MM-DD`；`updated` 不得早于 `date`。
-- 平台 embed 只在交互或进入视口后加载；不能配置为立即加载。
-- Display typography 默认使用 `'Archivo Black', 'Arial Black', Arial, ...`。可用 `featureFont` 覆盖展示字体栈。The npm package does not ship an Archivo Black WOFF2 yet because no licensed binary is tracked in this repository. 消费站点如需该字体，应自行托管或通过 `head` 引入。
-- `.vuepress/public` 只放固定文件名资源（如 `CNAME`、`robots.txt`）。社交默认图与组织 logo 走全局哈希资源管线。
-
-## Develop
+如果你在改这个主题仓库本身：
 
 ```bash
 npm install
