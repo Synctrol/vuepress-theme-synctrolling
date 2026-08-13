@@ -77,6 +77,8 @@ export interface NewsOptions {
 export interface PlatformTypeRegistration<
   T extends PlatformEntryBase = PlatformEntryBase,
 > {
+  /** True when entries of this type are preview/demo links rendered in the preview section. */
+  preview?: true
   validate(entry: unknown): T
   component: Component
   cspOrigins(entry: T): string[]

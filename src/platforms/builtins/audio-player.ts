@@ -14,6 +14,7 @@ import {
 } from './validate-helpers.js'
 
 export const audioPlayerType: PlatformTypeRegistration<AudioPlayerEntry> = {
+  preview: true,
   validate(raw: unknown): AudioPlayerEntry {
     const entry = asEntryMap(raw)
     rejectUnknown(entry, ['platform', 'label', 'src', 'mime', 'autoplay'])

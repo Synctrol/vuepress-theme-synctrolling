@@ -12,6 +12,7 @@ import {
 } from './validate-helpers.js'
 
 export const neteasePlayerType: PlatformTypeRegistration<NeteasePlayerEntry> = {
+  preview: true,
   validate(raw: unknown): NeteasePlayerEntry {
     const entry = asEntryMap(raw)
     rejectUnknown(entry, ['platform', 'label', 'id', 'resourceType'])

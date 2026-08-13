@@ -14,6 +14,7 @@ import {
 
 export const soundcloudPlayerType: PlatformTypeRegistration<SoundCloudPlayerEntry> =
   {
+    preview: true,
     validate(raw: unknown): SoundCloudPlayerEntry {
       const entry = asEntryMap(raw)
       rejectUnknown(entry, ['platform', 'label', 'url'])
