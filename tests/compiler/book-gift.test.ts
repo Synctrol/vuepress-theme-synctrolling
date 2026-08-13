@@ -10,7 +10,7 @@ import {
   isDiagnosticError,
   SynctrolDiagnosticError,
 } from '../../src/compiler/diagnostics'
-import type { ContentDefinitions } from '../../src/shared/types'
+import type { ContentDefinitions, GiftBook } from '../../src/shared/types'
 
 const defs: ContentDefinitions = {
   tags: {},
@@ -104,10 +104,6 @@ type: gift
 title:
   zh: 周边系列
   en: Merchandise
-desc:
-  zh: 周边介绍
-  en: Merchandise description
-authors: [Synctrol, Guest]
 copyright: © 2026 Synctrol
 gift:
   items:
@@ -135,8 +131,6 @@ gift:
     expect(parseBook(path, defs, 'zh')).toEqual({
       type: 'gift',
       title: { zh: '周边系列', en: 'Merchandise' },
-      desc: { zh: '周边介绍', en: 'Merchandise description' },
-      authors: ['Synctrol', 'Guest'],
       copyright: '© 2026 Synctrol',
       gift: {
         items: [
@@ -188,7 +182,6 @@ gift:
     const path = writeBook(`
 type: gift
 title: Gifts
-authors: []
 gift:
   items:
     - id: poster
@@ -200,7 +193,6 @@ gift:
     expect(parseBook(path, defs, 'zh')).toEqual({
       type: 'gift',
       title: 'Gifts',
-      authors: [],
       gift: {
         items: [{ id: 'poster', title: 'Poster', covers: [], links: [] }],
       },
@@ -300,11 +292,6 @@ gift:
       'title',
     ],
     [
-      'book description',
-      'title: Gifts\ndesc:\n  en: Description\ngift:\n  items: []',
-      'desc',
-    ],
-    [
       'item title',
       'title: Gifts\ngift:\n  items:\n    - id: poster\n      title:\n        en: Poster',
       'gift.items[0].title',
@@ -399,12 +386,6 @@ gift:
       'gift:\n  items:\n    - id: poster\n      title: Poster\n      copyright: 2026',
       'gift.items[0].copyright',
     ],
-    ['authors mapping', 'authors: {}\ngift:\n  items: []', 'authors'],
-    [
-      'authors non-string item',
-      'authors: [Synctrol, 1]\ngift:\n  items: []',
-      'authors[1]',
-    ],
     ['book copyright number', 'copyright: 2026\ngift:\n  items: []', 'copyright'],
   ])('rejects invalid structure or field: %s', (_name, fields, message) => {
     const path = writeBook(`type: gift\ntitle: Gifts\n${fields}\n`)
@@ -437,6 +418,36 @@ gift:
       message,
       path,
     )
+  })
+
+  it('parses gift credit and rejects top-level desc/authors', () => {
+    const book = parseBook(
+      writeBook(`type: gift
+title: Gifts
+credit:
+  producer: Synctrol
+gift:
+  items: []
+`),
+      defs,
+      'zh',
+    ) as GiftBook
+    expect(book.credit).toEqual({ producer: 'Synctrol' })
+
+    for (const field of ['desc: x', 'authors: [A]']) {
+      const run = () =>
+        parseBook(
+          writeBook(`type: gift
+title: Gifts
+${field}
+gift:
+  items: []
+`),
+          defs,
+          'zh',
+        )
+      expect(run).toThrowError(/Unknown field/)
+    }
   })
 })
 
@@ -541,7 +552,6 @@ describe('parseGiftBook mapping safety and isolation', () => {
       items: [],
       id: 'polluted',
       title: 'Polluted',
-      authors: ['Polluted'],
       covers: ['./polluted.webp'],
       links: [],
     }
@@ -624,8 +634,10 @@ describe('parseGiftBook mapping safety and isolation', () => {
 
   it('returns deep copies isolated from later input mutation', () => {
     const title = { zh: '周边', en: 'Gifts' }
-    const desc = { zh: '介绍', en: 'Description' }
-    const authors = ['Author']
+    const credit: Record<string, string> = {
+      producer: 'Synctrol',
+      specialThanks: 'Fans',
+    }
     const itemTitle = { zh: '海报', en: 'Poster' }
     const itemDesc = { zh: '限量', en: 'Limited' }
     const covers = ['./poster.webp']
@@ -648,15 +660,15 @@ describe('parseGiftBook mapping safety and isolation', () => {
     const raw = {
       type: 'gift',
       title,
-      desc,
-      authors,
+      credit,
       gift,
     }
 
     const result = parseDirect(raw)
     title.zh = '已修改'
-    desc.zh = '已修改'
-    authors.push('Mutated')
+    credit.producer = 'Changed'
+    credit.specialThanks = 'Changed'
+    credit.webDesign = 'Added Later'
     item.id = 'mutated'
     itemTitle.zh = '已修改'
     itemDesc.zh = '已修改'
@@ -673,8 +685,7 @@ describe('parseGiftBook mapping safety and isolation', () => {
     expect(result).toEqual({
       type: 'gift',
       title: { zh: '周边', en: 'Gifts' },
-      desc: { zh: '介绍', en: 'Description' },
-      authors: ['Author'],
+      credit: { producer: 'Synctrol', specialThanks: 'Fans' },
       gift: {
         items: [
           {

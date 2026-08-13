@@ -7,7 +7,7 @@ import {
   isDiagnosticError,
   SynctrolDiagnosticError,
 } from '../../src/compiler/diagnostics'
-import type { ContentDefinitions } from '../../src/shared/types'
+import type { AlbumBook, ContentDefinitions } from '../../src/shared/types'
 
 const defs: ContentDefinitions = {
   tags: {},
@@ -101,10 +101,6 @@ type: album
 title:
   zh: 第一张专辑
   en: First Album
-desc:
-  zh: 第一张专辑介绍
-  en: First Album description
-authors: [Synctrol, Guest]
 copyright: © 2026 Synctrol
 album:
   covers:
@@ -141,8 +137,6 @@ album:
     expect(parseBook(path, defs, 'zh')).toEqual({
       type: 'album',
       title: { zh: '第一张专辑', en: 'First Album' },
-      desc: { zh: '第一张专辑介绍', en: 'First Album description' },
-      authors: ['Synctrol', 'Guest'],
       copyright: '© 2026 Synctrol',
       album: {
         covers: ['./assets/front.webp', './assets/back.webp'],
@@ -196,7 +190,6 @@ album: {}
     const path = writeBook(`
 type: album
 title: Empty Album
-authors: []
 album:
   covers: []
   links: []
@@ -208,7 +201,6 @@ album:
     expect(parseBook(path, defs, 'zh')).toEqual({
       type: 'album',
       title: 'Empty Album',
-      authors: [],
       album: {
         covers: [],
         links: [],
@@ -220,7 +212,11 @@ album:
   it('validates mainLocale in book, disc, track, description, and link label maps', () => {
     const invalidCases = [
       ['title', 'title:\n  en: Album\nalbum: {}', 'title'],
-      ['desc', 'title: Album\ndesc:\n  en: Description\nalbum: {}', 'desc'],
+      [
+        'disc description',
+        'title: Album\nalbum:\n  discs:\n    - title: Disc\n      desc:\n        en: Description\n      tracks: []',
+        'album.discs[0].desc',
+      ],
       [
         'disc title',
         'title: Album\nalbum:\n  discs:\n    - title:\n        en: Disc\n      tracks: []',
@@ -332,8 +328,6 @@ gift:
   })
 
   it.each([
-    ['authors mapping', 'authors: {}', 'authors'],
-    ['authors non-string item', 'authors: [Synctrol, 1]', 'authors[1]'],
     ['copyright number', 'copyright: 2026', 'copyright'],
     ['covers mapping', 'album:\n  covers: {}', 'album.covers'],
     ['empty cover', 'album:\n  covers: [""]', 'album.covers[0]'],
@@ -471,6 +465,86 @@ album:
   })
 })
 
+describe('parseAlbumBook credit validation', () => {
+  it('parses credit keys and ignores omitted ones', () => {
+    const path = writeBook(`type: album
+title: Album
+credit:
+  catalogNumber: DVSP-0327
+  illustrator: タイキ
+album: {}
+`)
+    const book = parseBook(path, defs, 'zh') as AlbumBook
+    expect(book.credit).toEqual({ catalogNumber: 'DVSP-0327', illustrator: 'タイキ' })
+  })
+
+  it('rejects unknown credit keys', () => {
+    const run = () =>
+      parseBook(
+        writeBook(`type: album
+title: Album
+credit:
+  master: Who
+album: {}
+`),
+        defs,
+        'zh',
+      )
+    expect(run).toThrowError(/Unknown field "credit\.master"/)
+  })
+
+  it('rejects non-string credit values', () => {
+    const run = () =>
+      parseBook(
+        writeBook(`type: album
+title: Album
+credit:
+  illustrator: 123
+album: {}
+`),
+        defs,
+        'zh',
+      )
+    expect(run).toThrowError(/credit\.illustrator must be a string/)
+  })
+
+  it('rejects top-level desc and authors fields', () => {
+    for (const field of ['desc: x', 'authors: [A]']) {
+      const run = () =>
+        parseBook(
+          writeBook(`type: album
+title: Album
+${field}
+album: {}
+`),
+          defs,
+          'zh',
+        )
+      expect(run).toThrowError(/Unknown field/)
+    }
+  })
+
+  it('keeps disc and track desc fields', () => {
+    const book = parseBook(
+      writeBook(`type: album
+title: Album
+album:
+  discs:
+    - title: Disc
+      desc: Main disc
+      tracks:
+        - title: T
+          artists: [A]
+          duration: 60
+          desc: Opening track
+`),
+      defs,
+      'zh',
+    ) as AlbumBook
+    expect(book.album.discs?.[0]?.desc).toBe('Main disc')
+  })
+})
+
 describe('parseAlbumBook mapping safety and isolation', () => {
   it('accepts null-prototype mappings at every schema layer', () => {
     const track = Object.assign(Object.create(null), {
@@ -583,7 +657,6 @@ describe('parseAlbumBook mapping safety and isolation', () => {
     const originals = new Map<string, PropertyDescriptor | undefined>()
     const pollution: Record<string, unknown> = {
       album: {},
-      authors: ['Polluted'],
       covers: ['./polluted.webp'],
       tracks: [],
       artists: ['Polluted'],
@@ -653,8 +726,10 @@ describe('parseAlbumBook mapping safety and isolation', () => {
 
   it('returns deep copies isolated from later input mutation', () => {
     const title = { zh: '专辑', en: 'Album' }
-    const desc = { zh: '介绍', en: 'Description' }
-    const authors = ['Author']
+    const credit: Record<string, string> = {
+      producer: 'Synctrol',
+      illustrator: 'タイキ',
+    }
     const covers = ['./front.webp']
     const label = { zh: '播放', en: 'Play' }
     const artists = ['Artist']
@@ -678,15 +753,15 @@ describe('parseAlbumBook mapping safety and isolation', () => {
     const raw = {
       type: 'album',
       title,
-      desc,
-      authors,
+      credit,
       album,
     }
 
     const result = parseDirect(raw)
     title.zh = '已修改'
-    desc.zh = '已修改'
-    authors.push('Mutated')
+    credit.producer = 'Changed'
+    credit.illustrator = 'Changed'
+    credit.catalogNumber = 'Added Later'
     covers.push('./back.webp')
     label.zh = '已修改'
     artists.push('Mutated')
@@ -707,8 +782,7 @@ describe('parseAlbumBook mapping safety and isolation', () => {
     expect(result).toEqual({
       type: 'album',
       title: { zh: '专辑', en: 'Album' },
-      desc: { zh: '介绍', en: 'Description' },
-      authors: ['Author'],
+      credit: { producer: 'Synctrol', illustrator: 'タイキ' },
       album: {
         covers: ['./front.webp'],
         links: [

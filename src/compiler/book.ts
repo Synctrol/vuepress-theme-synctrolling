@@ -1,6 +1,8 @@
 import type {
   AlbumBook,
   Book,
+  BookCredit,
+  BookCreditKey,
   ContentDefinitions,
   Disc,
   GiftBook,
@@ -11,6 +13,7 @@ import type {
   PlatformCategory,
   Track,
 } from '../shared/types.js'
+import { BOOK_CREDIT_KEYS } from '../shared/types.js'
 import type { PlatformTypeRegistration } from '../shared/options.js'
 import { resolvePlatformTypes } from '../platforms/registry.js'
 import { fail, isDiagnosticError } from './diagnostics.js'
@@ -20,22 +23,8 @@ import { loadYamlFile } from './yaml.js'
 
 type PlainRecord = Record<string, unknown>
 
-const ALBUM_BOOK_FIELDS = [
-  'type',
-  'title',
-  'desc',
-  'authors',
-  'copyright',
-  'album',
-] as const
-const GIFT_BOOK_FIELDS = [
-  'type',
-  'title',
-  'desc',
-  'authors',
-  'copyright',
-  'gift',
-] as const
+const ALBUM_BOOK_FIELDS = ['type', 'title', 'copyright', 'credit', 'album'] as const
+const GIFT_BOOK_FIELDS = ['type', 'title', 'copyright', 'credit', 'gift'] as const
 const ALBUM_FIELDS = ['covers', 'links', 'discs'] as const
 const GIFT_FIELDS = ['items'] as const
 const GIFT_ITEM_FIELDS = [
@@ -264,6 +253,28 @@ function parseOptionalCopyright(
   return value
 }
 
+function parseCredit(
+  value: unknown,
+  path: string,
+): BookCredit | undefined {
+  if (value === undefined) return undefined
+  if (!isPlainMapping(value, path, 'credit')) {
+    invalid('INVALID_BOOK', 'credit must be a plain mapping', path)
+  }
+  const credit: BookCredit = {}
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== 'string' || !BOOK_CREDIT_KEYS.includes(key as BookCreditKey)) {
+      invalid('UNKNOWN_FIELD', `Unknown field "credit.${String(key)}"`, path)
+    }
+    const entry = (value as PlainRecord)[key]
+    if (typeof entry !== 'string') {
+      invalid('INVALID_BOOK', `credit.${key} must be a string`, path)
+    }
+    credit[key as BookCreditKey] = entry
+  }
+  return credit
+}
+
 function parseDuration(
   value: unknown,
   path: string,
@@ -476,18 +487,12 @@ export function parseAlbumBook(
   rejectUnknownFields(raw, ALBUM_BOOK_FIELDS, path, '')
   rejectUnknownFields(album, ALBUM_FIELDS, path, 'album')
 
-  const desc = parseOptionalMultilanguage(
-    raw.desc,
-    mainLocale,
-    path,
-    'desc',
-  )
-  const authors = parseOptionalStringArray(raw.authors, path, 'authors')
   const copyright = parseOptionalCopyright(
     raw.copyright,
     path,
     'copyright',
   )
+  const credit = parseCredit(raw.credit, path)
   const covers = parseCovers(album.covers, path, 'album.covers')
   const links = parseLinks(
     album.links,
@@ -508,9 +513,8 @@ export function parseAlbumBook(
   return {
     type: 'album',
     title: assertMultilanguage(raw.title, mainLocale, path, 'title'),
-    ...(desc === undefined ? {} : { desc }),
-    ...(authors === undefined ? {} : { authors }),
     ...(copyright === undefined ? {} : { copyright }),
+    ...(credit === undefined ? {} : { credit }),
     album: {
       ...(covers === undefined ? {} : { covers }),
       ...(links === undefined ? {} : { links }),
@@ -638,25 +642,18 @@ export function parseGiftBook(
     },
   )
 
-  const desc = parseOptionalMultilanguage(
-    raw.desc,
-    mainLocale,
-    path,
-    'desc',
-  )
-  const authors = parseOptionalStringArray(raw.authors, path, 'authors')
   const copyright = parseOptionalCopyright(
     raw.copyright,
     path,
     'copyright',
   )
+  const credit = parseCredit(raw.credit, path)
 
   return {
     type: 'gift',
     title: assertMultilanguage(raw.title, mainLocale, path, 'title'),
-    ...(desc === undefined ? {} : { desc }),
-    ...(authors === undefined ? {} : { authors }),
     ...(copyright === undefined ? {} : { copyright }),
+    ...(credit === undefined ? {} : { credit }),
     gift: { items },
   }
 }
