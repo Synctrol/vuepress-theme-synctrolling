@@ -4,7 +4,7 @@ import type { AlbumBook, GiftBook } from '../../../src/shared/types.js'
 import { page, resolvedOptions, seoContentContext, url } from '../../helpers/seo-fixtures.js'
 
 const options = resolvedOptions()
-const album: AlbumBook = { type: 'album', title: { zh: '第一张专辑', en: 'First Album' }, authors: ['Synctrol'], album: { discs: [{ title: 'Disc', tracks: [{ title: { zh: '曲', en: 'Track' }, artists: ['Synctrol'], duration: 120 }] }] } }
+const album: AlbumBook = { type: 'album', title: { zh: '第一张专辑', en: 'First Album' }, album: { discs: [{ title: 'Disc', tracks: [{ title: { zh: '曲', en: 'Track' }, artists: ['Synctrol'], duration: 120 }] }] } }
 const gift: GiftBook = { type: 'gift', title: { zh: '周边', en: 'Gifts' }, gift: { items: [{ id: 'poster', title: 'Poster' }] } }
 
 describe('json-ld builders', () => {
@@ -18,6 +18,12 @@ describe('json-ld builders', () => {
     const giftNodes = buildPageJsonLd(page({ identity: 'release:gift', locale: 'en', contentType: 'release', packagePath: '/site/content/releases/gift', url: url('https://synctrol.com/en/releases/gift/') }), options, seoContentContext({ bookByPackagePath: new Map([['/site/content/releases/gift', gift]]) }), { title: 'Gift', description: 'Desc', canonicalUrl: 'https://synctrol.com/en/releases/gift/', image: 'https://synctrol.com/og.webp' })
     expect(giftNodes).toEqual([])
     expect(JSON.stringify(giftNodes)).not.toMatch(/Product/)
+  })
+
+  it('omits album-level byArtist now that book authors are retired', () => {
+    const nodes = buildAlbumJsonLd({ book: album, locale: 'en', mainLocale: 'zh', pageUrl: 'https://synctrol.com/en/releases/first/' })
+    expect(nodes[0]).not.toHaveProperty('byArtist')
+    expect(nodes[0]).toMatchObject({ '@type': 'MusicAlbum', name: 'First Album' })
   })
 
   it('builds home site graph and news article graph', () => {

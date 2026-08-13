@@ -66,7 +66,6 @@ export function buildAlbumJsonLd(input: { book: AlbumBook; locale: LocaleKey; ma
       numTracks: position,
       track: tracks,
       url: input.pageUrl,
-      ...(input.book.authors?.length ? { byArtist: input.book.authors.map((artist) => ({ '@type': 'MusicGroup', name: artist })) } : {}),
     },
     ...recordings,
   ]
