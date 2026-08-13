@@ -155,7 +155,7 @@ body {
   flex-direction: column;
   overflow-y: auto;
   border-right: var(--syn-border-strong);
-  padding: 24px 16px 0;
+  padding: 24px 16px;
 }
 
 .syn-main > .cell {
@@ -168,7 +168,7 @@ body {
 
 /* Home page: symmetric 24px padding (other pages keep 24px 16px). */
 .syn-main:has(.syn-home-logo) {
-  padding: 24px 24px 0;
+  padding: 24px;
 }
 
 .syn-main:has(.syn-home-logo) > .cell {
@@ -514,7 +514,7 @@ body {
   .syn-main {
     flex: 1;
     border-right: 0;
-    border-bottom: var(--syn-border-strong);
+    border-bottom: 0;
   }
 
   .syn-site-footer {
