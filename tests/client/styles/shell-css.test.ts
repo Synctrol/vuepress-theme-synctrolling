@@ -44,7 +44,7 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*justify-content:\s*space-between/)
     expect(css).not.toMatch(/\.syn-language\s*\{[^}]*position:\s*fixed/)
     expect(css).toMatch(/\.syn-language\s*\{[^}]*position:\s*relative/)
-    expect(css).toMatch(/\.syn-language\s*\{[^}]*transform:\s*translateY\(-3px\)/)
+    expect(css).not.toMatch(/\.syn-language\s*\{[^}]*transform:/)
   })
 
   it('renders the social links as chips in the nav side-panel', () => {

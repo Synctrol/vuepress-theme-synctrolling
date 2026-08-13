@@ -376,10 +376,6 @@ body {
 .syn-language {
   position: relative;
   flex-shrink: 0;
-  /* Compensate the 3px bar border-top so the control sits at the bar's
-     padding line (10px) from the shell edge. Transform only — the bar
-     height must not change. */
-  transform: translateY(-3px);
 }
 
 .syn-language__list {
