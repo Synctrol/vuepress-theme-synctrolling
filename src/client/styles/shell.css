@@ -45,7 +45,6 @@ body {
   justify-content: space-between;
   background: var(--syn-bar-bg);
   color: var(--syn-bar-fg);
-  border-bottom: var(--syn-border-strong);
   padding: 10px 16px;
   font-size: 13px;
   letter-spacing: 2px;
@@ -334,7 +333,6 @@ body {
   gap: 16px;
   background: var(--syn-bar-bg);
   color: var(--syn-bar-fg);
-  border-top: var(--syn-border-strong);
   padding: 10px 16px;
   font-size: 13px;
   letter-spacing: 2px;

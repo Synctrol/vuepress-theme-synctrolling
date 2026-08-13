@@ -118,7 +118,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-header\s*\{[^}]*padding:\s*10px 16px/)
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*background:\s*var\(--syn-bar-bg\)/)
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*color:\s*var\(--syn-bar-fg\)/)
-    expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*border-top:\s*var\(--syn-border-strong\)/)
+    expect(css).not.toMatch(/\.syn-header\s*\{[^}]*border-bottom:/)
+    expect(css).not.toMatch(/\.syn-site-footer\s*\{[^}]*border-top:/)
   })
 
   it('styles the theme toggle like the reference theme-option', () => {
