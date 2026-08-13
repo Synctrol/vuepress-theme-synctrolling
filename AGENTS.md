@@ -1,8 +1,8 @@
 # AGENTS
 
-本文件是 `vuepress-theme-synctrolling` 的主题权威说明，供编码代理与维护者使用。
+本文件给编码代理和维护者：说明仓库约定、现行主题契约，以及改代码时不要踩的坑。
 
-`README.md` 中的「主题功能 / 主题重要概念 / 主题配置方法 / 主题使用要求」四节必须与本文件对应章节逐字同步。改其中一份时必须改另一份，并由 `tests/publish/theme-docs.test.ts` 锁定。
+给站点作者看的说明写在 `README.md`，必须是中文。两边都要覆盖「主题功能 / 主题重要概念 / 主题配置方法 / 主题使用要求」，但 README 按人来读，不必和本文件逐字相同。
 
 ## 仓库约定
 
@@ -274,13 +274,13 @@ AND DESCRIBE SOUND
 
 内置平台类型：`link`、`audio_player`、`youtube_player`、`bilibili_player`、`apple_music_player`、`spotify_player`、`soundcloud_player`、`netease_player`。可在 `platforms.types` 注册自定义类型（`validate` / `component` / `cspOrigins` / 可选 `fallbackUrl`）。YAML 不得提供任意 HTML、脚本或 iframe 模板。
 
-### 仅 token 的 CSS 导出
+### 仅设计令牌的 CSS 导出
 
 ```ts
 import 'vuepress-theme-synctrolling/styles.css'
 ```
 
-`vuepress-theme-synctrolling/styles.css` 是 tokens-only 导出，指向 `dist/client/styles/tokens.css`。普通 VuePress 站点应让主题 client config 加载完整样式栈，而不是只引入这一文件。
+`vuepress-theme-synctrolling/styles.css` 只导出设计令牌，指向 `dist/client/styles/tokens.css`。普通 VuePress 站点应让主题客户端配置加载完整样式，而不是只引入这一文件。
 
 ## 主题使用要求
 
@@ -295,7 +295,7 @@ import 'vuepress-theme-synctrolling/styles.css'
 
 1. `siteUrl` 必填，必须是无路径、无查询、无 hash、无尾斜杠的绝对 `http:` / `https:` origin。
 2. 自定义域名使用 VuePress `base: '/'`。项目页托管使用带尾斜杠的子路径，例如 `/repo-name/`。
-3. 主题发出 root language router：根 `/index.html` 按已保存 locale、浏览器语言、然后 `mainLocale` 选择语言首页，并调用 `location.replace()`。该根页没有可见语言链接，也不进入 Sitemap。
+3. 主题发出根语言路由器：根 `/index.html` 按已保存语言、浏览器语言、然后 `mainLocale` 选择语言首页，并调用 `location.replace()`。该根页没有可见语言链接，也不进入站点地图。
 4. VuePress `locales` 必须覆盖每一个主题 locale key，path 形如 `'/{localeKey}/'`。
 
 内容与构建：
@@ -305,7 +305,7 @@ import 'vuepress-theme-synctrolling/styles.css'
 - 引用未声明的 tag / platform、未知 YAML 字段、嵌套内容包、同类型重复 slug、最终路由冲突、缺失资源都会导致构建失败。
 - `date` / `updated` 必须是 `YYYY-MM-DD`；`updated` 不得早于 `date`。
 - 平台 embed 只在交互或进入视口后加载；不能配置为立即加载。
-- Display typography 默认使用 `'Archivo Black', 'Arial Black', Arial, ...`。可用 `featureFont` 覆盖展示字体栈。The npm package does not ship an Archivo Black WOFF2 yet because no licensed binary is tracked in this repository. 消费站点如需该字体，应自行托管或通过 `head` 引入。
+- 展示字体默认使用 `'Archivo Black', 'Arial Black', Arial, ...`。可用 `featureFont` 覆盖展示字体栈。npm 包不附带 Archivo Black 的 WOFF2 文件，仓库里也没有可分发的授权字体。消费站点如需该字体，应自行托管或通过页面头部引入。
 - `.vuepress/public` 只放固定文件名资源（如 `CNAME`、`robots.txt`）。社交默认图与组织 logo 走全局哈希资源管线。
 
 ## 开发

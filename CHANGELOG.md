@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- Documented theme features, concepts, configuration, and requirements in `AGENTS.md`, and synced the same four sections into `README.md`. Current options (`topbarText`, `footbarText`, `featureFont`, `linkCloud`) replace the outdated `copyright` sample.
+- 新增中文 `AGENTS.md`，并把给人看的 `README.md` 改写成同一套四节主题说明（功能、概念、配置、使用要求）。现行选项为 `topbarText`、`footbarText`、`featureFont`、`linkCloud`。
 
 ## [0.1.0] - 2026-08-11
 

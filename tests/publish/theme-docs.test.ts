@@ -12,55 +12,50 @@ const THEME_SECTIONS = [
 const agents = readFileSync(resolve('AGENTS.md'), 'utf8')
 const readme = readFileSync(resolve('README.md'), 'utf8')
 
-function extractH2Section(markdown: string, title: string): string {
-  const heading = `## ${title}`
-  const start = markdown.indexOf(`\n${heading}\n`)
-  const atStart = markdown.startsWith(`${heading}\n`) ? 0 : -1
-  const headingIndex = atStart === 0 ? 0 : start === -1 ? -1 : start + 1
-  if (headingIndex === -1) {
-    throw new Error(`Missing heading: ${heading}`)
-  }
-  const fromHeading = markdown.slice(headingIndex)
-  const afterFirstLine = fromHeading.indexOf('\n')
-  const bodyStart = afterFirstLine === -1 ? fromHeading.length : afterFirstLine + 1
-  const rest = fromHeading.slice(bodyStart)
-  const next = rest.search(/\n## /)
-  return (next === -1 ? rest : rest.slice(0, next)).trim()
+function stripFences(markdown: string): string {
+  return markdown.replace(/```[\s\S]*?```/g, '')
 }
 
 describe('AGENTS.md and README theme documentation', () => {
-  it('keeps the four theme sections present and identical', () => {
+  it('covers the same four theme topics in both files', () => {
     for (const title of THEME_SECTIONS) {
       expect(agents).toContain(`## ${title}`)
       expect(readme).toContain(`## ${title}`)
-      expect(extractH2Section(agents, title)).toBe(extractH2Section(readme, title))
     }
   })
 
-  it('documents current theme contracts in the shared sections', () => {
-    const shared = THEME_SECTIONS.map((title) =>
-      extractH2Section(readme, title),
-    ).join('\n')
+  it('keeps README prose in Chinese', () => {
+    const prose = stripFences(readme)
+    expect(prose).not.toMatch(/^Requires /m)
+    expect(prose).not.toMatch(/Synctrol-specific/)
+    expect(prose).not.toMatch(/^## Install$/m)
+    expect(prose).not.toMatch(/^## Develop$/m)
+    expect(prose).not.toMatch(/tokens-only/i)
+    expect(prose).not.toMatch(/does not ship/i)
+    expect(prose).not.toMatch(/root language router/i)
+    expect(prose).not.toMatch(/Display typography/)
+  })
 
-    expect(shared).toContain('synctrolTheme(')
-    expect(shared).toContain('zhMessages')
-    expect(shared).toContain('enMessages')
-    expect(shared).toContain('topbarText')
-    expect(shared).toContain('footbarText')
-    expect(shared).toContain('featureFont')
-    expect(shared).toContain('linkCloud')
-    expect(shared).toContain('content/')
-    expect(shared).toContain('content.yml')
-    expect(shared).toContain('::: home-logo')
-    expect(shared).toContain('vuepress-theme-synctrolling/styles.css')
-    expect(shared).toMatch(/tokens-only/i)
-    expect(shared).toMatch(/Archivo Black/)
-    expect(shared).toMatch(/does not ship.*WOFF2/i)
-    expect(shared).toContain('siteUrl')
-    expect(shared).toContain('base')
-    expect(shared).toMatch(/root language router|root router/i)
-    expect(shared).not.toMatch(/Deploy this repository to GitHub Pages/i)
-    expect(shared).not.toContain('copyright:')
-    expect(shared).not.toContain('home-footer')
+  it('documents current theme contracts for site authors', () => {
+    expect(readme).toContain('synctrolTheme(')
+    expect(readme).toContain('zhMessages')
+    expect(readme).toContain('enMessages')
+    expect(readme).toContain('topbarText')
+    expect(readme).toContain('footbarText')
+    expect(readme).toContain('featureFont')
+    expect(readme).toContain('linkCloud')
+    expect(readme).toContain('content/')
+    expect(readme).toContain('content.yml')
+    expect(readme).toContain('::: home-logo')
+    expect(readme).toContain('vuepress-theme-synctrolling/styles.css')
+    expect(readme).toContain('设计令牌')
+    expect(readme).toContain('Archivo Black')
+    expect(readme).toContain('WOFF2')
+    expect(readme).toContain('siteUrl')
+    expect(readme).toContain('base')
+    expect(readme).toContain('根语言路由器')
+    expect(readme).not.toMatch(/Deploy this repository to GitHub Pages/i)
+    expect(readme).not.toContain('copyright:')
+    expect(readme).not.toContain('home-footer')
   })
 })
