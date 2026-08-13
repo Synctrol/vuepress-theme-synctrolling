@@ -66,7 +66,8 @@ describe('shell.css', () => {
   it('styles the home logo with reference .logo/.logo-sub classes and full-width title cell', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toMatch(/\.syn-main\s*>\s*\.cell\s*\{[^}]*margin-inline:\s*auto/)
-    expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)\s*\{[^}]*padding:\s*24px/)
+    expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)\s*\{[^}]*padding:\s*24px 24px 0/)
+    expect(css).toMatch(/\.syn-main\s*\{[^}]*padding:\s*24px 16px 0/)
     expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)\s*>\s*\.cell\s*\{[^}]*max-width:\s*none/)
     expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*--syn-dock-control-size:\s*28px/)
     expect(css).toMatch(/\.syn-navigation__side-panel:has\(\.syn-link-cloud\)\s*\.syn-social-links\s*\{[^}]*align-self:\s*end/)
