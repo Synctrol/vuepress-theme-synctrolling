@@ -27,14 +27,11 @@ describe('consumer README', () => {
     expect(readme).toContain('## 主题使用要求')
   })
 
-  it('documents CSS export, font policy, and hosting notes in Chinese', () => {
-    expect(readme).toContain('vuepress-theme-synctrolling/styles.css')
-    expect(readme).toContain('设计令牌')
-    expect(readme).toContain('Archivo Black')
-    expect(readme).toContain('WOFF2')
+  it('documents CSS-free hosting notes and current options in Chinese', () => {
     expect(readme).toContain('siteUrl')
     expect(readme).toContain('base')
-    expect(readme).toContain('根语言路由器')
+    expect(readme).toMatch(/自行 fork/)
     expect(readme).not.toMatch(/Deploy this repository to GitHub Pages/i)
+    expect(readme).not.toMatch(/AGENTS/i)
   })
 })

@@ -9,23 +9,23 @@ const THEME_SECTIONS = [
   '主题使用要求',
 ] as const
 
-const agents = readFileSync(resolve('AGENTS.md'), 'utf8')
 const readme = readFileSync(resolve('README.md'), 'utf8')
 
 function stripFences(markdown: string): string {
   return markdown.replace(/```[\s\S]*?```/g, '')
 }
 
-describe('AGENTS.md and README theme documentation', () => {
-  it('covers the same four theme topics in both files', () => {
+describe('README theme documentation', () => {
+  it('covers the four theme topics', () => {
     for (const title of THEME_SECTIONS) {
-      expect(agents).toContain(`## ${title}`)
       expect(readme).toContain(`## ${title}`)
     }
   })
 
-  it('keeps README prose in Chinese', () => {
+  it('is a Chinese author guide and does not mention agent files', () => {
     const prose = stripFences(readme)
+    expect(prose).not.toMatch(/AGENTS/i)
+    expect(prose).not.toMatch(/权威/)
     expect(prose).not.toMatch(/^Requires /m)
     expect(prose).not.toMatch(/Synctrol-specific/)
     expect(prose).not.toMatch(/^## Install$/m)
@@ -36,26 +36,24 @@ describe('AGENTS.md and README theme documentation', () => {
     expect(prose).not.toMatch(/Display typography/)
   })
 
-  it('documents current theme contracts for site authors', () => {
+  it('walks through install and config, and states the Synctrol-team scope', () => {
+    expect(readme).toContain('### 2. 安装主题')
+    expect(readme).toContain('### 3. 写下站点配置')
     expect(readme).toContain('synctrolTheme(')
     expect(readme).toContain('zhMessages')
     expect(readme).toContain('enMessages')
     expect(readme).toContain('topbarText')
     expect(readme).toContain('footbarText')
-    expect(readme).toContain('featureFont')
     expect(readme).toContain('linkCloud')
     expect(readme).toContain('content/')
     expect(readme).toContain('content.yml')
     expect(readme).toContain('::: home-logo')
-    expect(readme).toContain('vuepress-theme-synctrolling/styles.css')
-    expect(readme).toContain('设计令牌')
-    expect(readme).toContain('Archivo Black')
-    expect(readme).toContain('WOFF2')
     expect(readme).toContain('siteUrl')
     expect(readme).toContain('base')
-    expect(readme).toContain('根语言路由器')
+    expect(readme).toMatch(/自行 fork/)
     expect(readme).not.toMatch(/Deploy this repository to GitHub Pages/i)
     expect(readme).not.toContain('copyright:')
     expect(readme).not.toContain('home-footer')
+    expect(readme).not.toMatch(/Synctrol\.com/)
   })
 })
