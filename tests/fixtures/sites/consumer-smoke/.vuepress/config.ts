@@ -34,18 +34,18 @@ export default defineUserConfig({
       zh: { lang: 'zh-CN', label: '中文', messages: zhMessages },
       en: { lang: 'en-US', label: 'English', messages: enMessages },
     },
-    topbarText: 'Copyright Synctrol',
+    topbarText: 'SYNCTROL © 2026',
     footbarText: '敬请期待 · STAY TUNED',
     featureFont: "'Archivo Black', 'Arial Black', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
     navigation: {
       items: [
         {
-          label: { zh: '作品', en: 'Releases' },
+          label: 'Release',
           href: '/releases/',
           icon: '/assets/icons/github.svg',
         },
-        { label: { zh: '新闻', en: 'News' }, href: '/news/' },
-        { label: { zh: '关于', en: 'About' }, href: '/about/' },
+        { label: 'News', href: '/news/' },
+        { label: 'About', href: '/about/' },
       ],
     },
     socialLinks: {
