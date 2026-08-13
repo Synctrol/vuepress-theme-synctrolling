@@ -54,6 +54,7 @@ body {
 
 .syn-topbar-text {
   margin: 0;
+  font-size: 14px;
   font-family: var(--syn-font-display);
 }
 
