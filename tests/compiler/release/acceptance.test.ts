@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { selectReleaseImageRoles } from '../../../src/shared/release/image-roles'
 import { buildReleaseIndexModel } from '../../../src/compiler/release/list-model'
 import { buildReleaseDetailModel } from '../../../src/compiler/release/detail-model'
+import { builtInPlatformTypes } from '../../../src/platforms/builtins/index'
 import {
   albumBook,
   asset,
@@ -152,6 +153,19 @@ describe('Release acceptance (spec §§21–24, drafts; JSON-LD deferred to Plan
   })
 
   it('supports album, gift, and markdown-only detail contracts without jsonLd', () => {
+    const definitions = {
+      bilibili: {
+        category: 'digital',
+        type: 'bilibili_player',
+        name: 'Bilibili',
+      },
+      taobao: {
+        category: 'physical',
+        type: 'link',
+        name: { zh: '淘宝', en: 'Taobao' },
+      },
+    } as const
+
     const album = buildReleaseDetailModel({
       page: releaseDetailPage(),
       pkg: {
@@ -168,30 +182,34 @@ describe('Release acceptance (spec §§21–24, drafts; JSON-LD deferred to Plan
       book: albumBook(),
       messages: zhMessages,
       mainLocale: 'zh',
-      releaseIndexHref: '/zh/releases/',
+      definitions,
+      platformTypes: builtInPlatformTypes,
       resolveArtwork: () => asset('/entry.webp'),
       resolveAlbumCover: (p) => asset(`/${p}`),
       resolvePlaceholder: () => undefined,
-      releaseOptions: { ...releaseOptions },
       showDrafts: false,
-      formatDate: (d) => d,
     })
-    expect(album.sections.map((s) => s.kind)).toEqual([
-      'return-link',
-      'title-date',
-      'artwork',
-      'book-identity',
-      'album-body',
-      'markdown',
-    ])
-    expect(
-      (album.sections.find((s) => s.kind === 'album-body') as { order: string[] })
-        .order,
-    ).toEqual(['links', 'covers', 'discs'])
+    expect(album.book?.type).toBe('album')
+    if (album.book?.type === 'album') {
+      expect(album.book.previewLinks).toEqual([])
+      expect(album.book.platformLinks.map((l) => l.platform)).toEqual([
+        'bilibili',
+      ])
+      expect(album.book.covers).toHaveLength(2)
+      expect(album.book.discs).toHaveLength(1)
+      expect(album.book.discs[0].tracks).toHaveLength(2)
+      expect(album.book.discs[0].tracks[0].durationLabel).toBe('4:32')
+    }
+    expect(album.artwork.kind).toBe('artwork')
     expect('jsonLd' in album).toBe(false)
 
     const gift = buildReleaseDetailModel({
-      page: releaseDetailPage({ title: '周边' }),
+      page: releaseDetailPage({
+        title: '周边',
+        locale: 'en',
+        bodyLocale: 'en',
+        canonicalLocale: 'en',
+      }),
       pkg: {
         dir: '/content/releases/gift',
         identity: 'release:gift',
@@ -205,20 +223,26 @@ describe('Release acceptance (spec §§21–24, drafts; JSON-LD deferred to Plan
       book: giftBook(),
       messages: enMessages,
       mainLocale: 'zh',
-      releaseIndexHref: '/en/releases/',
+      definitions,
+      platformTypes: builtInPlatformTypes,
       resolveArtwork: () => undefined,
       resolveAlbumCover: (p) => asset(`/${p}`),
       resolveGiftItemCover: (p) => asset(`/${p}`),
       resolvePlaceholder: () => undefined,
-      releaseOptions: { ...releaseOptions },
       showDrafts: false,
-      formatDate: (d) => d,
     })
-    const giftBody = gift.sections.find((s) => s.kind === 'gift-body') as {
-      items: Array<{ linksHoisted: boolean; coverOrder: string }>
+    expect(gift.book?.type).toBe('gift')
+    if (gift.book?.type === 'gift') {
+      expect(gift.book.items).toHaveLength(1)
+      expect(gift.book.items[0].id).toBe('poster')
+      expect(gift.book.items[0].title.text).toBe('Commemorative Poster')
+      expect(gift.book.items[0].previewLinks).toEqual([])
+      expect(gift.book.items[0].platformLinks.map((l) => l.platform)).toEqual([
+        'taobao',
+      ])
+      expect(gift.book.items[0].covers).toHaveLength(1)
     }
-    expect(giftBody.items.every((i) => i.linksHoisted === false)).toBe(true)
-    expect(giftBody.items.every((i) => i.coverOrder === 'before-links')).toBe(true)
+    expect(gift.artwork.kind).toBe('empty-frame')
 
     const markdownOnly = buildReleaseDetailModel({
       page: releaseDetailPage({ title: 'Note', isDraft: true }),
@@ -235,23 +259,18 @@ describe('Release acceptance (spec §§21–24, drafts; JSON-LD deferred to Plan
       book: undefined,
       messages: enMessages,
       mainLocale: 'zh',
-      releaseIndexHref: '/en/releases/',
+      definitions,
+      platformTypes: builtInPlatformTypes,
       resolveArtwork: () => undefined,
       resolveAlbumCover: () => {
         throw new Error('no covers')
       },
       resolvePlaceholder: () => undefined,
-      releaseOptions: { ...releaseOptions },
       showDrafts: true,
-      formatDate: (d) => d,
     })
-    expect(markdownOnly.sections.map((s) => s.kind)).toEqual([
-      'return-link',
-      'title-date',
-      'artwork',
-      'markdown',
-    ])
+    expect(markdownOnly.book).toBeUndefined()
     expect(markdownOnly.includedInIndex).toBe(true)
     expect(markdownOnly.showDraftBadge).toBe(true)
+    expect(markdownOnly.artwork.kind).toBe('empty-frame')
   })
 })

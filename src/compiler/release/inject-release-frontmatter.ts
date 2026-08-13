@@ -1,8 +1,9 @@
 import type { AssetManifest } from '../../shared/asset-types.js'
-import type { ReleaseOptions } from '../../shared/options.js'
+import type { ReleaseOptions, PlatformTypeRegistration } from '../../shared/options.js'
 import type { CompiledPage } from '../../shared/route-types.js'
 import type {
   CompiledContentPackage,
+  ContentDefinitions,
   LocaleKey,
   LocaleMessages,
   RouteContentPackage,
@@ -28,7 +29,8 @@ export interface BuildReleaseFrontmatterInput {
   messages: LocaleMessages
   collectionTitle: string
   formatDate: (yyyyMmDd: string, locale: LocaleKey) => string
-  releaseIndexHrefForLocale: (locale: LocaleKey) => string | null
+  definitions: ContentDefinitions['platforms']
+  platformTypes: Record<string, PlatformTypeRegistration>
 }
 
 function findBook(
@@ -109,7 +111,8 @@ export function buildReleaseFrontmatterForPage(
       book,
       messages: input.messages,
       mainLocale: input.mainLocale,
-      releaseIndexHref: input.releaseIndexHrefForLocale(compiled.locale),
+      definitions: input.definitions,
+      platformTypes: input.platformTypes,
       resolveArtwork: (p) => resolvePackageArtwork(input.assetManifest, p),
       resolveAlbumCover: (ref) =>
         resolvePackageAssetRef(input.assetManifest, pkg.identity, ref),
@@ -120,14 +123,11 @@ export function buildReleaseFrontmatterForPage(
           input.assetManifest,
           input.releaseOptions.artworkPlaceholder,
         ),
-      releaseOptions: input.releaseOptions,
       showDrafts: input.showDrafts,
-      formatDate: input.formatDate,
     })
     return {
       kind: 'detail',
       model,
-      authorsLabel: input.messages.authors,
     }
   }
 

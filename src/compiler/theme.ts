@@ -180,17 +180,8 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
             // minimal stable formatter for v1; locale dateFormat from options may be used
             return yyyyMmDd
           },
-          releaseIndexHrefForLocale: (locale) => {
-            const index = allPages.find(
-              (p) =>
-                p.locale === locale &&
-                p.contentType === 'release-collection' &&
-                p.collection?.page === 1,
-            )
-            // Only a real emitted collection page yields a return link.
-            // When index is disabled (or missing), return null — no synthetic href.
-            return index?.url.publicPath ?? null
-          },
+          definitions: platformDefinitions,
+          platformTypes: resolvePlatformTypes(resolved.platforms.types),
         })
 
         const resolveCoverPublicPath = (

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildReleaseFrontmatterForPage } from '../../../src/compiler/release/inject-release-frontmatter'
+import { builtInPlatformTypes } from '../../../src/platforms/builtins/index'
 import {
   albumBook,
   asset,
@@ -9,6 +10,10 @@ import {
 import type { AssetManifest } from '../../../src/shared/asset-types'
 import type { CompiledContentPackage, RouteContentPackage } from '../../../src/shared/types'
 import type { CompiledPage } from '../../../src/shared/route-types'
+
+const definitions = {
+  bilibili: { category: 'digital', type: 'bilibili_player', name: 'Bilibili' },
+} as const
 
 const releaseOptions = {
   urlSegment: 'releases',
@@ -99,7 +104,8 @@ describe('buildReleaseFrontmatterForPage', () => {
       messages: zhMessages,
       collectionTitle: '作品',
       formatDate: (d) => d,
-      releaseIndexHrefForLocale: () => '/zh/releases/',
+      definitions,
+      platformTypes: builtInPlatformTypes,
     })
 
     expect(result).toMatchObject({ kind: 'index' })
@@ -191,7 +197,8 @@ describe('buildReleaseFrontmatterForPage', () => {
       messages: zhMessages,
       collectionTitle: '作品',
       formatDate: (d) => d,
-      releaseIndexHrefForLocale: () => '/zh/releases/',
+      definitions,
+      platformTypes: builtInPlatformTypes,
     })
 
     expect(result).toMatchObject({ kind: 'index' })
@@ -260,59 +267,77 @@ describe('buildReleaseFrontmatterForPage', () => {
       messages: zhMessages,
       collectionTitle: '作品',
       formatDate: (d) => d,
-      releaseIndexHrefForLocale: () => '/zh/releases/',
+      definitions,
+      platformTypes: builtInPlatformTypes,
     })
 
     expect(result?.kind).toBe('detail')
     if (result?.kind === 'detail') {
-      expect(result.model.sections.map((s) => s.kind)).toContain('album-body')
-      expect(result.model.sections.find((s) => s.kind === 'markdown')).toEqual({
-        kind: 'markdown',
-        bodyLang: 'zh',
-      })
+      expect(result.model.book?.type).toBe('album')
+      expect('sections' in result.model).toBe(false)
+      if (result.model.book?.type === 'album') {
+        expect(result.model.book.covers).toHaveLength(2)
+        expect(result.model.book.platformLinks.map((l) => l.platform)).toEqual([
+          'bilibili',
+        ])
+      }
+      expect(result.model.artwork.kind).toBe('artwork')
     }
   })
 
-  it('omits return-link on detail when releaseIndexHrefForLocale returns null', () => {
-    const detail = releaseDetailPage()
-    const pkg: RouteContentPackage = {
-      dir: '/content/releases/first-release',
-      identity: 'release:first-release',
-      type: 'release',
-      slug: 'first-release',
-      date: '2026-08-11',
-      draft: false,
-      tags: [],
-      locales: {},
-    }
-    const result = buildReleaseFrontmatterForPage({
-      compiled: detail,
-      allPages: [detail],
-      packages: [pkg],
-      compiledPackages: [],
+  it('builds detail payload with injected album data and no authors label', () => {
+    const input = {
+      compiled: releaseDetailPage({
+        identity: 'release:first-release',
+        slug: 'first-release',
+      }),
+      allPages: [],
+      packages: [
+        {
+          dir: '/content/releases/first-release',
+          identity: 'release:first-release',
+          type: 'release' as const,
+          slug: 'first-release',
+          date: '2026-08-11',
+          draft: false,
+          tags: [],
+          artwork: './assets/album-entry.webp',
+          locales: {},
+        },
+      ],
+      compiledPackages: [
+        {
+          dir: '/content/releases/first-release',
+          identity: 'release:first-release',
+          manifest: {} as never,
+          book: albumBook(),
+        },
+      ],
       assetManifest: {
         assets: [],
-        bySourcePath: {},
-        contentPublicPaths: {},
+        contentPublicPaths: {
+          'release:first-release': {
+            './assets/album-entry.webp': '/assets/hash.webp',
+            './assets/front.webp': '/assets/front.hash.webp',
+            './assets/back.webp': '/assets/back.hash.webp',
+          },
+        },
         globalPublicPaths: {},
-      },
-      releaseOptions: {
-        ...releaseOptions,
-        index: { ...releaseOptions.index, enabled: false },
-      },
+      } as never,
+      releaseOptions,
       showDrafts: false,
       mainLocale: 'zh',
       messages: zhMessages,
       collectionTitle: '作品',
-      formatDate: (d) => d,
-      releaseIndexHrefForLocale: () => null,
-    })
-    expect(result?.kind).toBe('detail')
-    if (result?.kind === 'detail') {
-      expect(result.model.sections.some((s) => s.kind === 'return-link')).toBe(
-        false,
-      )
+      formatDate: (d: string) => d,
+      definitions,
+      platformTypes: builtInPlatformTypes,
     }
+    const result = buildReleaseFrontmatterForPage(input as never)
+    expect(result).toMatchObject({ kind: 'detail' })
+    expect(result && 'authorsLabel' in result).toBe(false)
+    const model = result && result.kind === 'detail' ? result.model : null
+    expect(model && 'sections' in model).toBe(false)
   })
 
   it('returns null for non-release pages', () => {
@@ -351,7 +376,8 @@ describe('buildReleaseFrontmatterForPage', () => {
         messages: zhMessages,
         collectionTitle: '作品',
         formatDate: (d) => d,
-        releaseIndexHrefForLocale: () => '/zh/releases/',
+        definitions,
+        platformTypes: builtInPlatformTypes,
       }),
     ).toBeNull()
   })
