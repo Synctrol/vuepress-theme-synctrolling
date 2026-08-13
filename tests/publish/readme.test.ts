@@ -20,12 +20,18 @@ describe('consumer README', () => {
     expect(readme).toContain('content.yml')
   })
 
+  it('covers the four theme documentation sections', () => {
+    expect(readme).toContain('## 主题功能')
+    expect(readme).toContain('## 主题重要概念')
+    expect(readme).toContain('## 主题配置方法')
+    expect(readme).toContain('## 主题使用要求')
+  })
+
   it('binds tokens-only CSS export, font policy, and hosting notes', () => {
     expect(readme).toContain('vuepress-theme-synctrolling/styles.css')
     expect(readme).toMatch(/tokens-only/i)
     expect(readme).toMatch(/Archivo Black/)
     expect(readme).toMatch(/does not ship.*WOFF2/i)
-    expect(readme).toContain('## Consumer static hosting notes')
     expect(readme).toContain('siteUrl')
     expect(readme).toContain('base')
     expect(readme).toMatch(/root language router|root router/i)
