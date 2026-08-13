@@ -57,8 +57,8 @@ try {
 
   const rootHtml = readFileSync(join(dest, 'index.html'), 'utf8')
   assert.match(rootHtml, /location\.replace/)
-  assert.match(rootHtml, /href="\/zh\/"/)
-  assert.match(rootHtml, /href="\/en\/"/)
+  assert.doesNotMatch(rootHtml, /href="\/zh\/"/)
+  assert.doesNotMatch(rootHtml, /href="\/en\/"/)
 
   const zhHome = readFileSync(join(dest, 'zh/index.html'), 'utf8')
   assert.match(zhHome, /SYNCTROL/)
