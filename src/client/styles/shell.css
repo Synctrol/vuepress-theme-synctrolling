@@ -60,6 +60,7 @@ body {
 
 .syn-footbar-text {
   margin: 0;
+  font-size: 12px;
   font-family: var(--syn-font-display);
 }
 
