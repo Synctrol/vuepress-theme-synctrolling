@@ -766,9 +766,8 @@ body {
   box-sizing: border-box;
   width: auto;
   margin-block: 1.5rem;
-  margin-block-end: 36px;
   margin-inline: calc(-1 * var(--syn-main-padding-inline, 16px));
-  padding: 1rem 1.25rem calc(1rem + 1.5em);
+  padding: 1rem 1.25rem 36px;
   line-height: 1.5;
   text-align: right;
   text-decoration: none;
