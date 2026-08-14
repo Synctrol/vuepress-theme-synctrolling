@@ -551,7 +551,11 @@ body {
   letter-spacing: 4px;
   text-transform: uppercase;
   color: var(--syn-sub-title-fg);
-  margin-top: 12px;
+  margin: 12px 0 0;
+}
+
+.syn-home-logo .logo-sub + .logo-sub {
+  margin-top: 0.5rem;
 }
 
 @media (max-width: 640px) {

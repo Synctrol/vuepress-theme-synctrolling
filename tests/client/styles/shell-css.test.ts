@@ -78,6 +78,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-home-logo\s*\.logo\s*\{[^}]*font-weight:\s*900/)
     expect(css).toMatch(/\.syn-home-logo\s*\.logo-sub\s*\{[^}]*font-size:\s*14px/)
     expect(css).toMatch(/\.syn-home-logo\s*\.logo-sub\s*\{[^}]*text-transform:\s*uppercase/)
+    expect(css).toMatch(/\.syn-home-logo\s*\.logo-sub\s*\{[^}]*margin:\s*12px\s+0\s+0/)
+    expect(css).toMatch(/\.syn-home-logo\s*\.logo-sub\s*\+\s*\.logo-sub\s*\{[^}]*margin-top:\s*0\.5rem/)
     expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)[^{]*\.[^}]*max-width:\s*none/)
     expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)\s*>\s*\.cell\s*\{[^}]*justify-content:\s*center/)
     expect(css).toMatch(/\.syn-main:has\(\.syn-home-logo\)\s*>\s*\.cell\s*\{[^}]*display:\s*flex/)
