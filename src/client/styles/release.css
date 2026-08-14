@@ -1,21 +1,26 @@
+.syn-release-index {
+  container-type: inline-size;
+}
+
 .syn-release-index-grid {
   display: grid;
-  grid-template-columns: repeat(var(--syn-release-mobile-cols, 2), minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   list-style: none;
   margin: 0;
   padding: 0;
-  border: var(--syn-border-strong);
 }
 
-@media (min-width: 768px) {
+@container (min-width: 480px) {
   .syn-release-index-grid {
-    grid-template-columns: repeat(var(--syn-release-desktop-cols, 3), minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-.syn-release-index-grid__item {
-  border: var(--syn-border-subtle);
+@container (min-width: 640px) {
+  .syn-release-index-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .syn-release-tile {
@@ -26,17 +31,38 @@
   text-decoration: none;
 }
 
-.syn-release-tile:hover,
+.syn-release-tile .syn-release-artwork {
+  transition: opacity 0.15s ease-out;
+}
+
+.syn-release-tile:hover .syn-release-artwork,
+.syn-release-tile:focus-visible .syn-release-artwork {
+  opacity: 0.35;
+}
+
 .syn-release-tile:focus-visible {
-  background: var(--syn-black);
-  color: var(--syn-white);
   outline: none;
 }
 
-:root[data-theme='dark'] .syn-release-tile:hover,
-:root[data-theme='dark'] .syn-release-tile:focus-visible {
-  background: var(--syn-white);
-  color: var(--syn-black);
+.syn-release-tile__title {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-start: 0.5rem;
+  inset-inline-end: 0.5rem;
+  color: var(--syn-fg);
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+  pointer-events: none;
+}
+
+.syn-release-tile:hover .syn-release-tile__title,
+.syn-release-tile:focus-visible .syn-release-tile__title {
+  opacity: 1;
+}
+
+.syn-release-tile > .syn-draft-badge {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
 }
 
 .syn-release-artwork,
@@ -227,6 +253,11 @@
 }
 
 .syn-tabview__tab[aria-selected='true'] {
+  background: var(--syn-black);
+  color: var(--syn-white);
+}
+
+:root[data-theme='dark'] .syn-tabview__tab[aria-selected='true'] {
   background: var(--syn-white);
   color: var(--syn-black);
 }

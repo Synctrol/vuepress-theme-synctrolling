@@ -23,7 +23,7 @@
 1. **四种内容类型**：`home`（语言首页）、`release`（作品）、`news`（新闻）、`page`（团队、成员与普通页）。
 2. **多语言发布**：所有内容路由带 locale 前缀；缺失译文时生成回退页；可用 `showDrafts` 预览草稿。
 3. **根语言路由器**：在站点根 `/index.html` 按「已保存语言 → 浏览器语言 → `mainLocale`」选择语言首页，并以 `location.replace()` 跳转。
-4. **作品系统**：方图索引网格、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / AlbumPlatform / GiftItem / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
+4. **作品系统**：方图索引网格（无边框密排，按容器空间自动 4/3/2 列；悬浮时封面变暗并在左上角显示专辑名）、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / AlbumPlatform / GiftItem / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
 5. **新闻系统**：按日期倒序的索引、标签归档、分页。
 6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
 7. **按内容类型加载的背景模块**：Home / Release / News / Page 各自对应一个 TypeScript 背景入口。
@@ -179,8 +179,6 @@ export default defineUserConfig({
 | `linkCloud.items` | 未设置 | 侧栏文字链接云 |
 | `release.urlSegment` | `'releases'` | 所有语言共用的作品 URL 段 |
 | `release.index.pagination` | `12` | 正整数或 `false`（单页不分页） |
-| `release.index.mobileGridColumns` | `2` | 1–3 |
-| `release.index.desktopGridColumns` | `3` | 1–6 |
 | `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段 |
 | `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
 | `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 embed（如 `GiftItem`）；`TabView` 活动面板内的 embed 在激活时自动加载 |

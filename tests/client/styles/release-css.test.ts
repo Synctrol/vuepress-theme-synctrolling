@@ -5,16 +5,13 @@ import { describe, expect, it } from 'vitest'
 describe('release.css', () => {
   const css = readFileSync(resolve('src/client/styles/release.css'), 'utf8')
 
-  it('uses the data-theme selector for dark-mode hover inversion', () => {
+  it('uses the data-theme selector for dark-mode draft badge inversion', () => {
     expect(css).not.toMatch(/:root\.dark/)
     expect(css).toMatch(
-      /:root\[data-theme='dark'\]\s*\.syn-release-tile:hover/,
-    )
-    expect(css).toMatch(
-      /:root\[data-theme='dark'\]\s*\.syn-release-tile:focus-visible/,
-    )
-    expect(css).toMatch(
       /:root\[data-theme='dark'\]\s*\.syn-draft-badge/,
+    )
+    expect(css).not.toMatch(
+      /:root\[data-theme='dark'\]\s*\.syn-release-tile:hover/,
     )
   })
 
@@ -27,10 +24,12 @@ describe('release.css', () => {
     expect(css).toMatch(/\.syn-album-tracklist\s*\{[^}]*padding:\s*0/)
   })
 
-  it('defines the reusable tabview shell with a light selected tab', () => {
+  it('defines the reusable tabview shell with a mode-inverted selected tab', () => {
     expect(css).toMatch(/\.syn-tabview__bar\s*\{[^}]*margin:\s*-1rem\s+-1rem\s+1rem/)
-    expect(css).toMatch(/\.syn-tabview__tab\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-white\)/)
-    expect(css).toMatch(/\.syn-tabview__tab\[aria-selected='true'\]\s*\{[^}]*color:\s*var\(--syn-black\)/)
+    expect(css).toMatch(/\.syn-tabview__tab\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-black\)/)
+    expect(css).toMatch(/\.syn-tabview__tab\[aria-selected='true'\]\s*\{[^}]*color:\s*var\(--syn-white\)/)
+    expect(css).toMatch(/:root\[data-theme='dark'\]\s*\.syn-tabview__tab\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-white\)/)
+    expect(css).toMatch(/:root\[data-theme='dark'\]\s*\.syn-tabview__tab\[aria-selected='true'\]\s*\{[^}]*color:\s*var\(--syn-black\)/)
     expect(css).not.toMatch(/syn-platform-tabs/)
   })
 
@@ -47,6 +46,19 @@ describe('release.css', () => {
 
   it('defines block-level credit values', () => {
     expect(css).toMatch(/\.syn-album-credit__value\s*\{[^}]*display:\s*block/)
+  })
+
+  it('defines a borderless container-driven release grid with hover dimming', () => {
+    expect(css).toMatch(/\.syn-release-index\s*\{[^}]*container-type:\s*inline-size/)
+    expect(css).not.toMatch(/\.syn-release-index-grid\s*\{[^}]*border:/)
+    expect(css).toMatch(/\.syn-release-index-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,/)
+    expect(css).toMatch(/@container\s*\(min-width:\s*480px\)[^{]*\{[^}]*repeat\(3,/)
+    expect(css).toMatch(/@container\s*\(min-width:\s*640px\)[^{]*\{[^}]*repeat\(4,/)
+    expect(css).toMatch(/\.syn-release-tile:hover\s*\.syn-release-artwork[^{]*\{[^}]*opacity:\s*0\.35/)
+    expect(css).toMatch(/\.syn-release-tile__title\s*\{[^}]*opacity:\s*0/)
+    expect(css).toMatch(/\.syn-release-tile__title\s*\{[^}]*color:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-release-tile:hover\s*\.syn-release-tile__title[^{]*\{[^}]*opacity:\s*1/)
+    expect(css).not.toMatch(/\.syn-release-index-grid__item\s*\{[^}]*border:/)
   })
 
   it('caps the detail artwork at 500px and keeps the identity tight', () => {
