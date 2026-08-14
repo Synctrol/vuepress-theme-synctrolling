@@ -56,6 +56,7 @@ describe('News collection layouts', () => {
     }
     const wrapper = mount(NewsTagsIndexLayout, { props: { data } })
     expect(wrapper.find('[data-testid="news-tags-list"]').text()).toContain('Releases')
+    expect(wrapper.find('p').exists()).toBe(false)
     expect(wrapper.find('[data-testid="pagination"]').exists()).toBe(false)
   })
 
@@ -80,6 +81,7 @@ describe('News collection layouts', () => {
       },
     })
     expect(wrapper.attributes('data-tag')).toBe('release')
+    expect(wrapper.find('p').exists()).toBe(false)
     expect(wrapper.find('[data-testid="pagination"]').exists()).toBe(false)
   })
 })

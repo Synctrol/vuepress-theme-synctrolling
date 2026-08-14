@@ -100,3 +100,10 @@
   color: var(--syn-fg);
   text-decoration: underline;
 }
+
+.syn-article-body h2 .header-anchor,
+.syn-article-body h3 .header-anchor {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: none;
+}

@@ -18,6 +18,12 @@ describe('article.css', () => {
     expect(css).toMatch(/\.syn-article-meta__tags\s+a,\s*\.syn-news-list-item__tags\s+a\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
   })
 
+  it('disables heading anchor links in article bodies', () => {
+    expect(css).toMatch(/\.syn-article-body\s+h2\s+\.header-anchor\s*,\s*\.syn-article-body\s+h3\s+\.header-anchor\s*\{[^}]*color:\s*inherit/)
+    expect(css).toMatch(/\.syn-article-body\s+h2\s+\.header-anchor\s*,\s*\.syn-article-body\s+h3\s+\.header-anchor\s*\{[^}]*text-decoration:\s*none/)
+    expect(css).toMatch(/\.syn-article-body\s+h2\s+\.header-anchor\s*,\s*\.syn-article-body\s+h3\s+\.header-anchor\s*\{[^}]*pointer-events:\s*none/)
+  })
+
   it('defines shared article body typography for classless markdown blocks', () => {
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*h2:not\(\[class\]\)\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*p:not\(\[class\]\)\s*\{[^}]*margin-block:\s*0\.75rem/)
