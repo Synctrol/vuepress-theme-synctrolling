@@ -134,7 +134,7 @@ describe('album components', () => {
 
   it('AlbumCredit renders provided keys in fixed order, one value per line, copyright last', () => {
     const wrapper = mount(AlbumCredit, mountWith(albumModel))
-    expect(wrapper.get('[data-testid="album-credit"] h2').text()).toBe('附加信息')
+    expect(wrapper.get('[data-testid="album-credit"] h2').text()).toBe('幕后')
     const rows = wrapper.findAll('[data-testid="credit-row"]')
     expect(rows.map((r) => r.get('dt').text())).toEqual([
       '发行日期',

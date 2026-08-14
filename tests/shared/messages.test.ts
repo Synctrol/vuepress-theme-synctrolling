@@ -30,7 +30,7 @@ describe('default locale messages', () => {
     expect(zhMessages.emptyReleases).toBe('暂无作品')
     expect(zhMessages.emptyNews).toBe('暂无新闻')
     expect(zhMessages.previewSectionTitle).toBe('试听')
-    expect(zhMessages.credits).toBe('附加信息')
+    expect(zhMessages.credits).toBe('幕后')
     expect(enMessages.credits).toBe('Credits')
     expect(zhMessages.creditCopyright).toBe('版权')
     expect(enMessages.creditCopyright).toBe('Copyright')

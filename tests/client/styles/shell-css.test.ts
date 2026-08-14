@@ -25,6 +25,7 @@ describe('shell.css', () => {
     const mobile = css.slice(idx)
     expect(mobile).toMatch(/\.syn-shell\s*\{[^}]*height:\s*auto/)
     expect(mobile).toMatch(/\.syn-header\s*\{[^}]*position:\s*sticky/)
+    expect(mobile).toMatch(/\.syn-header\s*\{[^}]*z-index:\s*30/)
     expect(mobile).toMatch(/\.syn-site-footer\s*\{[^}]*position:\s*sticky/)
   })
 

@@ -31,7 +31,7 @@ export const zhMessages: LocaleMessages = {
   paginatedTitle: '{title} · 第 {page} 页',
   tagArchiveTitle: '{tag} · {title}',
   previewSectionTitle: '试听',
-  credits: '附加信息',
+  credits: '幕后',
   creditCopyright: '版权',
   creditReleaseDate: '发行日期',
   creditCatalogNumber: '制品编号',
