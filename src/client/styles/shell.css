@@ -757,7 +757,8 @@ body {
 }
 
 .syn-new-album {
-  --syn-new-album-scrim: rgba(0, 0, 0, 0.45);
+  --syn-new-album-scrim: #000;
+  --syn-new-album-scrim-opacity: 0.25;
   --syn-new-album-fg: #fff;
   --syn-new-album-fg-sub: rgba(255, 255, 255, 0.85);
   position: relative;
@@ -771,10 +772,11 @@ body {
   text-align: right;
   text-decoration: none;
   color: var(--syn-new-album-fg);
-  background-image: linear-gradient(
-    var(--syn-new-album-scrim),
-    var(--syn-new-album-scrim)
-  );
+}
+
+.syn-new-album:hover,
+.syn-new-album:focus-visible {
+  --syn-new-album-scrim-opacity: 0.45;
 }
 
 .syn-new-album::before {
@@ -784,18 +786,24 @@ body {
   inset-inline-end: 0;
   width: min(400px, 100%);
   z-index: -1;
-  background-image: linear-gradient(
-      var(--syn-new-album-scrim),
-      var(--syn-new-album-scrim)
-    ),
-    var(--syn-new-album-image, none);
-  background-size: 100% 100%, cover;
+  background-image: var(--syn-new-album-image, none);
+  background-size: cover;
   background-repeat: no-repeat;
-  background-position: 0 0, var(--syn-new-album-position, right center);
+  background-position: var(--syn-new-album-position, right center);
+}
+
+.syn-new-album::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--syn-new-album-scrim);
+  opacity: var(--syn-new-album-scrim-opacity);
+  transition: opacity 0.2s ease;
 }
 
 :root[data-theme='dark'] .syn-new-album {
-  --syn-new-album-scrim: rgba(255, 255, 255, 0.45);
+  --syn-new-album-scrim: #fff;
   --syn-new-album-fg: #000;
   --syn-new-album-fg-sub: rgba(0, 0, 0, 0.7);
 }
