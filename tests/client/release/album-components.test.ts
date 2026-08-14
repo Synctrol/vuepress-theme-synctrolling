@@ -29,6 +29,7 @@ const albumModel: ReleaseDetailModel = {
   includedInIndex: true,
   showDraftBadge: false,
   draftLabel: '草稿',
+  date: '2026-08-11',
   artwork: { kind: 'artwork', artwork: asset('/entry.webp'), alt: '第一张专辑' },
   book: {
     type: 'album',
@@ -64,6 +65,7 @@ const giftModel: ReleaseDetailModel = {
   includedInIndex: true,
   showDraftBadge: false,
   draftLabel: '草稿',
+  date: '2026-08-11',
   artwork: { kind: 'empty-frame', alt: '周边' },
   book: {
     type: 'gift',
@@ -134,13 +136,19 @@ describe('album components', () => {
     const wrapper = mount(AlbumCredit, mountWith(albumModel))
     expect(wrapper.get('[data-testid="album-credit"] h2').text()).toBe('附加信息')
     const rows = wrapper.findAll('[data-testid="credit-row"]')
-    expect(rows.map((r) => r.get('dt').text())).toEqual(['制品编号', '插画', '版权'])
+    expect(rows.map((r) => r.get('dt').text())).toEqual([
+      '发行日期',
+      '制品编号',
+      '插画',
+      '版权',
+    ])
     expect(rows.map((r) => r.get('dd').text())).toEqual([
+      '2026-08-11',
       'DVSP-0327',
       'タイキ助手',
       '© 2026 Synctrol',
     ])
-    const illustratorValues = rows[1]!.findAll('[data-testid="credit-value"]')
+    const illustratorValues = rows[2]!.findAll('[data-testid="credit-value"]')
     expect(illustratorValues.map((v) => v.text())).toEqual(['タイキ', '助手'])
   })
 

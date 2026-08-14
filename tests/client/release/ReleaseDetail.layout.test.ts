@@ -30,6 +30,7 @@ const model: ReleaseDetailModel = {
   includedInIndex: true,
   showDraftBadge: true,
   draftLabel: '草稿',
+  date: '2026-08-11',
   artwork: { kind: 'artwork', artwork: asset('/entry.webp'), alt: '第一张专辑' },
 }
 

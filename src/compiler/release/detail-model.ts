@@ -112,9 +112,10 @@ export function buildReleaseDetailModel(
   }
 
   return {
-    showDraftBadge: Boolean(input.showDrafts && page.isDraft),
+    showDraftBadge: page.isDraft && input.showDrafts,
     draftLabel: messages.draft,
     includedInIndex: true,
+    date: pkg.date ?? '',
     artwork: {
       kind: resolvedArtwork
         ? 'artwork'

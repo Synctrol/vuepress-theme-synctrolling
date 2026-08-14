@@ -7,7 +7,7 @@ const keys = Object.keys(enMessages) as Array<keyof LocaleMessages>
 describe('default locale messages', () => {
   it('exports complete chinese and english catalogs with the same keys', () => {
     expect(Object.keys(zhMessages).sort()).toEqual(keys.sort())
-    expect(keys).toHaveLength(40)
+    expect(keys).toHaveLength(41)
   })
 
   it('uses the approved english translation-unavailable copy', () => {
@@ -34,6 +34,8 @@ describe('default locale messages', () => {
     expect(enMessages.credits).toBe('Credits')
     expect(zhMessages.creditCopyright).toBe('版权')
     expect(enMessages.creditCopyright).toBe('Copyright')
+    expect(zhMessages.creditReleaseDate).toBe('发行日期')
+    expect(enMessages.creditReleaseDate).toBe('Release Date')
     expect(zhMessages.creditCatalogNumber).toBe('制品编号')
     expect(enMessages.creditCatalogNumber).toBe('Catalog Id')
     expect(zhMessages.creditIllustrator).toBe('插画')

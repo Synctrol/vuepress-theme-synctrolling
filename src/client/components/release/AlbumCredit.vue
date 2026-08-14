@@ -20,6 +20,7 @@ const context = useReleasePage()
 const book = computed(() => context?.model.book)
 const credit = computed(() => book.value?.credit)
 const copyright = computed(() => book.value?.copyright)
+const releaseDate = computed(() => context?.model.date)
 const rows = computed(() =>
   credit.value
     ? CREDIT_ORDER.filter(([key]) => credit.value![key] !== undefined)
@@ -41,6 +42,18 @@ function values(key: BookCreditKey): string[] {
   >
     <h2>{{ context!.messages.credits }}</h2>
     <dl>
+      <div
+        v-if="releaseDate"
+        class="syn-album-credit__row"
+        data-testid="credit-row"
+      >
+        <dt>{{ context!.messages.creditReleaseDate }}</dt>
+        <dd>
+          <span class="syn-album-credit__value" data-testid="credit-value">{{
+            releaseDate
+          }}</span>
+        </dd>
+      </div>
       <template v-for="[key, labelKey] in rows" :key="key">
         <div class="syn-album-credit__row" data-testid="credit-row">
           <dt>{{ context!.messages[labelKey] }}</dt>

@@ -97,6 +97,7 @@ export interface ReleaseDetailModel {
   showDraftBadge: boolean
   draftLabel: string
   includedInIndex: true
+  date: string
   artwork: {
     kind: ReleaseArtworkKind
     artwork?: ResolvedAsset

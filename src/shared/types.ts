@@ -56,6 +56,7 @@ export interface LocaleMessages {
   previewSectionTitle: string
   credits: string
   creditCopyright: string
+  creditReleaseDate: string
   creditCatalogNumber: string
   creditIllustrator: string
   creditDesigner: string

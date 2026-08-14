@@ -41,6 +41,7 @@ const LOCALE_MESSAGE_KEYS = [
   'previewSectionTitle',
   'credits',
   'creditCopyright',
+  'creditReleaseDate',
   'creditCatalogNumber',
   'creditIllustrator',
   'creditDesigner',

@@ -60,6 +60,7 @@ describe('buildReleaseDetailModel', () => {
 
     expect(model.includedInIndex).toBe(true)
     expect(model.showDraftBadge).toBe(false)
+    expect(model.date).toBe('2026-08-11')
     expect(model.artwork).toMatchObject({ kind: 'artwork' })
     expect(model.book).toMatchObject({
       type: 'album',
