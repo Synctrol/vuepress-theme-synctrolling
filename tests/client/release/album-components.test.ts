@@ -51,7 +51,7 @@ const albumModel: ReleaseDetailModel = {
             number: 1,
             anchor: 'disc-1-track-1',
             title: { zh: '第一曲' },
-            artists: ['Synctrol'],
+            artists: ['Synctrol', 'LelouchSound'],
             durationSeconds: 272,
             durationLabel: '4:32',
             desc: { zh: '曲目描述' },
@@ -261,7 +261,7 @@ describe('album components', () => {
     expect(wrapper.find('[data-testid="album-tracklist"] h2').exists()).toBe(false)
     expect(wrapper.find('#disc-1').exists()).toBe(true)
     expect(wrapper.get('#disc-1-track-1').text()).toContain('第一曲')
-    expect(wrapper.get('#disc-1-track-1').text()).toContain('Synctrol')
+    expect(wrapper.get('#disc-1-track-1').text()).toContain('Synctrol / LelouchSound')
     expect(wrapper.get('#disc-1-track-1').text()).toContain('曲目描述')
     expect(wrapper.find('[data-testid="track-row"]').text()).not.toContain('4:32')
   })

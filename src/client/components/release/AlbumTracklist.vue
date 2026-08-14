@@ -52,7 +52,7 @@ function trackTitle(track: NumberedTrack) {
               {{ trackTitle(track).text }}
             </span>
             <span class="syn-album-track__artists">{{
-              track.artists.join(', ')
+              track.artists.join(' / ')
             }}</span>
             <span
               v-if="track.desc"

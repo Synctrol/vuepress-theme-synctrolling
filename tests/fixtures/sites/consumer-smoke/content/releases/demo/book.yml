@@ -26,7 +26,7 @@ album:
         - title:
             zh: 第一曲
             en: Track One
-          artists: [LelouchSound]
+          artists: [LelouchSound, Synctrol]
           duration: 272
           desc:
             zh: 这是曲目描述
