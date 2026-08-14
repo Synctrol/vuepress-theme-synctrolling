@@ -755,18 +755,28 @@ body {
 }
 
 .syn-new-album {
+  --syn-new-album-scrim: rgba(0, 0, 0, 0.45);
+  --syn-new-album-fg: #fff;
+  --syn-new-album-fg-sub: rgba(255, 255, 255, 0.85);
   display: block;
   box-sizing: border-box;
   width: 100%;
-  border: var(--syn-border-strong);
+  max-width: 400px;
+  min-height: 120px;
   margin-block: 1.5rem;
+  margin-inline-start: auto;
   padding: 1rem 1.25rem;
   text-align: right;
   text-decoration: none;
-  color: var(--syn-white);
-  background-color: var(--syn-black);
-  background-size: cover;
-  background-position: center;
+  color: var(--syn-new-album-fg);
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+:root[data-theme='dark'] .syn-new-album {
+  --syn-new-album-scrim: rgba(255, 255, 255, 0.45);
+  --syn-new-album-fg: #000;
+  --syn-new-album-fg-sub: rgba(0, 0, 0, 0.7);
 }
 
 .syn-new-album__title {
@@ -787,5 +797,5 @@ body {
 .syn-new-album__intro {
   margin: 0.5rem 0 0;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--syn-new-album-fg-sub);
 }

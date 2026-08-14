@@ -2,24 +2,31 @@
 import { computed } from 'vue'
 import { resolveContentAsset } from '../../assets/resolve-content-asset.js'
 
-const props = defineProps<{
-  title: string
-  text?: string
-  href?: string
-  background: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    title: string
+    text?: string
+    href?: string
+    background: string
+    position?: string
+  }>(),
+  {
+    position: 'right center',
+  },
+)
 
 const rootStyle = computed(() => {
+  let image = ''
   try {
-    const src = resolveContentAsset(props.background)
-    return {
-      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url("${src}")`,
-    }
+    image = `, url("${resolveContentAsset(props.background)}")`
   } catch {
     console.warn(
       `NewAlbumReleased: unknown package asset "${props.background}"`,
     )
-    return {}
+  }
+  return {
+    backgroundImage: `linear-gradient(var(--syn-new-album-scrim), var(--syn-new-album-scrim))${image}`,
+    backgroundPosition: props.position,
   }
 })
 </script>
