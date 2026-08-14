@@ -176,7 +176,7 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-navigation__link\s*\{[^}]*text-decoration:\s*none/)
     expect(css).toMatch(/\.syn-navigation__label\s*\{[^}]*margin-inline-start:\s*auto/)
     expect(css).toMatch(/\.syn-navigation__label\s*\{[^}]*text-align:\s*right/)
-    expect(css).toMatch(/\.syn-navigation__label\s*\{[^}]*font-size:\s*1\.5em/)
+    expect(css).toMatch(/\.syn-navigation__label\s*\{[^}]*font-size:\s*1\.4rem/)
     expect(css).toMatch(/\.syn-navigation__mark-icon\s*\{[^}]*width:\s*36px/)
     expect(css).toMatch(/\.syn-navigation__mark-icon\s*\{[^}]*height:\s*36px/)
     expect(css).toMatch(/\.syn-navigation__link:hover[^{]*\{[^}]*background:\s*var\(--syn-deco-symbol-bg\)/)
