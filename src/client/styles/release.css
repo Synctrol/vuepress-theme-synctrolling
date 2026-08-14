@@ -47,7 +47,7 @@
 
 .syn-release-tile:hover::after,
 .syn-release-tile:focus-visible::after {
-  opacity: 0.45;
+  opacity: 0.6;
 }
 
 .syn-release-tile:focus-visible {

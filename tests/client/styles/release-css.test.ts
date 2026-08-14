@@ -56,7 +56,7 @@ describe('release.css', () => {
     expect(css).toMatch(/@container\s*\(min-width:\s*640px\)[^{]*\{[^}]*repeat\(4,/)
     expect(css).toMatch(/\.syn-release-tile::after\s*\{[^}]*background:\s*var\(--syn-black\)/)
     expect(css).toMatch(/:root\[data-theme='dark'\]\s*\.syn-release-tile::after\s*\{[^}]*background:\s*var\(--syn-white\)/)
-    expect(css).toMatch(/\.syn-release-tile:hover::after[^{]*\{[^}]*opacity:\s*0\.45/)
+    expect(css).toMatch(/\.syn-release-tile:hover::after[^{]*\{[^}]*opacity:\s*0\.6/)
     expect(css).not.toMatch(/\.syn-release-tile:hover\s*\.syn-release-artwork[^{]*\{[^}]*opacity:\s*0\.35/)
     expect(css).toMatch(/\.syn-release-tile__title\s*\{[^}]*color:\s*var\(--syn-bg\)/)
     expect(css).toMatch(/\.syn-release-tile__title\s*\{[^}]*z-index:\s*1/)
