@@ -1,46 +1,57 @@
+import { ref } from 'vue'
 import { describe, expect, it } from 'vitest'
 import type {
-  BackgroundContext,
-  BackgroundController,
   BackgroundLoader,
   BackgroundModule,
+  BackgroundReactiveContext,
+  BackgroundRequest,
+  IBackgroundHost,
+  PageContentType,
 } from '../../../src/shared/background'
+import type { ContentType } from '../../../src/shared/types'
 
 describe('background module contracts', () => {
-  it('requires BackgroundContext fields from the spec', () => {
-    const context: BackgroundContext = {
+  it('exposes reactive refs on BackgroundReactiveContext', () => {
+    const context: BackgroundReactiveContext = {
       element: document.createElement('div'),
-      route: '/zh/',
-      locale: 'zh',
-      colorMode: 'dark',
-      reducedMotion: true,
+      route: ref<{ path: string; identity?: string }>({ path: '/zh/' }),
+      contentType: ref<{ raw: PageContentType; resolved: ContentType }>({
+        raw: 'home',
+        resolved: 'home',
+      }),
+      locale: ref('zh'),
+      colorMode: ref<'light' | 'dark'>('dark'),
+      reducedMotion: ref(true),
     }
     expect(context.element).toBeInstanceOf(HTMLElement)
-    expect(context.route).toBe('/zh/')
-    expect(context.locale).toBe('zh')
-    expect(context.colorMode).toBe('dark')
-    expect(context.reducedMotion).toBe(true)
+    expect(context.route.value.path).toBe('/zh/')
+    expect(context.contentType.value.resolved).toBe('home')
+    expect(context.locale.value).toBe('zh')
+    expect(context.colorMode.value).toBe('dark')
+    expect(context.reducedMotion.value).toBe(true)
   })
 
-  it('requires update and dispose on BackgroundController', () => {
+  it('requires request and dispose on IBackgroundHost', () => {
     const calls: string[] = []
-    const controller: BackgroundController = {
-      update(ctx) {
-        calls.push(`update:${ctx.route}`)
+    const request: BackgroundRequest = {
+      reason: 'navigate',
+      routePath: '/en/releases/',
+      contentType: { raw: 'release-collection', resolved: 'release' },
+      locale: 'en',
+      colorMode: 'light',
+      reducedMotion: false,
+    }
+    const host: IBackgroundHost = {
+      request(req) {
+        calls.push(`request:${req.routePath}`)
       },
       dispose() {
         calls.push('dispose')
       },
     }
-    controller.update({
-      element: document.createElement('div'),
-      route: '/en/releases/',
-      locale: 'en',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    controller.dispose()
-    expect(calls).toEqual(['update:/en/releases/', 'dispose'])
+    host.request(request)
+    host.dispose()
+    expect(calls).toEqual(['request:/en/releases/', 'dispose'])
   })
 
   it('loads modules through BackgroundLoader returning a default factory', async () => {
@@ -48,23 +59,24 @@ describe('background module contracts', () => {
       const mod: BackgroundModule = {
         default(context) {
           expect(context.element).toBeInstanceOf(HTMLElement)
-          return {
-            update() {},
-            dispose() {},
-          }
+          return { request() {}, dispose() {} }
         },
       }
       return mod
     }
     const mod = await loader()
-    const controller = mod.default({
+    const host = mod.default({
       element: document.createElement('div'),
-      route: '/zh/news/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
+      route: ref({ path: '/zh/news/' }),
+      contentType: ref<{ raw: PageContentType; resolved: ContentType }>({
+        raw: 'news',
+        resolved: 'news',
+      }),
+      locale: ref('zh'),
+      colorMode: ref<'light' | 'dark'>('light'),
+      reducedMotion: ref(false),
     })
-    expect(typeof controller.update).toBe('function')
-    expect(typeof controller.dispose).toBe('function')
+    expect(typeof host.request).toBe('function')
+    expect(typeof host.dispose).toBe('function')
   })
 })

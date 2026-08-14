@@ -1,6 +1,7 @@
 import type { ContentType } from '../../shared/types.js'
+import type { PageContentType } from '../../shared/background.js'
 
-export type PageContentType = ContentType | 'release-collection' | 'news-collection'
+export type { PageContentType } from '../../shared/background.js'
 
 export function resolveBackgroundContentType(
   contentType: PageContentType,
