@@ -121,7 +121,7 @@ describe('root public exports', () => {
     expect(clientApi).toHaveProperty('PlatformLinks')
     expect(clientApi).toHaveProperty('resolveContentAsset')
     expect(clientApi).not.toHaveProperty('Layout')
-    expect(clientApi).not.toHaveProperty('BackgroundHost')
+    expect(clientApi).not.toHaveProperty('BackgroundSurface')
   })
 
   it('exposes compiler and compiled-package type contracts', () => {

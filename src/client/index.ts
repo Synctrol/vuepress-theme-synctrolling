@@ -8,7 +8,7 @@ export {
 
 export * from './composables/keys.js'
 // Forbidden: export { default as Layout } from './layouts/Layout.vue'
-// Forbidden: export BackgroundHost
+// Forbidden: export BackgroundSurface.vue
 // Forbidden: any other .vue SFC re-export
 
 export { PlatformEmbed } from './components/platforms/PlatformEmbed.js'

@@ -26,7 +26,7 @@
 4. **作品系统**：方图索引网格（无边框密排，按容器空间自动 4/3/2 列；悬浮时封面变暗并在左上角显示专辑名）、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / AlbumPlatform / GiftItem / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
 5. **新闻系统**：按日期倒序的索引、标签归档、分页。
 6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
-7. **按内容类型加载的背景模块**：Home / Release / News / Page 各自对应一个 TypeScript 背景入口。
+7. **全局背景提供者**：单一常驻 `IBackgroundHost`，主题在每次导航时推送「页面申请」，提供者自行编排背景切换（动画 / 交叉淡化 / 硬切），背景可以是图片 / SVG / Canvas / WebGL / WebGPU。
 8. **资源管线**：内容包、全局与主题资源输出带内容哈希的 URL，并应用 VuePress `base`。
 9. **SEO 与订阅**：canonical、Open Graph、仅真实译文的 `hreflang`、JSON-LD、各语言 `/{locale}/rss.xml`、站点 `sitemap.xml`。
 10. **平台 CSP 审计产物**：构建写出 `synctrol-csp.json`（`frame-src` / `media-src` / `connect-src`），不注入 CSP meta。
@@ -86,7 +86,7 @@ Home 的身份固定为 `home`。其他包的身份是 `{type}:{slug}`；省略 
 
 ### 背景与平台
 
-背景只在主题配置里按内容类型指定，内容包不能选择或覆盖。平台条目只允许写在 `book.yml` 的 `album.links`（数字平台）和 `gift.items[].links`（实体平台）；`content.yml` 没有顶层 `links`。
+背景由主题配置里的单一背景提供者（`background`）决定，内容包不能选择或覆盖。平台条目只允许写在 `book.yml` 的 `album.links`（数字平台）和 `gift.items[].links`（实体平台）；`content.yml` 没有顶层 `links`。
 
 ### 壳层文案
 
@@ -182,7 +182,7 @@ export default defineUserConfig({
 | `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段 |
 | `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
 | `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 embed（如 `GiftItem`）；`TabView` 活动面板内的 embed 在激活时自动加载 |
-| `backgrounds` | 空 | `{ home, release, news, page }` 各自 `() => import('./backgrounds/...')` |
+| `background` | 未设置 | 单一背景提供者 loader，形如 `() => import('./backgrounds/host')`；模块默认导出工厂 `(context) => IBackgroundHost`。未设置则纯色背景 |
 
 `zh` / `en` 的 `messages` 可部分覆盖主题内置文案；其他 locale key 必须提供完整 `LocaleMessages`。未知选项字段是构建错误。
 
