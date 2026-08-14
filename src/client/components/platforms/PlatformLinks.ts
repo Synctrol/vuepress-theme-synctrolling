@@ -35,11 +35,16 @@ export const PlatformLinks = defineComponent({
       }>,
       required: true,
     },
+    title: {
+      type: String,
+      default: undefined,
+    },
   },
   setup(props) {
+    const sectionTitle = props.title ?? props.messages.platformLinks
     return () =>
-      h('section', { class: 'syn-platform-links', 'aria-label': props.messages.platformLinks }, [
-        h('h2', { class: 'syn-platform-links__title' }, props.messages.platformLinks),
+      h('section', { class: 'syn-platform-links', 'aria-label': sectionTitle }, [
+        h('h2', { class: 'syn-platform-links__title' }, sectionTitle),
         h(
           'ul',
           { class: 'syn-platform-links__list' },
