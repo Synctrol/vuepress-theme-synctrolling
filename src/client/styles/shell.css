@@ -226,6 +226,7 @@ body {
 .syn-navigation__label {
   margin-inline-start: auto;
   text-align: right;
+  font-size: 1.5em;
 }
 
 .syn-navigation__mark {

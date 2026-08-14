@@ -41,6 +41,7 @@ describe('News collection layouts', () => {
     })
     expect(wrapper.find('[data-testid="content-column"]').exists()).toBe(true)
     expect(wrapper.find('h1').text()).toBe('News')
+    expect(wrapper.find('p').exists()).toBe(false)
     expect(wrapper.find('[data-testid="pagination-next"]').attributes('href')).toBe('/base/en/news/page/2/')
   })
 
