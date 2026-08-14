@@ -28,7 +28,11 @@ const tarballPath = resolve(root, tarballName)
 const work = mkdtempSync(join(tmpdir(), 'synctrol-consumer-'))
 
 try {
-  cpSync(fixture, work, { recursive: true })
+  cpSync(fixture, work, {
+    recursive: true,
+    filter: (src) =>
+      !/node_modules|\.vuepress\/(\.temp|dist)|package-lock\.json$/.test(src),
+  })
   const pkgPath = join(work, 'package.json')
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
   pkg.devDependencies['vuepress-theme-synctrolling'] = `file:${tarballPath}`
