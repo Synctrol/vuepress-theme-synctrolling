@@ -116,6 +116,13 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*color:\s*var\(--syn-fg\)/)
   })
 
+  it('defines the industrial outlined Button component', () => {
+    expect(css).toMatch(/\.syn-button\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-button\s*\{[^}]*background:\s*transparent/)
+    expect(css).toMatch(/\.syn-button:hover[^{]*\{[^}]*background:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-button:hover[^{]*\{[^}]*color:\s*var\(--syn-bg\)/)
+  })
+
   it('centers release, news and page headings with roomy vertical margins', () => {
     expect(css).toMatch(
       /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1,\s*\.syn-page-detail\s*>\s*h1\s*\{[^}]*text-align:\s*center/,

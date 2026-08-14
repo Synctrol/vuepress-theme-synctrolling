@@ -1,6 +1,7 @@
 import { defineClientConfig } from 'vuepress/client'
 import Layout from './layouts/Layout.vue'
 import Root from './layouts/Root.vue'
+import Button from './components/Button.vue'
 import AlbumArtwork from './components/release/AlbumArtwork.vue'
 import AlbumIdentity from './components/release/AlbumIdentity.vue'
 import AlbumTracklist from './components/release/AlbumTracklist.vue'
@@ -27,6 +28,7 @@ export default defineClientConfig({
     NotFound: Layout,
   },
   enhance({ app }) {
+    app.component('Button', Button)
     app.component('AlbumArtwork', AlbumArtwork)
     app.component('AlbumIdentity', AlbumIdentity)
     app.component('AlbumTracklist', AlbumTracklist)

@@ -26,4 +26,5 @@ console.log('code block')
 
 ![Sample image](./assets/sample.svg)
 
-End of body.
+<Button href="https://example.com/">Learn more</Button>
+

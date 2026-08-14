@@ -592,3 +592,21 @@ body {
   margin-block: 3rem;
   padding: 0;
 }
+
+.syn-button {
+  display: inline-block;
+  border: var(--syn-border-strong);
+  background: transparent;
+  color: var(--syn-fg);
+  font: inherit;
+  letter-spacing: 1px;
+  padding: 0.5rem 1.25rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.syn-button:hover,
+.syn-button:focus-visible {
+  background: var(--syn-fg);
+  color: var(--syn-bg);
+}
