@@ -23,7 +23,7 @@
 1. **四种内容类型**：`home`（语言首页）、`release`（作品）、`news`（新闻）、`page`（团队、成员与普通页）。
 2. **多语言发布**：所有内容路由带 locale 前缀；缺失译文时生成回退页；可用 `showDrafts` 预览草稿。
 3. **根语言路由器**：在站点根 `/index.html` 按「已保存语言 → 浏览器语言 → `mainLocale`」选择语言首页，并以 `location.replace()` 跳转。
-4. **作品系统**：方图索引网格、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。
+4. **作品系统**：方图索引网格、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumCopyright / AlbumPreviews / AlbumPlatformLinks / AlbumTracklist / AlbumCredit / AlbumCovers / GiftItem）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
 5. **新闻系统**：按日期倒序的索引、标签归档、分页。
 6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
 7. **按内容类型加载的背景模块**：Home / Release / News / Page 各自对应一个 TypeScript 背景入口。
@@ -36,6 +36,14 @@
 ### 内容包
 
 含 `content.yml` 的目录就是一个内容包。同目录下的 `{localeKey}.md` 是该语言正文；`book.yml` 仅允许出现在 `release` 包中。扫描递归普通目录，但内容包不能嵌套。源目录层级不决定类型或 URL。
+
+### book.yml 契约
+
+顶层字段：`type`（`album` / `gift`）、`title`、`copyright`、`credit`、`album`（或 `gift`）。顶层 `desc` 与 `authors` 已退役，写出它们会得到 UNKNOWN_FIELD 构建错误；子层的 `disc.desc`、`track.desc`、`gift.items[].desc` 仍然有效。
+
+`credit` 是固定键集合：`catalogNumber`、`illustrator`、`designer`、`mastering`、`mix`、`webDesign`、`producer`、`specialThanks`，值都是字符串；未知键是构建错误。
+
+试听分类：注册类型带 `preview: true` 的平台条目渲染进试听区（`AlbumPreviews`）；内置音频类型 `soundcloud_player`、`audio_player`、`netease_player` 已标记 preview；自定义类型可在注册时声明 `preview: true`。其余数字平台链接由 `AlbumPlatformLinks` 渲染。
 
 ### 语言键与 `lang`
 
@@ -246,6 +254,32 @@ slug: my-release
 date: 2026-08-11
 artwork: ./assets/artwork.webp
 cover: ./assets/article-cover.webp
+```
+
+```yaml
+# releases/my-release/book.yml
+type: album
+title:
+  zh: 我的专辑
+  en: My Album
+copyright: © 2026 Synctrol
+credit:
+  catalogNumber: SYN-001
+  illustrator: 插画师
+album:
+  links:
+    - platform: soundcloud
+      url: https://soundcloud.com/synctrol/demo
+  discs:
+    - title:
+        zh: 第一碟
+        en: Disc One
+      tracks:
+        - title:
+            zh: 第一曲
+            en: Track One
+          artists: [Synctrol]
+          duration: 272
 ```
 
 ```yaml

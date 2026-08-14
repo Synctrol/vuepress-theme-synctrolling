@@ -151,6 +151,7 @@ content/
 ├── releases/
 │   └── my-release/
 │       ├── content.yml
+│       ├── book.yml
 │       ├── zh.md
 │       ├── en.md
 │       └── assets/
@@ -174,7 +175,17 @@ tags:
     title:
       zh: 作品发布
       en: Releases
-platforms: {}
+platforms:
+  soundcloud:
+    category: digital
+    type: soundcloud_player
+    name: SoundCloud
+  taobao:
+    category: physical
+    type: link
+    name:
+      zh: 淘宝
+      en: Taobao
 ```
 
 ### 5. 写首页
@@ -231,7 +242,57 @@ type: page
 slug: about
 ```
 
-各语言正文用 Markdown 写即可。作品若要附专辑或周边，再在该作品文件夹里加 `book.yml`。
+各语言正文用 Markdown 写即可。作品若要附专辑或周边，再在该作品文件夹里加 `book.yml`：
+
+```yaml
+# releases/my-release/book.yml
+type: album
+title:
+  zh: 我的专辑
+  en: My Album
+copyright: © 2026 Synctrol
+credit:
+  catalogNumber: SYN-001
+  illustrator: 插画师
+album:
+  links:
+    - platform: soundcloud
+      url: https://soundcloud.com/synctrol/demo
+  discs:
+    - title:
+        zh: 第一碟
+        en: Disc One
+      tracks:
+        - title:
+            zh: 第一曲
+            en: Track One
+          artists: [Synctrol]
+          duration: 272
+```
+
+### 专辑页组件
+
+专辑详情页由 Markdown 中的组件手动组装，组件自动读取该作品包的 book.yml 数据：
+
+```md
+<AlbumArtwork />
+<AlbumIdentity />
+<AlbumTracklist />
+<AlbumPreviews />
+<AlbumPlatformLinks />
+<AlbumCredit />
+<AlbumCovers />
+<AlbumCopyright />
+<GiftItem id="poster" />
+```
+
+- `<AlbumArtwork />` 渲染 content.yml 的 artwork（含占位图回退）。
+- `<AlbumIdentity />` 渲染专辑标题；`<AlbumCopyright />` 渲染版权文本。
+- `<AlbumTracklist />` 渲染曲目表；`<AlbumCovers />` 渲染封面组。
+- `<AlbumPreviews />` 渲染试听链接：definitions.yml 中声明为 soundcloud_player / audio_player / netease_player 类型（或自定义类型带 preview: true）的平台条目。
+- `<AlbumPlatformLinks />` 渲染其余数字平台链接。
+- `<AlbumCredit />` 按固定顺序渲染 credit：catalogNumber、illustrator、designer、mastering、mix、webDesign、producer、specialThanks。
+- `<GiftItem id="..." />` 渲染指定 id 的周边条目（gift 类型 book）。
 
 本地预览：
 
