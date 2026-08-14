@@ -12,7 +12,7 @@ describe('ButtonGroup', () => {
     expect(root.get('.probe').text()).toBe('one')
   })
 
-  it.each(['center', 'right'] as const)(
+  it.each(['center', 'right', 'stretch'] as const)(
     'exposes the %s alignment via data-align',
     (align) => {
       const wrapper = mount(ButtonGroup, {

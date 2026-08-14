@@ -615,6 +615,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   width: fit-content;
+  box-sizing: border-box;
   border: var(--syn-border-strong);
 }
 
@@ -633,4 +634,13 @@ body {
 
 .syn-button-group[data-align='right'] {
   margin-inline-start: auto;
+}
+
+.syn-button-group[data-align='stretch'] {
+  width: 100%;
+}
+
+.syn-button-group[data-align='stretch'] > .syn-button {
+  flex: 1 1 0;
+  text-align: center;
 }

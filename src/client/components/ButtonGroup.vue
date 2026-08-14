@@ -1,7 +1,7 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    align?: 'left' | 'center' | 'right'
+    align?: 'left' | 'center' | 'right' | 'stretch'
   }>(),
   {
     align: 'left',

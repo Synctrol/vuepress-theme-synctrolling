@@ -26,5 +26,5 @@ console.log('code block')
 
 ![Sample image](./assets/sample.svg)
 
-<ButtonGroup align="center"><Button href="https://example.com/">Learn more</Button><Button href="/en/releases/">Releases</Button><Button>Subscribe</Button></ButtonGroup>
+<ButtonGroup align="stretch"><Button href="https://example.com/">Learn more</Button><Button href="/en/releases/">Releases</Button><Button>Subscribe</Button></ButtonGroup>
 

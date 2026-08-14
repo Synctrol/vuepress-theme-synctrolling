@@ -130,6 +130,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-button-group\s*>\s*\.syn-button:first-child\s*\{[^}]*border-inline-start:\s*0/)
     expect(css).toMatch(/\.syn-button-group\[data-align='center'\]\s*\{[^}]*margin-inline:\s*auto/)
     expect(css).toMatch(/\.syn-button-group\[data-align='right'\]\s*\{[^}]*margin-inline-start:\s*auto/)
+    expect(css).toMatch(/\.syn-button-group\[data-align='stretch'\]\s*\{[^}]*width:\s*100%/)
+    expect(css).toMatch(/\.syn-button-group\[data-align='stretch'\]\s*>\s*\.syn-button\s*\{[^}]*flex:\s*1/)
   })
 
   it('centers release, news and page headings with roomy vertical margins', () => {

@@ -44,7 +44,7 @@ export default defineUserConfig({
           href: '/releases/',
           icon: '/assets/icons/github.svg',
         },
-        { label: 'NEWA', href: '/news/' },
+        { label: 'NEWS', href: '/news/' },
         { label: 'ABOUT', href: '/about/' },
       ],
     },
