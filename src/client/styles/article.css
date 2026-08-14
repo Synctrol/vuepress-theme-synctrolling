@@ -1,0 +1,92 @@
+/* Shared article body typography for news, page, and release content. */
+
+.syn-article-meta {
+  text-align: center;
+  border-block-start: var(--syn-border-subtle);
+  border-block-end: var(--syn-border-subtle);
+  padding-block: 0.75rem;
+}
+
+.syn-article-meta__dates {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  color: var(--syn-sub-title-fg);
+}
+
+.syn-article-meta__tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.syn-article-meta__tags a,
+.syn-news-list-item__tags a {
+  font-size: 16px;
+  color: var(--syn-fg);
+  text-decoration: underline;
+}
+
+.syn-article-body {
+  line-height: 1.75;
+}
+
+.syn-article-body > div > h2:not([class]) {
+  font-family: var(--syn-font-display);
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+  margin-block: 2.5rem 1rem;
+}
+
+.syn-article-body > div > h3:not([class]) {
+  font-size: 1.1rem;
+  margin-block: 1.5rem 0.75rem;
+}
+
+.syn-article-body > div > p:not([class]) {
+  margin-block: 0.75rem;
+}
+
+.syn-article-body > div > ul:not([class]),
+.syn-article-body > div > ol:not([class]) {
+  margin-block: 0.75rem;
+  padding-inline-start: 1.5rem;
+}
+
+.syn-article-body > div > blockquote:not([class]) {
+  margin: 1rem 0;
+  padding-inline-start: 1rem;
+  border-inline-start: var(--syn-border-strong);
+  color: var(--syn-sub-title-fg);
+}
+
+.syn-article-body > div > pre:not([class]) {
+  border: var(--syn-border-subtle);
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.syn-article-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.syn-article-body > div > hr:not([class]) {
+  border: 0;
+  border-block-start: var(--syn-border-subtle);
+  margin-block: 2rem;
+}
+
+.syn-article-body > div > img:not([class]) {
+  max-width: 100%;
+  height: auto;
+}
+
+.syn-article-body a:not([class]) {
+  color: var(--syn-fg);
+  text-decoration: underline;
+}

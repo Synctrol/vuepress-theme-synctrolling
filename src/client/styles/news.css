@@ -53,22 +53,8 @@
 .syn-news-list-item__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.25rem 1rem;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.syn-news-list-item__tags a {
-  font-size: 0.75rem;
-  letter-spacing: 1px;
-  color: var(--syn-sub-title-fg);
-  text-decoration: none;
-  border: 1px solid currentColor;
-  padding: 0.125rem 0.5rem;
-}
-
-.syn-news-list-item__tags a:hover,
-.syn-news-list-item__tags a:focus-visible {
-  color: var(--syn-fg);
 }

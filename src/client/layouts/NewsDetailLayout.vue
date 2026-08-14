@@ -42,7 +42,7 @@ defineProps<{
         :tags="data.tags"
       />
 
-      <div data-testid="article-body" :lang="data.bodyLang">
+      <div data-testid="article-body" class="syn-article-body" :lang="data.bodyLang">
         <slot />
       </div>
     </article>

@@ -29,7 +29,7 @@ defineProps<{
 
       <h1 :lang="data.titleLang">{{ data.title }}</h1>
 
-      <div data-testid="page-body" :lang="data.bodyLang">
+      <div data-testid="page-body" class="syn-article-body" :lang="data.bodyLang">
         <slot />
       </div>
     </article>

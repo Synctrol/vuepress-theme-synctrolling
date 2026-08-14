@@ -52,6 +52,7 @@ try {
     'zh/releases/demo/index.html',
     'en/news/hello/index.html',
     'zh/about/index.html',
+    'zh/news/formats/index.html',
     'sitemap.xml',
     'zh/rss.xml',
     'en/rss.xml',
@@ -83,6 +84,11 @@ try {
   assert.match(zhRelease, /试听/)
   assert.match(zhRelease, /music\.163\.com/)
   assert.doesNotMatch(zhRelease, /w\.soundcloud\.com\/player/)
+
+  const zhFormats = readFileSync(join(dest, 'zh/news/formats/index.html'), 'utf8')
+  assert.match(zhFormats, /格式展示/)
+  assert.match(zhFormats, /assets\/content\/news\/formats\/sample\./)
+  assert.doesNotMatch(zhFormats, /src="\.\/assets\/sample\.svg"/)
 
   console.log('run-consumer-smoke: ok')
 } finally {

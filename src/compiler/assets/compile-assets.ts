@@ -96,6 +96,20 @@ function writeAsset(destDir: string, asset: ResolvedAsset): void {
   copyFileSync(asset.sourcePath, outputPath)
 }
 
+/**
+ * Content assets appear as static `src` attributes in compiled page
+ * templates; the bundler resolves absolute `/assets/...` URLs against the
+ * public dir at build time, so mirror content assets there as well.
+ * Global and theme assets are only referenced through runtime bindings
+ * or metadata and never need the public copy.
+ */
+function mirrorContentAsset(publicDir: string, asset: ResolvedAsset): void {
+  if (asset.kind !== 'content') return
+  const outputPath = join(publicDir, asset.assetPath.replace(/^\//, ''))
+  mkdirSync(dirname(outputPath), { recursive: true })
+  copyFileSync(asset.sourcePath, outputPath)
+}
+
 export function compileAssets(
   options: CompileAssetsOptions,
 ): AssetManifest {
@@ -111,6 +125,7 @@ export function compileAssets(
     seenSources.add(asset.sourcePath)
     registry.register(asset)
     writeAsset(options.destDir, asset)
+    mirrorContentAsset(publicDir, asset)
     return asset
   }
 

@@ -85,4 +85,39 @@ describe('buildNewsListItems', () => {
       publicPath: '/base/en/news/fallback/',
     })
   })
+
+  it('truncates list descriptions to 80 chars for zh and 100 otherwise', () => {
+    const zhLong = '中'.repeat(120)
+    const enLong = 'A'.repeat(150)
+    const zhPkg = newsPackage({
+      slug: 'zh-long',
+      locales: {
+        zh: { filePath: 'zh.md', title: '中文', description: zhLong, draft: false, body: '正文' },
+        en: { filePath: 'en.md', title: 'English', description: enLong, draft: false, body: 'Body' },
+      },
+    })
+    const zhItems = buildNewsListItems({
+      locale: 'zh',
+      packages: [zhPkg],
+      detailPages: [newsDetailPage(zhPkg, 'zh', { bodyLocale: 'zh' })],
+      tagArchivePages: [],
+      options: themeOptions(),
+      definitions: newsDefinitions,
+      resolveCoverPublicPath: () => undefined,
+      base: '/base/',
+    })
+    expect(zhItems[0]!.description).toBe(`${'中'.repeat(80)}…`)
+
+    const enItems = buildNewsListItems({
+      locale: 'en',
+      packages: [zhPkg],
+      detailPages: [newsDetailPage(zhPkg, 'en', { bodyLocale: 'en' })],
+      tagArchivePages: [],
+      options: themeOptions(),
+      definitions: newsDefinitions,
+      resolveCoverPublicPath: () => undefined,
+      base: '/base/',
+    })
+    expect(enItems[0]!.description).toBe(`${'A'.repeat(100)}…`)
+  })
 })

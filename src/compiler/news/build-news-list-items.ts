@@ -45,6 +45,15 @@ function tagPublicPath(
   }).publicPath
 }
 
+function truncateDescription(
+  description: string,
+  lang: string | undefined,
+): string {
+  const limit = lang === 'zh-CN' ? 80 : 100
+  if (description.length <= limit) return description
+  return `${description.slice(0, limit)}…`
+}
+
 export function buildNewsListItems(input: BuildNewsListItemsInput): NewsListItem[] {
   const detailByIdentity = new Map(
     input.detailPages
@@ -84,7 +93,10 @@ export function buildNewsListItems(input: BuildNewsListItemsInput): NewsListItem
         publicPath: page.url.publicPath,
         title: body.title,
         titleLang: bodyLocale.lang,
-        description: body.description,
+        description:
+          body.description === undefined
+            ? undefined
+            : truncateDescription(body.description, bodyLocale.lang),
         descriptionLang: body.description === undefined ? undefined : bodyLocale.lang,
         date: pkg.date!,
         updated: pkg.updated,

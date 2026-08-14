@@ -50,6 +50,7 @@ describe('ReleaseDetail layout', () => {
       },
     })
     expect(wrapper.get('[data-testid="draft-badge"]').text()).toBe('草稿')
+    expect(wrapper.find('.syn-article-body').exists()).toBe(true)
     expect(wrapper.get('[data-testid="probe"]').text()).toBe('第一张专辑')
     expect(wrapper.find('[data-detail-section]').exists()).toBe(false)
   })

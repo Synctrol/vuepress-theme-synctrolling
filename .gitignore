@@ -8,6 +8,8 @@ coverage/
 # VuePress runtime artifacts (site source + consumer fixture)
 **/.vuepress/.temp/
 **/.vuepress/.cache/
+# Hashed content assets mirrored into the public dir for bundler resolution
+**/.vuepress/public/assets/content/
 
 # Local session artifacts (browser screenshots, compile caches)
 .openchamber/

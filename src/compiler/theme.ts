@@ -55,9 +55,19 @@ function isContentSourcePage(page: Page): boolean {
 function bodyFor(
   compiled: CompiledPage,
   byDir: Map<string, RouteContentPackage>,
+  contentAssets: Record<string, string>,
 ): string {
   if (compiled.packagePath === undefined) return ''
-  return byDir.get(compiled.packagePath)?.locales[compiled.bodyLocale]?.body ?? ''
+  let body = byDir.get(compiled.packagePath)?.locales[compiled.bodyLocale]?.body ?? ''
+  // Replace the longest refs first so `./assets/x` wins over the bare
+  // `assets/x` alias registered by the asset registry.
+  const entries = Object.entries(contentAssets).sort(
+    ([a], [b]) => b.length - a.length,
+  )
+  for (const [ref, publicPath] of entries) {
+    body = body.split(ref).join(publicPath)
+  }
+  return body
 }
 
 export function synctrolTheme(options: SynctrolThemeOptions) {
@@ -216,7 +226,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           // VuePress sanitizes and re-encodes this itself; Task 3's routable
           // gate guarantees the result equals compiled.url.routePath.
           path: decodeURI(compiled.url.routePath),
-          content: bodyFor(compiled, byDir),
+          content: bodyFor(compiled, byDir, contentAssets),
           frontmatter: {
             lang:
               seoForPage?.lang ??

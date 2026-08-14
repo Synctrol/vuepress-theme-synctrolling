@@ -37,6 +37,8 @@ provide(SYNCTROL_RELEASE_CONTEXT_KEY, {
 <template>
   <article class="syn-release-detail" data-testid="release-detail-root">
     <DraftBadge v-if="model.showDraftBadge" :label="model.draftLabel" />
-    <Content />
+    <div class="syn-article-body">
+      <Content />
+    </div>
   </article>
 </template>
