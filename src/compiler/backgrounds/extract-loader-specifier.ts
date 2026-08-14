@@ -1,5 +1,4 @@
 import type { BackgroundLoader } from '../../shared/background.js'
-import type { ContentType } from '../../shared/types.js'
 import { fail } from '../diagnostics.js'
 
 const SUPPORTED =
@@ -7,13 +6,12 @@ const SUPPORTED =
 
 export function extractBackgroundImportSpecifier(
   loader: BackgroundLoader,
-  key: ContentType,
 ): string {
   if (typeof loader !== 'function') {
     fail({
       severity: 'error',
       code: 'UNSUPPORTED_BACKGROUND_LOADER',
-      message: `backgrounds.${key} must be () => import('…') or () => import("…")`,
+      message: `background must be () => import('…') or () => import("…")`,
     })
   }
   const source = Function.prototype.toString
@@ -25,7 +23,7 @@ export function extractBackgroundImportSpecifier(
     fail({
       severity: 'error',
       code: 'UNSUPPORTED_BACKGROUND_LOADER',
-      message: `backgrounds.${key} must be () => import('…') or () => import("…"); got: ${source}`,
+      message: `background must be () => import('…') or () => import("…"); got: ${source}`,
     })
   }
   return match[2]!

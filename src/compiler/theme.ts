@@ -305,7 +305,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       viteOptions.plugins ??= []
       viteOptions.plugins.push(
         createSynctrolBackgroundsVitePlugin({
-          backgrounds: resolved.backgrounds,
+          background: resolved.background,
           configDir,
         }),
       )

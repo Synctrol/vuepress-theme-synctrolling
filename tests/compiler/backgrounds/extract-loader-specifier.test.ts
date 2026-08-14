@@ -9,31 +9,32 @@ function loaderFromSource(source: string): () => Promise<unknown> {
 
 describe('extractBackgroundImportSpecifier', () => {
   it('extracts single-quoted dynamic import specifiers', () => {
-    const loader = loaderFromSource("() => import('./backgrounds/home')")
-    expect(extractBackgroundImportSpecifier(loader as never, 'home')).toBe(
-      './backgrounds/home',
+    const loader = loaderFromSource("() => import('./backgrounds/host')")
+    expect(extractBackgroundImportSpecifier(loader as never)).toBe(
+      './backgrounds/host',
     )
   })
 
   it('extracts double-quoted dynamic import specifiers', () => {
-    const loader = loaderFromSource('() => import("./backgrounds/release")')
-    expect(extractBackgroundImportSpecifier(loader as never, 'release')).toBe(
-      './backgrounds/release',
+    const loader = loaderFromSource('() => import("./backgrounds/host")')
+    expect(extractBackgroundImportSpecifier(loader as never)).toBe(
+      './backgrounds/host',
     )
   })
 
   it('rejects unsupported loader shapes with a diagnostic', () => {
     const bad = async () => ({
       default() {
-        return { update() {}, dispose() {} }
+        return { request() {}, dispose() {} }
       },
     })
     try {
-      extractBackgroundImportSpecifier(bad as never, 'page')
+      extractBackgroundImportSpecifier(bad as never)
       expect.unreachable('should throw')
     } catch (error) {
       expect(isDiagnosticError(error)).toBe(true)
       expect(String(error)).toMatch(/UNSUPPORTED_BACKGROUND_LOADER|unsupported/i)
+      expect(String(error)).toMatch(/background/)
     }
   })
 })

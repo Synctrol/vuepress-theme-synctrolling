@@ -1,8 +1,7 @@
 declare module 'virtual:synctrol-backgrounds' {
   import type { BackgroundLoader } from '../../shared/background.js'
-  import type { ContentType } from '../../shared/types.js'
-  const loaders: Partial<Record<ContentType, BackgroundLoader>>
-  export default loaders
+  const loader: BackgroundLoader | undefined
+  export default loader
 }
 
 declare module '@synctrol/backgrounds' {

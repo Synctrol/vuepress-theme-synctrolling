@@ -21,7 +21,6 @@ function asHookFn<T extends (...args: never[]) => unknown>(
 describe('createSynctrolBackgroundsVitePlugin', () => {
   it('resolves virtual:synctrol-backgrounds and @synctrol/backgrounds', () => {
     const plugin = createSynctrolBackgroundsVitePlugin({
-      backgrounds: {},
       configDir: '/site/.vuepress',
     })
     const resolveId = asHookFn(plugin.resolveId as never) as (
@@ -37,18 +36,16 @@ describe('createSynctrolBackgroundsVitePlugin', () => {
   })
 
   it('loads the emitted module source', () => {
-    const backgrounds = {
-      home: loaderFromSource("() => import('./backgrounds/home')"),
-    }
+    const background = loaderFromSource("() => import('./backgrounds/host')")
     const plugin = createSynctrolBackgroundsVitePlugin({
-      backgrounds,
+      background,
       configDir: '/site/.vuepress',
     })
     const load = asHookFn(plugin.load as never) as (
       id: string,
     ) => string | undefined
     expect(load('\0virtual:synctrol-backgrounds')).toBe(
-      emitBackgroundsVirtualModule(backgrounds, '/site/.vuepress'),
+      emitBackgroundsVirtualModule(background, '/site/.vuepress'),
     )
   })
 })

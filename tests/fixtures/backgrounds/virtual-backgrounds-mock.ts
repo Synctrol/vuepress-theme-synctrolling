@@ -1,7 +1,6 @@
 import type { BackgroundLoader } from '../../../src/shared/background.js'
-import type { ContentType } from '../../../src/shared/types.js'
 
-/** Vitest alias stand-in for `virtual:synctrol-backgrounds` (empty by default). */
-const loaders: Partial<Record<ContentType, BackgroundLoader>> = {}
+/** Vitest alias stand-in for `virtual:synctrol-backgrounds` (undefined by default). */
+const loader: BackgroundLoader | undefined = undefined
 
-export default loaders
+export default loader

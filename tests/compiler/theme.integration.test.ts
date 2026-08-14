@@ -112,9 +112,7 @@ describe('synctrolTheme production integration', () => {
           news: { title: 'N', description: 'n' },
         },
       },
-      backgrounds: {
-        home: (async () => ({})) as never,
-      },
+      background: (async () => ({})) as never,
     })
 
     expect(theme.name).toBe('vuepress-theme-synctrolling')
@@ -123,7 +121,7 @@ describe('synctrolTheme production integration', () => {
       showDrafts: false,
     })
     expect(theme.define.__SYNCTROL_THEME_OPTIONS__).not.toHaveProperty(
-      'backgrounds',
+      'background',
     )
   })
 
@@ -143,9 +141,7 @@ describe('synctrolTheme production integration', () => {
           news: { title: 'N', description: 'n' },
         },
       },
-      backgrounds: {
-        home: (async () => ({})) as never,
-      },
+      background: (async () => ({})) as never,
     })
 
     expect(theme.extendsBundlerOptions).toBeTypeOf('function')

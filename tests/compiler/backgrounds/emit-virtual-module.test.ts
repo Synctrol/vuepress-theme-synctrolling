@@ -8,25 +8,16 @@ function loaderFromSource(source: string): BackgroundLoader {
 }
 
 describe('emitBackgroundsVirtualModule', () => {
-  it('emits an empty default export when no loaders are configured', () => {
-    expect(emitBackgroundsVirtualModule({}, '/site/.vuepress')).toBe(
-      'export default {}\n',
+  it('emits an undefined default export when no loader is configured', () => {
+    expect(emitBackgroundsVirtualModule(undefined, '/site/.vuepress')).toBe(
+      'export default undefined\n',
     )
   })
 
-  it('emits resolved absolute import ids for configured keys', () => {
-    const backgrounds = {
-      home: loaderFromSource("() => import('./backgrounds/home')"),
-      news: loaderFromSource("() => import('./backgrounds/news')"),
-    }
-    const source = emitBackgroundsVirtualModule(
-      backgrounds,
-      '/site/.vuepress',
-    )
-    expect(source).toContain('home: () => import(')
-    expect(source).toContain('/site/.vuepress/backgrounds/home')
-    expect(source).toContain('news: () => import(')
-    expect(source).not.toContain('release:')
-    expect(source).not.toContain('page:')
+  it('emits a single loader default export for the configured provider', () => {
+    const loader = loaderFromSource("() => import('./backgrounds/host')")
+    const source = emitBackgroundsVirtualModule(loader, '/site/.vuepress')
+    expect(source).toContain('export default () => import(')
+    expect(source).toContain('/site/.vuepress/backgrounds/host')
   })
 })
