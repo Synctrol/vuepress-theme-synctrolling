@@ -54,6 +54,13 @@ function trackTitle(track: NumberedTrack) {
             <span class="syn-album-track__artists">{{
               track.artists.join(', ')
             }}</span>
+            <span
+              v-if="track.desc"
+              class="syn-album-track__desc"
+              :lang="resolved(track.desc).lang"
+              data-testid="track-desc"
+              >{{ resolved(track.desc).text }}</span
+            >
           </span>
         </li>
       </ol>

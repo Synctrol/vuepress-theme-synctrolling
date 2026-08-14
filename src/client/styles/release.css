@@ -169,6 +169,11 @@
   color: var(--syn-sub-title-fg);
 }
 
+.syn-album-track__desc {
+  font-size: 0.75em;
+  color: var(--syn-sub-title-fg);
+}
+
 .syn-album-credit dl {
   margin: 0;
 }

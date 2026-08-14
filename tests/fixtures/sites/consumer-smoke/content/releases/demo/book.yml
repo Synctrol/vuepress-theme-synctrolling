@@ -5,9 +5,6 @@ title:
 copyright: © 2026 Synctrol
 credit:
   catalogNumber: SYN-001
-  illustrator:
-    - 插画师
-    - 背景师
   designer: 设计师
   mastering: 母带师
 album:
@@ -29,13 +26,11 @@ album:
         - title:
             zh: 第一曲
             en: Track One
-          artists: [Synctrol]
+          artists: [LelouchSound]
           duration: 272
-        - title:
-            zh: 第二曲
-            en: Track Two
-          artists: [Synctrol]
-          duration: 61
+          desc:
+            zh: 这是曲目描述
+            en: This is intro
     - title:
         zh: 第二碟
         en: Disc Two
