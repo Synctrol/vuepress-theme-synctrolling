@@ -13,10 +13,6 @@ defineProps<{
   <ul
     class="syn-release-index-grid"
     data-testid="release-index-grid"
-    :style="{
-      '--syn-release-mobile-cols': String(model.mobileGridColumns),
-      '--syn-release-desktop-cols': String(model.desktopGridColumns),
-    }"
   >
     <li
       v-for="tile in model.tiles"
@@ -34,6 +30,9 @@ defineProps<{
           :alt="tile.accessibleName"
           :eager="model.page === 1"
         />
+        <span class="syn-release-tile__title" aria-hidden="true">{{
+          tile.accessibleName
+        }}</span>
         <DraftBadge v-if="tile.showDraftBadge" :label="draftLabel" />
       </a>
     </li>

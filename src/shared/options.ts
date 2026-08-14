@@ -54,8 +54,6 @@ export interface ReleaseOptions {
   index: {
     enabled: boolean
     pagination: number | false
-    mobileGridColumns: number
-    desktopGridColumns: number
   }
   artworkPlaceholder?: string
 }
@@ -178,16 +176,6 @@ function assertPagination(value: number | false, field: string): void {
   }
 }
 
-function assertGridColumns(
-  value: number,
-  field: string,
-  maximum: number,
-): void {
-  if (!Number.isInteger(value) || value < 1 || value > maximum) {
-    throw new Error(`Invalid ${field}`)
-  }
-}
-
 function resolveMessages(
   localeKey: LocaleKey,
   partial?: Partial<LocaleMessages>,
@@ -265,8 +253,6 @@ export function resolveThemeOptions(
     index: {
       enabled: input.release?.index?.enabled ?? true,
       pagination: input.release?.index?.pagination ?? 12,
-      mobileGridColumns: input.release?.index?.mobileGridColumns ?? 2,
-      desktopGridColumns: input.release?.index?.desktopGridColumns ?? 3,
     },
     artworkPlaceholder: input.release?.artworkPlaceholder,
   }
@@ -275,16 +261,6 @@ export function resolveThemeOptions(
   assertPagination(
     release.index.pagination,
     'options.release.index.pagination',
-  )
-  assertGridColumns(
-    release.index.mobileGridColumns,
-    'options.release.index.mobileGridColumns',
-    3,
-  )
-  assertGridColumns(
-    release.index.desktopGridColumns,
-    'options.release.index.desktopGridColumns',
-    6,
   )
 
   const news: NewsOptions = {

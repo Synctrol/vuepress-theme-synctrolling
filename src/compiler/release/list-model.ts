@@ -106,8 +106,6 @@ export function buildReleaseIndexModel(
     locale: input.collectionPage.locale,
     page: collection.page,
     pageCount: collection.pageCount,
-    mobileGridColumns: input.releaseOptions.index.mobileGridColumns,
-    desktopGridColumns: input.releaseOptions.index.desktopGridColumns,
     tiles,
     empty: tiles.length === 0,
   }

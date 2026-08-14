@@ -33,7 +33,7 @@ export function resolvedOptions(
     socialLinks: { items: [] },
     release: {
       urlSegment: 'releases',
-      index: { enabled: true, pagination: 12, mobileGridColumns: 2, desktopGridColumns: 3 },
+      index: { enabled: true, pagination: 12 },
     },
     news: {
       urlSegment: 'news',

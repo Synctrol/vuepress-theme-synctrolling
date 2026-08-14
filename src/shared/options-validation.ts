@@ -45,12 +45,7 @@ const SOCIAL_LINK_FIELDS = ['label', 'icon', 'url'] as const
 const LINK_CLOUD_FIELDS = ['items'] as const
 const LINK_CLOUD_ITEM_FIELDS = ['label', 'href'] as const
 const RELEASE_FIELDS = ['urlSegment', 'index', 'artworkPlaceholder'] as const
-const RELEASE_INDEX_FIELDS = [
-  'enabled',
-  'pagination',
-  'mobileGridColumns',
-  'desktopGridColumns',
-] as const
+const RELEASE_INDEX_FIELDS = ['enabled', 'pagination'] as const
 const NEWS_FIELDS = ['urlSegment', 'index', 'tags'] as const
 const NEWS_INDEX_FIELDS = ['enabled', 'pagination'] as const
 const NEWS_TAG_FIELDS = ['urlSegment', 'index'] as const
@@ -202,15 +197,6 @@ function assertOptionalPagination(value: unknown, field: string): void {
     (!Number.isInteger(value) || (value as number) < 1)
   ) {
     throw new Error(`Invalid ${field}: expected a positive integer or false`)
-  }
-}
-
-function assertOptionalGridColumns(value: unknown, field: string): void {
-  if (
-    value !== undefined &&
-    (!Number.isInteger(value) || (value as number) < 1)
-  ) {
-    throw new Error(`Invalid ${field}: expected a positive integer`)
   }
 }
 
@@ -397,14 +383,6 @@ function validateRelease(value: unknown): void {
     assertOptionalPagination(
       value.index.pagination,
       'options.release.index.pagination',
-    )
-    assertOptionalGridColumns(
-      value.index.mobileGridColumns,
-      'options.release.index.mobileGridColumns',
-    )
-    assertOptionalGridColumns(
-      value.index.desktopGridColumns,
-      'options.release.index.desktopGridColumns',
     )
   }
 }

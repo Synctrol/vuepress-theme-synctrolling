@@ -21,8 +21,6 @@ describe('Release acceptance (spec §§21–24, drafts; JSON-LD deferred to Plan
     index: {
       enabled: true,
       pagination: 2,
-      mobileGridColumns: 2,
-      desktopGridColumns: 3,
     },
     artworkPlaceholder: './assets/placeholder.webp',
   } as const

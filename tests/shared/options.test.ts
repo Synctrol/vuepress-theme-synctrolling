@@ -96,8 +96,6 @@ describe('resolveThemeOptions', () => {
       index: {
         enabled: true,
         pagination: 12,
-        mobileGridColumns: 2,
-        desktopGridColumns: 3,
       },
     })
     expect(options.news).toEqual({
@@ -480,8 +478,6 @@ describe('resolveThemeOptions', () => {
       index: {
         enabled: true,
         pagination: 12,
-        mobileGridColumns: 2,
-        desktopGridColumns: 3,
       },
     })
     expect(options.news).toEqual({
@@ -520,8 +516,6 @@ describe('resolveThemeOptions', () => {
             index: {
               enabled: true,
               pagination: 12,
-              mobileGridColumns: 2,
-              desktopGridColumns: 3,
             },
           },
         }),
@@ -538,8 +532,6 @@ describe('resolveThemeOptions', () => {
           index: {
             enabled: true,
             pagination: 12,
-            mobileGridColumns: 2,
-            desktopGridColumns: 3,
           },
         },
       }),
@@ -553,8 +545,6 @@ describe('resolveThemeOptions', () => {
           index: {
             enabled: true,
             pagination: 12,
-            mobileGridColumns: 2,
-            desktopGridColumns: 3,
           },
         },
       }),
@@ -567,8 +557,6 @@ describe('resolveThemeOptions', () => {
         index: {
           enabled: true,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
       },
     })
@@ -715,7 +703,7 @@ describe('resolveThemeOptions', () => {
     expect(options.siteUrl).toBe('https://synctrol.com')
   })
 
-  it('rejects invalid release grid columns and url segments', () => {
+  it('rejects invalid release url segments and retired grid column options', () => {
     expect(() =>
       resolveThemeOptions({
         ...base,
@@ -724,8 +712,6 @@ describe('resolveThemeOptions', () => {
           index: {
             enabled: true,
             pagination: 12,
-            mobileGridColumns: 2,
-            desktopGridColumns: 3,
           },
         },
       }),
@@ -740,35 +726,27 @@ describe('resolveThemeOptions', () => {
             enabled: true,
             pagination: 12,
             mobileGridColumns: 4,
-            desktopGridColumns: 3,
           },
         },
-      }),
+      } as unknown as SynctrolThemeOptions),
     ).toThrow(/mobileGridColumns/)
   })
 
-  it.each([
-    ['mobileGridColumns', 1.5, 3],
-    ['desktopGridColumns', 2, 3.5],
-  ] as const)(
-    'rejects non-integer %s',
-    (field, mobileGridColumns, desktopGridColumns) => {
-      expect(() =>
-        resolveThemeOptions({
-          ...base,
-          release: {
-            urlSegment: 'releases',
-            index: {
-              enabled: true,
-              pagination: 12,
-              mobileGridColumns,
-              desktopGridColumns,
-            },
+  it('rejects the retired desktop grid column option', () => {
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        release: {
+          urlSegment: 'releases',
+          index: {
+            enabled: true,
+            pagination: 12,
+            desktopGridColumns: 3,
           },
-        }),
-      ).toThrow(new RegExp(field))
-    },
-  )
+        },
+      } as unknown as SynctrolThemeOptions),
+    ).toThrow(/desktopGridColumns/)
+  })
 
   it.each([0, 1.5])('rejects invalid pagination value %s', (pagination) => {
     expect(() =>

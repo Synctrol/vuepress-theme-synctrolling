@@ -8,8 +8,6 @@ const model: ReleaseIndexModel = {
   locale: 'en',
   page: 1,
   pageCount: 1,
-  mobileGridColumns: 2,
-  desktopGridColumns: 3,
   empty: false,
   tiles: [
     {
@@ -45,7 +43,7 @@ const model: ReleaseIndexModel = {
 }
 
 describe('ReleaseIndexGrid', () => {
-  it('renders a square artwork grid with CSS column variables and no under-tile date/description', () => {
+  it('renders a square artwork grid with hover title overlays and no under-tile date/description', () => {
     const wrapper = mount(ReleaseIndexGrid, {
       props: {
         model,
@@ -53,8 +51,7 @@ describe('ReleaseIndexGrid', () => {
       },
     })
     const root = wrapper.get('[data-testid="release-index-grid"]')
-    expect(root.attributes('style')).toContain('--syn-release-mobile-cols: 2')
-    expect(root.attributes('style')).toContain('--syn-release-desktop-cols: 3')
+    expect(root.attributes('style')).toBeUndefined()
 
     const links = wrapper.findAll('a.syn-release-tile')
     expect(links).toHaveLength(2)
@@ -64,6 +61,10 @@ describe('ReleaseIndexGrid', () => {
     const img = links[0].get('img')
     expect(img.attributes('alt')).toBe('First Album')
     expect(img.attributes('src')).toContain('entry.hash.webp')
+
+    const overlays = wrapper.findAll('.syn-release-tile__title')
+    expect(overlays).toHaveLength(2)
+    expect(overlays[0].text()).toBe('First Album')
 
     const text = wrapper.text()
     expect(text).not.toContain('2026-08-11')

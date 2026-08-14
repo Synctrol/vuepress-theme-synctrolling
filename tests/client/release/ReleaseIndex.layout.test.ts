@@ -8,8 +8,6 @@ const baseModel: ReleaseIndexModel = {
   locale: 'en',
   page: 1,
   pageCount: 1,
-  mobileGridColumns: 2,
-  desktopGridColumns: 3,
   empty: true,
   tiles: [],
 }

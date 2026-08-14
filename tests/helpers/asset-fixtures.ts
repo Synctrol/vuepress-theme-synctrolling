@@ -56,9 +56,7 @@ export function themeOptions(
       index: {
         enabled: true,
         pagination: 12,
-        mobileGridColumns: 2,
-        desktopGridColumns: 3,
-      },
+                      },
       artworkPlaceholder: './assets/artwork-placeholder.svg',
     },
     ...overrides,

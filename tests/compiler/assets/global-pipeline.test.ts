@@ -74,9 +74,7 @@ describe('collectGlobalOptionRefs', () => {
             index: {
               enabled: true,
               pagination: 12,
-              mobileGridColumns: 2,
-              desktopGridColumns: 3,
-            },
+                                        },
             artworkPlaceholder: '/images/placeholder.svg',
           },
         }),

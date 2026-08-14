@@ -100,8 +100,6 @@ describe('resolveArtworkPlaceholder', () => {
         index: {
           enabled: true,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
       },
       resolveArtwork: () => undefined,

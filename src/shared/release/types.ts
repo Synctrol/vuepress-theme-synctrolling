@@ -55,8 +55,6 @@ export interface ReleaseIndexModel {
   locale: string
   page: number
   pageCount: number
-  mobileGridColumns: number
-  desktopGridColumns: number
   tiles: ReleaseIndexTile[]
   empty: boolean
 }

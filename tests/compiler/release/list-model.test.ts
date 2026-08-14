@@ -79,8 +79,6 @@ describe('buildReleaseIndexModel', () => {
         index: {
           enabled: false,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
       },
       resolveArtwork,
@@ -138,8 +136,6 @@ describe('buildReleaseIndexModel', () => {
         index: {
           enabled: true,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
       },
       resolveArtwork,
@@ -155,8 +151,6 @@ describe('buildReleaseIndexModel', () => {
       showDescription: false,
     })
     expect(model!.tiles[0].date).toBe('2026-08-11')
-    expect(model!.mobileGridColumns).toBe(2)
-    expect(model!.desktopGridColumns).toBe(3)
   })
 
   it('uses artworkPlaceholder or empty frame, never cover, when artwork is missing', () => {
@@ -177,8 +171,6 @@ describe('buildReleaseIndexModel', () => {
         index: {
           enabled: true,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
         artworkPlaceholder: './assets/placeholder.webp',
       },
@@ -203,8 +195,6 @@ describe('buildReleaseIndexModel', () => {
         index: {
           enabled: true,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
       },
       resolveArtwork,
@@ -240,8 +230,6 @@ describe('buildReleaseIndexModel', () => {
         index: {
           enabled: true,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
       },
       resolveArtwork,
@@ -291,8 +279,6 @@ describe('buildReleaseIndexModel', () => {
         index: {
           enabled: true,
           pagination: 12,
-          mobileGridColumns: 2,
-          desktopGridColumns: 3,
         },
       },
       resolveArtwork,
@@ -330,8 +316,6 @@ describe('buildReleaseIndexModel', () => {
         index: {
           enabled: true,
           pagination: 1,
-          mobileGridColumns: 2,
-          desktopGridColumns: 4,
         },
       },
       resolveArtwork,
@@ -342,6 +326,5 @@ describe('buildReleaseIndexModel', () => {
     expect(model!.pageCount).toBe(2)
     expect(model!.tiles).toHaveLength(1)
     expect(model!.tiles[0].slug).toBe('b')
-    expect(model!.desktopGridColumns).toBe(4)
   })
 })

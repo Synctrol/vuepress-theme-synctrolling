@@ -116,9 +116,7 @@ describe('compileAssets', () => {
           index: {
             enabled: true,
             pagination: 12,
-            mobileGridColumns: 2,
-            desktopGridColumns: 3,
-          },
+                                  },
         },
       }),
       configDir: join(fixtureRoot, '.vuepress'),
@@ -191,9 +189,7 @@ describe('compileAssets', () => {
             index: {
               enabled: true,
               pagination: 12,
-              mobileGridColumns: 2,
-              desktopGridColumns: 3,
-            },
+                                        },
           },
         }),
         configDir: join(fixtureRoot, '.vuepress'),
