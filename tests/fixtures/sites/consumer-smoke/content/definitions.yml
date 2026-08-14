@@ -3,4 +3,12 @@ tags:
     title:
       zh: 作品发布
       en: Releases
-platforms: {}
+platforms:
+  soundcloud:
+    category: digital
+    type: soundcloud_player
+    name: SoundCloud
+  spotify:
+    category: digital
+    type: spotify_player
+    name: Spotify

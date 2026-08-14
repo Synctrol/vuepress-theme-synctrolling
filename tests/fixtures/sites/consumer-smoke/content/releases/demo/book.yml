@@ -1,0 +1,33 @@
+type: album
+title:
+  zh: 演示专辑
+  en: Demo Album
+copyright: © 2026 Synctrol
+credit:
+  catalogNumber: SYN-001
+  illustrator: 插画师
+  designer: 设计师
+  mastering: 母带师
+album:
+  covers:
+    - ./assets/artwork.svg
+  links:
+    - platform: soundcloud
+      url: https://soundcloud.com/synctrol/demo
+    - platform: spotify
+      uri: spotify:album:demo
+  discs:
+    - title:
+        zh: 第一碟
+        en: Disc One
+      tracks:
+        - title:
+            zh: 第一曲
+            en: Track One
+          artists: [Synctrol]
+          duration: 272
+        - title:
+            zh: 第二曲
+            en: Track Two
+          artists: [Synctrol]
+          duration: 61

@@ -618,12 +618,27 @@ album:
     expect(detail).toBeDefined()
     const detailSynctrol = detail!.frontmatter.synctrol as {
       platformDefinitions: Record<string, unknown>
-      release: { kind: string; model: { sections: Array<{ kind: string }> } }
+      release: {
+        kind: string
+        model: {
+          includedInIndex: boolean
+          artwork: { kind: string }
+          book?: {
+            type: string
+            title: { text: string }
+            platformLinks: Array<{ platform: string }>
+            previewLinks: Array<{ platform: string }>
+            discs: Array<{ number: number }>
+          }
+        }
+      }
     }
     expect(detailSynctrol.release.kind).toBe('detail')
-    expect(detailSynctrol.release.model.sections.map((s) => s.kind)).toContain(
-      'album-body',
-    )
+    expect(detailSynctrol.release.model.artwork.kind).toBe('artwork')
+    expect(detailSynctrol.release.model.book?.type).toBe('album')
+    expect(
+      detailSynctrol.release.model.book?.platformLinks.map((l) => l.platform),
+    ).toContain('youtube')
     expect(detailSynctrol.platformDefinitions).toMatchObject({
       youtube: expect.objectContaining({ type: 'youtube_player' }),
     })
