@@ -2,7 +2,7 @@
 import { computed, provide, reactive, ref, watch } from 'vue'
 import { Content, useData } from 'vuepress/client'
 import { setContentAssetMap } from '../assets/resolve-content-asset.js'
-import BackgroundHost from '../background/BackgroundHost.vue'
+import BackgroundSurface from '../background/BackgroundSurface.vue'
 import { useBackgroundRuntime } from '../background/use-background-runtime.js'
 import {
   SYNCTROL_DRAWER_OPEN_KEY,
@@ -50,7 +50,7 @@ interface SynctrolFrontmatter {
 const theme = useThemeOptions()
 const { page, siteData } = useData()
 const drawerOpen = ref(false)
-const { runtime, syncInput } = useBackgroundRuntime()
+const { runtime, requestInput } = useBackgroundRuntime()
 
 const synctrol = computed(
   () => (page.value.frontmatter.synctrol as SynctrolFrontmatter | undefined) ?? {},
@@ -154,7 +154,7 @@ const formatDate = (date: string) =>
 </script>
 
 <template>
-  <BackgroundHost :runtime="runtime" :sync-input="syncInput" />
+  <BackgroundSurface :runtime="runtime" :request-input="requestInput" />
   <ShellLayout>
     <ReleaseIndex
       v-if="release?.kind === 'index'"

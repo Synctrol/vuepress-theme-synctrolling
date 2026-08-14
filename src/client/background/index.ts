@@ -1,8 +1,10 @@
 export type {
-  BackgroundContext,
-  BackgroundController,
+  BackgroundReactiveContext,
+  BackgroundRequest,
+  IBackgroundHost,
   BackgroundLoader,
   BackgroundModule,
+  PageContentType,
 } from '../../shared/background.js'
 export { resolveBackgroundContentType } from './resolve-type.js'
 export {
@@ -13,8 +15,8 @@ export {
 export { BackgroundRuntime } from './runtime.js'
 export type {
   BackgroundRuntimeOptions,
-  BackgroundSyncInput,
+  BackgroundRuntimeContextRefs,
 } from './runtime.js'
 export { useBackgroundRuntime } from './use-background-runtime.js'
 export type { SynctrolClientPageData } from './types.js'
-// Forbidden: export BackgroundHost.vue
+// Forbidden: export BackgroundSurface.vue

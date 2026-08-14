@@ -39,6 +39,6 @@ assert.equal(typeof clientMod.createResolveContentAsset, 'function')
 assert.ok(clientMod.PlatformEmbed)
 assert.ok(clientMod.PlatformLinks)
 assert.equal(Object.hasOwn(clientMod, 'Layout'), false)
-assert.equal(Object.hasOwn(clientMod, 'BackgroundHost'), false)
+assert.equal(Object.hasOwn(clientMod, 'BackgroundSurface'), false)
 
 console.log('assert-exports-resolve: ok')

@@ -36,11 +36,11 @@ const themeJs = read(dist('compiler', 'theme.js'))
 assert.match(themeJs, /\.\.\/client\/config\.js|client\/config\.js/)
 assert.doesNotMatch(themeJs, /client\/config\.ts/)
 
-// Strip line comments so intentional "Forbidden: …Layout.vue / BackgroundHost"
+// Strip line comments so intentional "Forbidden: …Layout.vue / BackgroundSurface"
 // documentation in the JS-only barrel does not false-positive the boundary check.
 const clientJs = read(dist('client', 'index.js')).replace(/\/\/.*$/gm, '')
 assert.doesNotMatch(clientJs, /Layout\.vue/)
-assert.doesNotMatch(clientJs, /BackgroundHost/)
+assert.doesNotMatch(clientJs, /BackgroundSurface/)
 assert.doesNotMatch(clientJs, /^\s*export\b[^;]*\.vue/m)
 
 const tokensCss = read(dist('client', 'styles', 'tokens.css'))
