@@ -14,5 +14,5 @@ AND DESCRIBE SOUND
     title="NO.9 MUSEUM"
     text="The No.9 Museum OST is out now." 
     href="/en/releases/demo/"
-    background="./assets/new-album.svg"
+    background="./assets/new-album.jpg"
 />

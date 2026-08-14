@@ -159,6 +159,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-new-album\s*\{[^}]*text-decoration:\s*none/)
     expect(css).toMatch(/\.syn-new-album\s*\{[^}]*background-size:\s*cover/)
     expect(css).toMatch(/\.syn-new-album__title\s*\{[^}]*font-family:\s*var\(--syn-font-body\)/)
+    expect(css).toMatch(/\.syn-new-album__intro\s*\{[^}]*color:\s*rgba\(255,\s*255,\s*255,\s*0\.85\)/)
+    expect(css).not.toMatch(/\.syn-new-album__intro\s*\{[^}]*color:\s*var\(--syn-gray-300\)/)
     expect(css).toMatch(/\.syn-new-album__arrow\s*\{[^}]*/)
     expect(css).not.toMatch(/\.syn-new-album__cover/)
   })
