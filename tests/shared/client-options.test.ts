@@ -42,7 +42,7 @@ const registration = {
 const backgroundLoader = async () => ({
   default() {
     return {
-      update() {},
+      request() {},
       dispose() {},
     }
   },
@@ -56,15 +56,15 @@ describe('client theme options', () => {
         loadStrategy: 'viewport',
         types: { custom: registration },
       },
-      backgrounds: { home: backgroundLoader },
+      background: backgroundLoader,
     })
 
     const clientOptions: ClientSynctrolThemeOptions =
       toClientThemeOptions(resolved)
 
     expect(resolved.platforms.types.custom).toBe(registration)
-    expect(resolved.backgrounds.home).toBe(backgroundLoader)
-    expect(clientOptions).not.toHaveProperty('backgrounds')
+    expect(resolved.background).toBe(backgroundLoader)
+    expect(clientOptions).not.toHaveProperty('background')
     expect(clientOptions).not.toHaveProperty('definitionsPath')
     expect(clientOptions).not.toHaveProperty('feeds')
     expect(clientOptions).not.toHaveProperty('seo')
@@ -80,11 +80,11 @@ describe('client theme options', () => {
         loadStrategy: 'interaction',
         types: { custom: registration },
       },
-      backgrounds: { page: backgroundLoader },
+      background: backgroundLoader,
     })
 
     const clientOptions = theme.define.__SYNCTROL_THEME_OPTIONS__
-    expect(clientOptions).not.toHaveProperty('backgrounds')
+    expect(clientOptions).not.toHaveProperty('background')
     expect(clientOptions.platforms).toEqual({ loadStrategy: 'interaction' })
     expect(JSON.parse(JSON.stringify(clientOptions))).toEqual(clientOptions)
   })
@@ -92,11 +92,11 @@ describe('client theme options', () => {
   it('registers backgrounds via Vite plugin, not define JSON', async () => {
     const theme = synctrolTheme({
       ...base,
-      backgrounds: { home: backgroundLoader },
+      background: backgroundLoader,
     })
 
     expect(theme.define.__SYNCTROL_THEME_OPTIONS__).not.toHaveProperty(
-      'backgrounds',
+      'background',
     )
     expect(theme.extendsBundlerOptions).toBeTypeOf('function')
 

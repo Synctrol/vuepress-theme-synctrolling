@@ -7,7 +7,6 @@ import type {
   SocialLink,
   SynctrolThemeOptions,
 } from './options.js'
-import { CONTENT_TYPES } from './types.js'
 import type { LocaleOptions, Multilanguage } from './types.js'
 
 type PlainObject = Record<string, unknown>
@@ -31,7 +30,7 @@ const TOP_LEVEL_FIELDS = [
   'release',
   'news',
   'platforms',
-  'backgrounds',
+  'background',
   'seo',
 ] as const
 
@@ -476,16 +475,10 @@ function validatePlatforms(value: unknown): void {
   }
 }
 
-function validateBackgrounds(value: unknown): void {
+function validateBackground(value: unknown): void {
   if (value === undefined) return
-  assertPlainObject(value, 'options.backgrounds')
-  assertKnownFields(value, CONTENT_TYPES, 'options.backgrounds')
-  for (const [contentType, loader] of Object.entries(value)) {
-    if (typeof loader !== 'function') {
-      throw new Error(
-        `Invalid options.backgrounds.${contentType}: expected a function`,
-      )
-    }
+  if (typeof value !== 'function') {
+    throw new Error('Invalid options.background: expected a function')
   }
 }
 
@@ -565,6 +558,6 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
   validateRelease(input.release)
   validateNews(input.news)
   validatePlatforms(input.platforms)
-  validateBackgrounds(input.backgrounds)
+  validateBackground(input.background)
   validateSeo(input.seo, input.mainLocale)
 }

@@ -41,7 +41,6 @@ export function resolvedOptions(
       tags: { urlSegment: 'tags', index: { enabled: true } },
     },
     platforms: { loadStrategy: 'interaction', types: {} },
-    backgrounds: {},
     seo: {
       name: { zh: 'Synctrol', en: 'Synctrol' },
       description: { zh: 'Synctrol 音乐团队官方网站', en: 'Official website of the Synctrol music team' },

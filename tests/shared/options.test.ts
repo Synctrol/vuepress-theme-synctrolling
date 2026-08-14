@@ -243,7 +243,7 @@ describe('resolveThemeOptions', () => {
       'options.platforms.types',
       { ...base, platforms: { types: [] } },
     ],
-    ['options.backgrounds', { ...base, backgrounds: [] }],
+    ['options.background', { ...base, background: [] }],
     ['options.seo', { ...base, seo: [] }],
     [
       'options.seo.organization',
@@ -309,6 +309,7 @@ describe('resolveThemeOptions', () => {
         },
       },
     ],
+    ['options.backgrounds', { ...base, backgrounds: {} }],
   ] as const)('rejects unsupported field %s', (field, input) => {
     expect(() => resolveRuntimeOptions(input)).toThrow(
       new RegExp(field.replaceAll('.', '\\.')),
@@ -811,12 +812,12 @@ describe('resolveThemeOptions', () => {
     const backgroundLoader = async () => ({
       default() {
         return {
-          update() {},
+          request() {},
           dispose() {},
         }
       },
     })
-    const backgrounds = { home: backgroundLoader }
+    const background = backgroundLoader
     const input: SynctrolThemeOptions = {
       ...base,
       topbarText,
@@ -838,7 +839,7 @@ describe('resolveThemeOptions', () => {
         loadStrategy: 'viewport',
         types: platformTypes,
       },
-      backgrounds,
+      background,
       seo: {
         ...base.seo,
         name: seoName,
@@ -874,14 +875,6 @@ describe('resolveThemeOptions', () => {
       component: { name: 'Replacement' },
       cspOrigins: () => [],
     }
-    backgrounds.home = async () => ({
-      default() {
-        return {
-          update() {},
-          dispose() {},
-        }
-      },
-    })
 
     expect(resolved.locales.ja.messages.draft).toBe('Draft before mutation')
     expect(resolved.locales.ja.dateFormat.dateStyle).toBe('short')
@@ -910,8 +903,7 @@ describe('resolveThemeOptions', () => {
     expect(resolved.platforms.types.youtube.component).toBe(component)
     expect(resolved.platforms.types.youtube.validate).toBe(validate)
     expect(resolved.platforms.types.youtube.cspOrigins).toBe(cspOrigins)
-    expect(resolved.backgrounds).not.toBe(backgrounds)
-    expect(resolved.backgrounds.home).toBe(backgroundLoader)
+    expect(resolved.background).toBe(backgroundLoader)
   })
 
   it('does not mutate the input object', () => {

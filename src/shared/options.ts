@@ -6,7 +6,6 @@ import {
 } from './options-validation.js'
 import type { BackgroundLoader } from './background.js'
 import type {
-  ContentType,
   LocaleKey,
   LocaleMessages,
   LocaleOptions,
@@ -132,7 +131,7 @@ export interface SynctrolThemeOptions {
   release?: ReleaseOptions
   news?: NewsOptions
   platforms?: PlatformsOptions
-  backgrounds?: Partial<Record<ContentType, BackgroundLoader>>
+  background?: BackgroundLoader
   seo: SeoOptions
 }
 
@@ -160,7 +159,7 @@ export interface ResolvedSynctrolThemeOptions {
   release: ReleaseOptions
   news: NewsOptions
   platforms: PlatformsOptions
-  backgrounds: Partial<Record<ContentType, BackgroundLoader>>
+  background?: BackgroundLoader
   seo: SeoOptions
 }
 
@@ -346,7 +345,7 @@ export function resolveThemeOptions(
       loadStrategy: input.platforms?.loadStrategy ?? 'interaction',
       types: copyPlatformTypes(input.platforms?.types),
     },
-    backgrounds: { ...(input.backgrounds ?? {}) },
+    background: input.background,
     seo: copySeo(input.seo),
   }
 }

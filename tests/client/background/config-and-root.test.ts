@@ -3,12 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveThemeOptions } from '../../../src/shared/options'
-import { exampleBackgrounds } from '../../fixtures/backgrounds/theme-config-example'
+import { exampleBackground } from '../../fixtures/backgrounds/theme-config-example'
 import { generateRootRouterHtml } from '../../../src/compiler/root-router-html'
 import { parseContentManifest } from '../../../src/compiler/manifest'
 import { isDiagnosticError } from '../../../src/compiler/diagnostics'
-import { BackgroundRuntime } from '../../../src/client/background/runtime'
-import type { ContentType } from '../../../src/shared/types'
 import type { SynctrolThemeOptions } from '../../../src/shared/options'
 
 /** Minimal valid theme *input* (not resolved) — mirror tests/shared/client-options.test.ts. */
@@ -42,33 +40,26 @@ afterEach(() => {
 })
 
 describe('background theme config and exclusions', () => {
-  it('accepts backgrounds keyed only by home/release/news/page', () => {
+  it('accepts background as a loader function', () => {
     const resolved = resolveThemeOptions({
       ...baseInput,
-      backgrounds: exampleBackgrounds,
+      background: exampleBackground,
     })
-    const keys = Object.keys(resolved.backgrounds).sort()
-    expect(keys).toEqual(['home', 'news', 'page', 'release'])
-    for (const key of keys as ContentType[]) {
-      expect(typeof resolved.backgrounds[key]).toBe('function')
-    }
+    expect(typeof resolved.background).toBe('function')
   })
 
-  it('defaults backgrounds to an empty object (solid fallback everywhere)', () => {
+  it('defaults background to undefined (solid fallback everywhere)', () => {
     const resolved = resolveThemeOptions({ ...baseInput })
-    expect(resolved.backgrounds).toEqual({})
+    expect(resolved.background).toBeUndefined()
   })
 
-  it('rejects unknown background keys such as splash', () => {
+  it('rejects the removed backgrounds map as an unknown field', () => {
     expect(() =>
       resolveThemeOptions({
         ...baseInput,
-        backgrounds: {
-          ...exampleBackgrounds,
-          splash: exampleBackgrounds.home,
-        } as SynctrolThemeOptions['backgrounds'],
-      }),
-    ).toThrow(/Unknown field options\.backgrounds\.splash/)
+        backgrounds: { home: exampleBackground },
+      } as SynctrolThemeOptions),
+    ).toThrow(/Unknown field options\.backgrounds/)
   })
 
   it('rejects background in content.yml via Plan 02 schema', () => {
@@ -91,31 +82,12 @@ describe('background theme config and exclusions', () => {
     const html = generateRootRouterHtml({
       options: resolveThemeOptions({
         ...baseInput,
-        backgrounds: exampleBackgrounds,
+        background: exampleBackground,
       }),
       base: '/',
     })
     expect(html).not.toMatch(/syn-background/i)
-    expect(html).not.toMatch(/BackgroundHost|BackgroundRuntime|virtual:synctrol-backgrounds/i)
+    expect(html).not.toMatch(/BackgroundSurface|BackgroundRuntime|virtual:synctrol-backgrounds/i)
     expect(html).toMatch(/synctrol:locale/)
-  })
-
-  it('runtime still paints solid when config omits a type even if others exist', async () => {
-    const host = document.createElement('div')
-    document.body.appendChild(host)
-    const runtime = new BackgroundRuntime({
-      backgrounds: { home: exampleBackgrounds.home },
-    })
-    runtime.setHost(host)
-    await runtime.sync({
-      contentType: 'page',
-      route: '/zh/about/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    expect(host.dataset.synBackground).toBe('solid')
-    runtime.dispose()
-    host.remove()
   })
 })

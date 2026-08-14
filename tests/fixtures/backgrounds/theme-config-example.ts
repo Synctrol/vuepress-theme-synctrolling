@@ -1,18 +1,13 @@
-import type { BackgroundModule } from '../../../src/shared/background'
+import type { BackgroundLoader } from '../../../src/shared/background'
 
-const emptyModule: BackgroundModule = {
+const emptyModule = {
   default() {
     return {
-      update() {},
+      request() {},
       dispose() {},
     }
   },
 }
 
-/** Canonical theme config shape — selection by content type only. */
-export const exampleBackgrounds = {
-  home: async () => emptyModule,
-  release: async () => emptyModule,
-  news: async () => emptyModule,
-  page: async () => emptyModule,
-}
+/** Canonical theme config shape — a single global background provider loader. */
+export const exampleBackground: BackgroundLoader = async () => emptyModule
