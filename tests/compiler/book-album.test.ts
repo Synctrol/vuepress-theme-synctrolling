@@ -493,8 +493,22 @@ album: {}
     expect(run).toThrowError(/Unknown field "credit\.master"/)
   })
 
-  it('rejects non-string credit values', () => {
-    const run = () =>
+  it('accepts string arrays and rejects other credit value types', () => {
+    const withArray = parseBook(
+      writeBook(`type: album
+title: Album
+credit:
+  illustrator:
+    - タイキ
+    - 助手
+album: {}
+`),
+      defs,
+      'zh',
+    ) as AlbumBook
+    expect(withArray.credit).toEqual({ illustrator: ['タイキ', '助手'] })
+
+    const number = () =>
       parseBook(
         writeBook(`type: album
 title: Album
@@ -505,7 +519,35 @@ album: {}
         defs,
         'zh',
       )
-    expect(run).toThrowError(/credit\.illustrator must be a string/)
+    expect(number).toThrowError(/credit\.illustrator must be a string or an array of strings/)
+
+    const mixed = () =>
+      parseBook(
+        writeBook(`type: album
+title: Album
+credit:
+  illustrator:
+    - タイキ
+    - 123
+album: {}
+`),
+        defs,
+        'zh',
+      )
+    expect(mixed).toThrowError(/credit\.illustrator must be a string or an array of strings/)
+
+    const empty = () =>
+      parseBook(
+        writeBook(`type: album
+title: Album
+credit:
+  illustrator: []
+album: {}
+`),
+        defs,
+        'zh',
+      )
+    expect(empty).toThrowError(/credit\.illustrator must be a string or an array of strings/)
   })
 
   it('rejects top-level desc and authors fields', () => {

@@ -14,7 +14,7 @@ describe('design tokens', () => {
     expect(css).toContain('--syn-border-subtle: 1px solid var(--syn-black);')
     expect(css).toContain('--syn-radius: 0;')
     expect(css).toContain('--syn-content-width: 760px;')
-    expect(css).toContain('--syn-artwork-width: 660px;')
+    expect(css).toContain('--syn-artwork-width: 500px;')
     expect(css).toContain('--syn-dock-gap: 12px;')
     expect(css).toContain('--syn-dock-control-size: 40px;')
     expect(css).not.toContain('--syn-dock-bottom')
