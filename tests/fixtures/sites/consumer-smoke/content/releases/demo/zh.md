@@ -13,6 +13,6 @@ description: 冒烟发布
 
 <AlbumCredit />
 
-<AlbumCovers />
+<Box><AlbumCovers /></Box>
 
 中文作品正文。

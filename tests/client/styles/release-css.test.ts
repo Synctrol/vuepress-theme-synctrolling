@@ -67,6 +67,8 @@ describe('release.css', () => {
     expect(css).toMatch(/\.syn-album-identity\s*\{[^}]*padding:\s*0/)
     expect(css).toMatch(/\.syn-album-credit\s*\{[^}]*border:\s*0/)
     expect(css).toMatch(/\.syn-album-credit\s*\{[^}]*padding:\s*0/)
+    expect(css).toMatch(/\.syn-album-covers\s*\{[^}]*border:\s*0/)
+    expect(css).toMatch(/\.syn-album-covers\s*\{[^}]*padding:\s*0/)
     expect(css).toMatch(/\.syn-main:has\(\.syn-release-detail\)\s*>\s*\.cell\s*\{[^}]*max-width:\s*600px/)
   })
 

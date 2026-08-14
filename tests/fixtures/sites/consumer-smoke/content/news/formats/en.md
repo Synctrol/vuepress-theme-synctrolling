@@ -27,4 +27,14 @@ console.log('code block')
 ![Sample image](./assets/sample.svg)
 
 <ButtonGroup align="stretch"><Button href="https://example.com/">Learn more</Button><Button href="/en/releases/">Releases</Button><Button>Subscribe</Button></ButtonGroup>
+<Notice type="warning" title="Note">This is a notice.</Notice>
+
+<Accordion label="FAQ">This body is hidden until the header is clicked.</Accordion>
+
+<Divider>More</Divider>
+
+<Figure caption="Fig 1: sample">![Sample image](./assets/sample.svg)</Figure>
+
+<Box>A bordered wrapper for arbitrary content.</Box>
+
 

@@ -203,6 +203,11 @@
   display: block;
 }
 
+.syn-album-covers {
+  border: 0;
+  padding: 0;
+}
+
 .syn-album-covers ul,
 .syn-gift-item__covers ul {
   display: grid;

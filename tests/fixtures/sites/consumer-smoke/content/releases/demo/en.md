@@ -11,7 +11,7 @@ description: Smoke release
 
 <TabView><TabPanel label="Preview"><AlbumPlatform platform="soundcloud" /></TabPanel><TabPanel label="Listen & Get"><AlbumPlatform platform="spotify" /></TabPanel></TabView>
 
-<AlbumCovers />
+<Box><AlbumCovers /></Box>
 
 <AlbumCredit />
 
