@@ -27,7 +27,11 @@ console.log('代码块')
 ![示例图片](./assets/sample.svg)
 
 <ButtonGroup align="stretch"><Button href="https://example.com/">了解更多</Button><Button href="/zh/releases/">作品</Button><Button>订阅</Button></ButtonGroup>
-<Notice type="warning" title="注意">这是一条提示信息。</Notice>
+<Notice type="info" title="信息">这是一条信息提示。</Notice>
+
+<Notice type="warning" title="注意">这是一条警告提示。</Notice>
+
+<Notice type="success" title="成功">这是一条成功提示。</Notice>
 
 <Accordion label="常见问题">这里是折叠内容，点击标题展开。</Accordion>
 

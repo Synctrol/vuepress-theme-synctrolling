@@ -662,9 +662,39 @@ body {
 }
 
 .syn-notice {
-  border-inline-start: var(--syn-border-strong);
+  --syn-notice-accent: var(--syn-fg);
+  --syn-notice-tint: transparent;
+  border-inline-start: 3px solid var(--syn-notice-accent);
+  background: var(--syn-notice-tint);
   margin-block: 1.5rem;
-  padding-inline-start: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.syn-notice[data-type='info'] {
+  --syn-notice-accent: #3b82f6;
+  --syn-notice-tint: rgba(59, 130, 246, 0.08);
+}
+
+.syn-notice[data-type='warning'] {
+  --syn-notice-accent: #f59e0b;
+  --syn-notice-tint: rgba(245, 158, 11, 0.1);
+}
+
+.syn-notice[data-type='success'] {
+  --syn-notice-accent: #10b981;
+  --syn-notice-tint: rgba(16, 185, 129, 0.1);
+}
+
+:root[data-theme='dark'] .syn-notice[data-type='info'] {
+  --syn-notice-tint: rgba(59, 130, 246, 0.16);
+}
+
+:root[data-theme='dark'] .syn-notice[data-type='warning'] {
+  --syn-notice-tint: rgba(245, 158, 11, 0.16);
+}
+
+:root[data-theme='dark'] .syn-notice[data-type='success'] {
+  --syn-notice-tint: rgba(16, 185, 129, 0.16);
 }
 
 .syn-notice__title {
@@ -672,6 +702,7 @@ body {
   font-size: 0.8rem;
   letter-spacing: 1px;
   text-transform: uppercase;
+  color: var(--syn-notice-accent);
 }
 
 .syn-notice__body > :first-child {

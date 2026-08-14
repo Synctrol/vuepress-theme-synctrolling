@@ -141,8 +141,15 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-box\s*\{[^}]*padding:\s*1rem/)
     expect(css).toMatch(/\.syn-box\s*>\s*:first-child\s*\{[^}]*margin-block-start:\s*0/)
 
-    expect(css).toMatch(/\.syn-notice\s*\{[^}]*border-inline-start:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-notice\s*\{[^}]*border-inline-start:\s*3px\s+solid\s+var\(--syn-notice-accent\)/)
+    expect(css).toMatch(/\.syn-notice\s*\{[^}]*background:\s*var\(--syn-notice-tint\)/)
+    expect(css).toMatch(/\.syn-notice\[data-type='info'\]\s*\{[^}]*--syn-notice-accent:\s*#3b82f6/)
+    expect(css).toMatch(/\.syn-notice\[data-type='warning'\]\s*\{[^}]*--syn-notice-accent:\s*#f59e0b/)
+    expect(css).toMatch(/\.syn-notice\[data-type='success'\]\s*\{[^}]*--syn-notice-accent:\s*#10b981/)
+    expect(css).toMatch(/\.syn-notice\[data-type='info'\]\s*\{[^}]*--syn-notice-tint:\s*rgba\(59,\s*130,\s*246,\s*0\.08\)/)
+    expect(css).toMatch(/:root\[data-theme='dark'\]\s*\.syn-notice\[data-type='info'\]\s*\{[^}]*--syn-notice-tint:\s*rgba\(59,\s*130,\s*246,\s*0\.16\)/)
     expect(css).toMatch(/\.syn-notice__title\s*\{[^}]*text-transform:\s*uppercase/)
+    expect(css).toMatch(/\.syn-notice__title\s*\{[^}]*color:\s*var\(--syn-notice-accent\)/)
 
     expect(css).toMatch(/\.syn-accordion\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
     expect(css).toMatch(/\.syn-accordion__header\s*\{[^}]*display:\s*flex/)
