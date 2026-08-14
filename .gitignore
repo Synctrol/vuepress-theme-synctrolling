@@ -8,3 +8,10 @@ coverage/
 # VuePress runtime artifacts (site source + consumer fixture)
 **/.vuepress/.temp/
 **/.vuepress/.cache/
+
+# Local session artifacts (browser screenshots, compile caches)
+.openchamber/
+.tmp-test/
+
+# Consumer fixture transient install lockfile
+tests/fixtures/sites/*/package-lock.json
