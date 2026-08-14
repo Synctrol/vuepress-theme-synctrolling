@@ -156,7 +156,8 @@ body {
   flex-direction: column;
   overflow-y: auto;
   border-right: var(--syn-border-strong);
-  padding: 24px 16px;
+  --syn-main-padding-inline: 16px;
+  padding: 24px var(--syn-main-padding-inline);
 }
 
 .syn-main > .cell {
@@ -169,6 +170,7 @@ body {
 
 /* Home page: symmetric 24px padding (other pages keep 24px 16px). */
 .syn-main:has(.syn-home-logo) {
+  --syn-main-padding-inline: 24px;
   padding: 24px;
 }
 
@@ -761,9 +763,10 @@ body {
   position: relative;
   display: block;
   box-sizing: border-box;
-  width: 100%;
+  width: auto;
   min-height: 120px;
   margin-block: 1.5rem;
+  margin-inline: calc(-1 * var(--syn-main-padding-inline, 16px));
   padding: 1rem 1.25rem;
   text-align: right;
   text-decoration: none;
@@ -786,7 +789,7 @@ body {
       var(--syn-new-album-scrim)
     ),
     var(--syn-new-album-image, none);
-  background-size: 100% 100%, contain;
+  background-size: 100% 100%, cover;
   background-repeat: no-repeat;
   background-position: 0 0, var(--syn-new-album-position, right center);
 }
