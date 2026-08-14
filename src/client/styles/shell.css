@@ -755,35 +755,37 @@ body {
 }
 
 .syn-new-album {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
-  margin-block: 1.5rem;
-}
-
-.syn-new-album__cover {
   display: block;
-}
-
-.syn-new-album__cover img {
-  display: block;
-  width: 180px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
+  box-sizing: border-box;
+  width: 100%;
   border: var(--syn-border-strong);
+  margin-block: 1.5rem;
+  padding: 1rem 1.25rem;
+  text-align: right;
+  text-decoration: none;
+  color: var(--syn-white);
+  background-color: var(--syn-black);
+  background-size: cover;
+  background-position: center;
 }
 
 .syn-new-album__title {
-  font-family: var(--syn-font-display);
+  margin: 0;
+  font-family: var(--syn-font-body);
   font-size: 1.25rem;
+  font-weight: 700;
   letter-spacing: 1px;
-  margin: 0.75rem 0 0.25rem;
+}
+
+.syn-new-album__arrow {
+  display: inline-block;
+  margin-inline-start: 0.35rem;
+  font-size: 0.9em;
+  transform: translateY(-0.15em);
 }
 
 .syn-new-album__intro {
-  margin: 0;
-  max-width: 320px;
+  margin: 0.5rem 0 0;
   font-size: 0.75rem;
-  color: var(--syn-sub-title-fg);
+  color: var(--syn-gray-300);
 }

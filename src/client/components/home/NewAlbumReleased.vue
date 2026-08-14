@@ -6,30 +6,46 @@ const props = defineProps<{
   title: string
   text?: string
   href?: string
-  cover: string
+  background: string
 }>()
 
-const coverSrc = computed(() => {
+const rootStyle = computed(() => {
   try {
-    return resolveContentAsset(props.cover)
+    const src = resolveContentAsset(props.background)
+    return {
+      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url("${src}")`,
+    }
   } catch {
     console.warn(
-      `NewAlbumReleased: unknown package asset "${props.cover}"`,
+      `NewAlbumReleased: unknown package asset "${props.background}"`,
     )
-    return ''
+    return {}
   }
 })
 </script>
 
 <template>
-  <section class="syn-new-album" data-testid="new-album-released">
-    <a v-if="href" :href="href" class="syn-new-album__cover">
-      <img v-if="coverSrc" :src="coverSrc" :alt="title" />
-    </a>
-    <div v-else class="syn-new-album__cover">
-      <img v-if="coverSrc" :src="coverSrc" :alt="title" />
-    </div>
-    <h2 class="syn-new-album__title">{{ title }}</h2>
+  <a
+    v-if="href"
+    :href="href"
+    class="syn-new-album"
+    data-testid="new-album-released"
+    :style="rootStyle"
+  >
+    <h2 class="syn-new-album__title">
+      {{ title }}<span class="syn-new-album__arrow" aria-hidden="true">↗</span>
+    </h2>
     <p v-if="text" class="syn-new-album__intro">{{ text }}</p>
-  </section>
+  </a>
+  <div
+    v-else
+    class="syn-new-album"
+    data-testid="new-album-released"
+    :style="rootStyle"
+  >
+    <h2 class="syn-new-album__title">
+      {{ title }}<span class="syn-new-album__arrow" aria-hidden="true">↗</span>
+    </h2>
+    <p v-if="text" class="syn-new-album__intro">{{ text }}</p>
+  </div>
 </template>

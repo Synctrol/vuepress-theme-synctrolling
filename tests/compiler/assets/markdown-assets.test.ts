@@ -56,7 +56,7 @@ describe('assertNoRawHtmlRelativeAssets', () => {
   it('extracts package asset refs passed as component props', () => {
     expect(
       extractMarkdownAssetRefs(
-        '<NewAlbumReleased title="X" cover="./assets/new-album.svg" />',
+        '<NewAlbumReleased title="X" background="./assets/new-album.svg" />',
       ),
     ).toEqual(['./assets/new-album.svg'])
   })

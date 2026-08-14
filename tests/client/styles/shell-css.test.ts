@@ -154,10 +154,13 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-figure\s*\{[^}]*text-align:\s*center/)
     expect(css).toMatch(/\.syn-figure__caption\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
 
-    expect(css).toMatch(/\.syn-new-album\s*\{[^}]*align-items:\s*flex-end/)
+    expect(css).toMatch(/\.syn-new-album\s*\{[^}]*display:\s*block/)
     expect(css).toMatch(/\.syn-new-album\s*\{[^}]*text-align:\s*right/)
-    expect(css).toMatch(/\.syn-new-album__cover\s+img\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
-    expect(css).toMatch(/\.syn-new-album__title\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
+    expect(css).toMatch(/\.syn-new-album\s*\{[^}]*text-decoration:\s*none/)
+    expect(css).toMatch(/\.syn-new-album\s*\{[^}]*background-size:\s*cover/)
+    expect(css).toMatch(/\.syn-new-album__title\s*\{[^}]*font-family:\s*var\(--syn-font-body\)/)
+    expect(css).toMatch(/\.syn-new-album__arrow\s*\{[^}]*/)
+    expect(css).not.toMatch(/\.syn-new-album__cover/)
   })
 
   it('centers release, news and page headings with roomy vertical margins', () => {

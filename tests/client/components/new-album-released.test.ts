@@ -3,32 +3,39 @@ import { mount } from '@vue/test-utils'
 import NewAlbumReleased from '../../../src/client/components/home/NewAlbumReleased.vue'
 
 vi.mock('../../../src/client/assets/resolve-content-asset.js', () => ({
-  resolveContentAsset: (ref: string) => `/assets/content/home/${ref.replace('./assets/', '')}.hash.webp`,
+  resolveContentAsset: (ref: string) => `/assets/content/home/${ref.replace('./assets/', '')}.hash.svg`,
 }))
 
 describe('NewAlbumReleased', () => {
-  it('renders the resolved cover with title and intro text', () => {
+  it('renders a fully clickable block with title, arrow and intro', () => {
     const wrapper = mount(NewAlbumReleased, {
       props: {
         title: 'NO.9 MUSEUM',
         text: '九号博物馆原声带',
-        cover: './assets/new-album.svg',
+        href: '/zh/releases/demo/',
+        background: './assets/new-album.svg',
       },
     })
-    expect(wrapper.find('[data-testid="new-album-released"]').exists()).toBe(true)
-    const img = wrapper.get('img')
-    expect(img.attributes('src')).toBe('/assets/content/home/new-album.svg.hash.webp')
-    expect(img.attributes('alt')).toBe('NO.9 MUSEUM')
-    expect(wrapper.get('.syn-new-album__title').text()).toBe('NO.9 MUSEUM')
-    expect(wrapper.get('.syn-new-album__intro').text()).toBe('九号博物馆原声带')
-    expect(wrapper.find('a').exists()).toBe(false)
+    const root = wrapper.get('[data-testid="new-album-released"]')
+    expect(root.element.tagName).toBe('A')
+    expect(root.attributes('href')).toBe('/zh/releases/demo/')
+    expect(root.get('.syn-new-album__title').text()).toContain('NO.9 MUSEUM')
+    expect(root.get('.syn-new-album__arrow').text()).toBe('↗')
+    expect(root.get('.syn-new-album__intro').text()).toBe('九号博物馆原声带')
+    const rootStyle = (wrapper.vm as unknown as {
+      rootStyle: { backgroundImage?: string }
+    }).rootStyle
+    expect(rootStyle.backgroundImage).toContain('new-album.svg.hash.svg')
+    expect(root.find('img').exists()).toBe(false)
+    expect(root.find('a.syn-new-album__cover').exists()).toBe(false)
   })
 
-  it('links the cover when href is provided and hides the intro when omitted', () => {
+  it('renders a non-clickable block without href and hides the intro when omitted', () => {
     const wrapper = mount(NewAlbumReleased, {
-      props: { title: 'NO.9 MUSEUM', href: '/zh/releases/demo/', cover: './assets/new-album.svg' },
+      props: { title: 'NO.9 MUSEUM', background: './assets/new-album.svg' },
     })
-    expect(wrapper.get('a').attributes('href')).toBe('/zh/releases/demo/')
-    expect(wrapper.find('.syn-new-album__intro').exists()).toBe(false)
+    const root = wrapper.get('[data-testid="new-album-released"]')
+    expect(root.element.tagName).toBe('DIV')
+    expect(root.find('.syn-new-album__intro').exists()).toBe(false)
   })
 })

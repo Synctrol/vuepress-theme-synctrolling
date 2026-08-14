@@ -10,4 +10,9 @@ WE SHAPE WAVE
 AND DESCRIBE SOUND
 :::
 
-<NewAlbumReleased title="NO.9 MUSEUM" text="The No.9 Museum OST is out now." href="/en/releases/demo/" cover="./assets/new-album.svg" />
+<NewAlbumReleased
+    title="NO.9 MUSEUM"
+    text="The No.9 Museum OST is out now." 
+    href="/en/releases/demo/"
+    background="./assets/new-album.svg"
+/>
