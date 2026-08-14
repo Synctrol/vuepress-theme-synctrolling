@@ -82,25 +82,103 @@
   color: var(--syn-white);
 }
 
-.syn-album-discs,
-.syn-album-covers,
-.syn-album-links,
-.syn-gift-book-body {
+/* Shared shell for album sections assembled from markdown. */
+.syn-album-section {
   border: var(--syn-border-strong);
   margin-block: 1.5rem;
   padding: 1rem;
 }
 
+.syn-album-section h2 {
+  margin-block-start: 0;
+}
+
+.syn-album-tracklist .syn-album-disc + .syn-album-disc {
+  margin-block-start: 1.5rem;
+}
+
+.syn-album-tracks {
+  margin: 0;
+  padding: 0;
+}
+
 .syn-album-track {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr;
   gap: 0.75rem;
   border-block-start: var(--syn-border-subtle);
   padding-block: 0.5rem;
   list-style: none;
 }
 
-.syn-album-tracks {
+.syn-album-track__label {
+  min-width: 3rem;
+  text-align: right;
+}
+
+.syn-album-track__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.syn-album-track__artists {
+  font-size: 0.75em;
+  color: var(--syn-sub-title-fg);
+}
+
+.syn-album-credit dl {
+  margin: 0;
+}
+
+.syn-album-credit__row {
+  display: grid;
+  grid-template-columns: 1fr 1.618fr;
+  gap: 0.75rem;
+  border-block-start: var(--syn-border-subtle);
+  padding-block: 0.5rem;
+}
+
+.syn-album-credit__row dt {
+  font-weight: 600;
+}
+
+.syn-album-credit__row dd {
+  margin: 0;
+}
+
+.syn-album-covers ul,
+.syn-gift-item__covers ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
   margin: 0;
   padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .syn-album-covers ul,
+  .syn-gift-item__covers ul {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.syn-album-covers img,
+.syn-gift-item__covers img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.syn-album-previews .syn-platform-embed {
+  width: 100%;
+}
+
+.syn-gift-item {
+  border: var(--syn-border-strong);
+  margin-block: 1.5rem;
+  padding: 1rem;
 }
