@@ -2,8 +2,7 @@ import { defineComponent, h } from 'vue'
 import type { PropType } from 'vue'
 import type { ContentDefinitions, LocaleKey, NormalizedPlatformEntry } from '../../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../../shared/options.js'
-import { PlatformEmbed } from './PlatformEmbed.js'
-import { resolvePlatformLabel } from './resolve-platform-label.js'
+import { PlatformEntry } from './PlatformEntry.js'
 
 export const PlatformLinks = defineComponent({
   name: 'PlatformLinks',
@@ -23,6 +22,10 @@ export const PlatformLinks = defineComponent({
     loadStrategy: {
       type: String as PropType<'interaction' | 'viewport'>,
       required: true,
+    },
+    autoActivate: {
+      type: Boolean,
+      default: false,
     },
     locale: { type: String as PropType<LocaleKey>, required: true },
     mainLocale: { type: String as PropType<LocaleKey>, required: true },
@@ -48,30 +51,19 @@ export const PlatformLinks = defineComponent({
         h(
           'ul',
           { class: 'syn-platform-links__list' },
-          props.entries.map((entry) => {
-            const definition = props.definitions[entry.platform]
-            const type = definition.type
-            const registration = props.types[type]
-            const label = resolvePlatformLabel({
+          props.entries.map((entry) =>
+            h(PlatformEntry, {
               entry,
-              definitionName: definition.name,
+              definitions: props.definitions,
+              types: props.types,
+              loadStrategy: props.loadStrategy,
+              autoActivate: props.autoActivate,
               locale: props.locale,
               mainLocale: props.mainLocale,
-            })
-            const body =
-              type === 'link'
-                ? h(registration.component, { entry, title: label.text })
-                : h(PlatformEmbed, {
-                    entry,
-                    platformName: label.text,
-                    loadStrategy: props.loadStrategy,
-                    messages: props.messages,
-                    typeRegistration: registration,
-                  })
-            return h('li', { class: 'syn-platform-links__item', key: entry.platform + label.text }, [
-              body,
-            ])
-          }),
+              messages: props.messages,
+              key: entry.platform,
+            }),
+          ),
         ),
       ])
   },

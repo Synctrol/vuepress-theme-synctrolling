@@ -99,6 +99,48 @@ describe('PlatformEmbed', () => {
     vi.unstubAllGlobals()
   })
 
+  it('autoActivate loads the embed without interaction', async () => {
+    const wrapper = mount(PlatformEmbed, {
+      props: {
+        entry: { platform: 'youtube', videoId: 'dQw4w9WgXcQ', autoplay: false },
+        platformName: 'YouTube',
+        loadStrategy: 'interaction',
+        autoActivate: true,
+        messages,
+        typeRegistration: {
+          validate: (e: unknown) => e as never,
+          component: FakePlayer,
+          cspOrigins: () => ['https://www.youtube.com'],
+          fallbackUrl: () => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        },
+      },
+    })
+    expect(wrapper.find('button').exists()).toBe(false)
+    expect(wrapper.find('iframe').exists()).toBe(true)
+  })
+
+  it('autoActivate flip from false to true activates a dormant embed', async () => {
+    const wrapper = mount(PlatformEmbed, {
+      props: {
+        entry: { platform: 'youtube', videoId: 'dQw4w9WgXcQ', autoplay: false },
+        platformName: 'YouTube',
+        loadStrategy: 'interaction',
+        autoActivate: false,
+        messages,
+        typeRegistration: {
+          validate: (e: unknown) => e as never,
+          component: FakePlayer,
+          cspOrigins: () => ['https://www.youtube.com'],
+          fallbackUrl: () => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        },
+      },
+    })
+    expect(wrapper.find('button').exists()).toBe(true)
+    expect(wrapper.find('iframe').exists()).toBe(false)
+    await wrapper.setProps({ autoActivate: true })
+    expect(wrapper.find('iframe').exists()).toBe(true)
+  })
+
   it('failure falls back to external link when fallbackUrl exists', async () => {
     const Broken = defineComponent({
       name: 'BrokenPlayer',

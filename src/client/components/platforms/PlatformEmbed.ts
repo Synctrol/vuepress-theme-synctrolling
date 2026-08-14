@@ -11,6 +11,7 @@ export const PlatformEmbed = defineComponent({
     entry: { type: Object, required: true },
     platformName: { type: String, required: true },
     loadStrategy: { type: String as PropType<LoadStrategy>, required: true },
+    autoActivate: { type: Boolean, default: false },
     messages: {
       type: Object as PropType<{
         activateEmbed: string
@@ -63,6 +64,14 @@ export const PlatformEmbed = defineComponent({
     })
 
     onBeforeUnmount(() => observer?.disconnect())
+
+    watch(
+      () => props.autoActivate,
+      (value) => {
+        if (value) activate()
+      },
+      { immediate: true },
+    )
 
     watch(
       () => props.loadStrategy,
