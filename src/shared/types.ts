@@ -39,7 +39,6 @@ export interface LocaleMessages {
   nextPage: string
   updated: string
   album: string
-  tracklist: string
   disc: string
   track: string
   covers: string
@@ -55,6 +54,8 @@ export interface LocaleMessages {
   paginatedTitle: string
   tagArchiveTitle: string
   previewSectionTitle: string
+  credits: string
+  creditCopyright: string
   creditCatalogNumber: string
   creditIllustrator: string
   creditDesigner: string
@@ -221,7 +222,7 @@ export const BOOK_CREDIT_KEYS = [
 
 export type BookCreditKey = (typeof BOOK_CREDIT_KEYS)[number]
 
-export type BookCredit = Partial<Record<BookCreditKey, string>>
+export type BookCredit = Partial<Record<BookCreditKey, string | string[]>>
 
 export interface BookBase {
   title: Multilanguage

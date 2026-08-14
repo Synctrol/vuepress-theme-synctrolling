@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { resolveMultilanguage } from '../../../shared/multilanguage.js'
 import { formatMessage } from '../../../shared/release/numbering.js'
 import { useReleasePage } from './release-context.js'
-import type { NumberedDisc, NumberedTrack } from '../../../shared/release/numbering.js'
+import type { NumberedTrack } from '../../../shared/release/numbering.js'
 import type { Multilanguage } from '../../../shared/types.js'
 
 const context = useReleasePage()
@@ -14,10 +14,6 @@ const album = computed(() =>
 function resolved(value: Multilanguage) {
   const r = resolveMultilanguage(value, context!.locale, context!.mainLocale)
   return { text: r.text, lang: r.fellBack ? r.locale : undefined }
-}
-
-function discTitle(disc: NumberedDisc) {
-  return resolved(disc.title)
 }
 
 function trackTitle(track: NumberedTrack) {
@@ -31,17 +27,14 @@ function trackTitle(track: NumberedTrack) {
     class="syn-album-section syn-album-tracklist"
     data-testid="album-tracklist"
   >
-    <h2>{{ context!.messages.tracklist }}</h2>
     <article
       v-for="disc in album.discs"
       :id="disc.anchor"
       :key="disc.anchor"
       class="syn-album-disc"
     >
-      <h3>
+      <h3 v-if="album.discs.length > 1">
         {{ formatMessage(context!.messages.disc, { number: disc.number }) }}
-        ·
-        <span :lang="discTitle(disc).lang">{{ discTitle(disc).text }}</span>
       </h3>
       <ol class="syn-album-tracks">
         <li

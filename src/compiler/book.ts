@@ -254,8 +254,16 @@ function parseCredit(
   for (const key of Reflect.ownKeys(raw)) {
     if (typeof key !== 'string') continue
     const entry = raw[key]
-    if (typeof entry !== 'string') {
-      invalid('INVALID_BOOK', `credit.${key} must be a string`, path)
+    const validArray =
+      Array.isArray(entry) &&
+      entry.length > 0 &&
+      entry.every((item) => typeof item === 'string')
+    if (typeof entry !== 'string' && !validArray) {
+      invalid(
+        'INVALID_BOOK',
+        `credit.${key} must be a string or an array of strings`,
+        path,
+      )
     }
     credit[key as BookCreditKey] = entry
   }
