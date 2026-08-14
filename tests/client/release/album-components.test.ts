@@ -262,7 +262,7 @@ describe('album components', () => {
     expect(wrapper.find('#disc-1').exists()).toBe(true)
     expect(wrapper.get('#disc-1-track-1').text()).toContain('第一曲')
     expect(wrapper.get('#disc-1-track-1').text()).toContain('Synctrol / LelouchSound')
-    expect(wrapper.get('#disc-1-track-1').text()).toContain('曲目描述')
+    expect(wrapper.get('#disc-1-track-1').text()).not.toContain('曲目描述')
     expect(wrapper.find('[data-testid="track-row"]').text()).not.toContain('4:32')
   })
 
@@ -270,6 +270,29 @@ describe('album components', () => {
     const wrapper = mount(AlbumTracklist, mountWith(albumModel))
     expect(wrapper.find('.syn-album-disc h3').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('第 1 碟')
+  })
+
+  it('AlbumTracklist hides artists and desc via showArtist and showDesc props', () => {
+    const hidden = mount(AlbumTracklist, {
+      props: { showArtist: false, showDesc: false },
+      ...mountWith(albumModel),
+    })
+    expect(hidden.find('.syn-album-track__artists').exists()).toBe(false)
+    expect(hidden.find('[data-testid="track-desc"]').exists()).toBe(false)
+    expect(hidden.get('#disc-1-track-1').text()).toContain('第一曲')
+
+    const shown = mount(AlbumTracklist, {
+      props: { showDesc: true },
+      ...mountWith(albumModel),
+    })
+    expect(shown.find('.syn-album-track__artists').exists()).toBe(true)
+    expect(shown.find('[data-testid="track-desc"]').exists()).toBe(true)
+  })
+
+  it('AlbumTracklist hides desc by default', () => {
+    const wrapper = mount(AlbumTracklist, mountWith(albumModel))
+    expect(wrapper.find('.syn-album-track__artists').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="track-desc"]').exists()).toBe(false)
   })
 
   it('AlbumTracklist numbers multi-disc headers without disc titles', () => {

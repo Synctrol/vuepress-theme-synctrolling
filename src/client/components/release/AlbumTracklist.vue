@@ -6,6 +6,17 @@ import { useReleasePage } from './release-context.js'
 import type { NumberedTrack } from '../../../shared/release/numbering.js'
 import type { Multilanguage } from '../../../shared/types.js'
 
+const props = withDefaults(
+  defineProps<{
+    showArtist?: boolean
+    showDesc?: boolean
+  }>(),
+  {
+    showArtist: true,
+    showDesc: false,
+  },
+)
+
 const context = useReleasePage()
 const album = computed(() =>
   context && context.model.book?.type === 'album' ? context.model.book : undefined,
@@ -51,11 +62,13 @@ function trackTitle(track: NumberedTrack) {
             <span class="syn-album-track__title" :lang="trackTitle(track).lang">
               {{ trackTitle(track).text }}
             </span>
-            <span class="syn-album-track__artists">{{
-              track.artists.join(' / ')
-            }}</span>
             <span
-              v-if="track.desc"
+              v-if="props.showArtist"
+              class="syn-album-track__artists"
+              >{{ track.artists.join(' / ') }}</span
+            >
+            <span
+              v-if="props.showDesc && track.desc"
               class="syn-album-track__desc"
               :lang="resolved(track.desc).lang"
               data-testid="track-desc"
