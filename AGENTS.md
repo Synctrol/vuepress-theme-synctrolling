@@ -23,7 +23,7 @@
 1. **四种内容类型**：`home`（语言首页）、`release`（作品）、`news`（新闻）、`page`（团队、成员与普通页）。
 2. **多语言发布**：所有内容路由带 locale 前缀；缺失译文时生成回退页；可用 `showDrafts` 预览草稿。
 3. **根语言路由器**：在站点根 `/index.html` 按「已保存语言 → 浏览器语言 → `mainLocale`」选择语言首页，并以 `location.replace()` 跳转。
-4. **作品系统**：方图索引网格、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumCopyright / AlbumPreviews / AlbumPlatformLinks / AlbumTracklist / AlbumCredit / AlbumCovers / GiftItem）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
+4. **作品系统**：方图索引网格、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / AlbumPlatform / GiftItem / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
 5. **新闻系统**：按日期倒序的索引、标签归档、分页。
 6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
 7. **按内容类型加载的背景模块**：Home / Release / News / Page 各自对应一个 TypeScript 背景入口。
@@ -41,9 +41,9 @@
 
 顶层字段：`type`（`album` / `gift`）、`title`、`copyright`、`credit`、`album`（或 `gift`）。顶层 `desc` 与 `authors` 已退役，写出它们会得到 UNKNOWN_FIELD 构建错误；子层的 `disc.desc`、`track.desc`、`gift.items[].desc` 仍然有效。
 
-`credit` 是固定键集合：`catalogNumber`、`illustrator`、`designer`、`mastering`、`mix`、`webDesign`、`producer`、`specialThanks`，值都是字符串；未知键是构建错误。
+`credit` 是固定键集合：`catalogNumber`、`illustrator`、`designer`、`mastering`、`mix`、`webDesign`、`producer`、`specialThanks`，值可以是字符串或非空字符串数组（数组每个值独占一行渲染）；未知键是构建错误。顶层 `copyright` 由 `AlbumCredit` 渲染为该区块的最后一行（标签「版权」/「Copyright」）。
 
-试听分类：注册类型带 `preview: true` 的平台条目渲染进试听区（`AlbumPreviews`）；内置音频类型 `soundcloud_player`、`audio_player`、`netease_player` 已标记 preview；自定义类型可在注册时声明 `preview: true`。其余数字平台链接由 `AlbumPlatformLinks` 渲染。
+试听分类：注册类型带 `preview: true` 的平台条目进入 `previewLinks`；内置音频类型 `soundcloud_player`、`audio_player`、`netease_player` 已标记 preview；自定义类型可在注册时声明 `preview: true`。其余数字平台链接进入 `platformLinks`。页面用 `<AlbumPlatform platform="...">` 按平台 key 选取单条渲染（先在 `previewLinks` 中找，再到 `platformLinks`；未找到条目时 warn 且不渲染，key 对应 definitions.yml），常与通用标签页组合：`<TabView>` 内嵌 `<TabPanel label="...">`，默认选中第一个面板，活动面板内的 embed 在激活（含初始默认面板）时自动加载，切走时已加载的 embed 保留状态。`loadStrategy` 只作用于标签页之外的 embed（`GiftItem` 或独立放置的 `AlbumPlatform`）。
 
 ### 语言键与 `lang`
 
@@ -183,7 +183,7 @@ export default defineUserConfig({
 | `release.index.desktopGridColumns` | `3` | 1–6 |
 | `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段 |
 | `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
-| `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；不支持立即加载 embed |
+| `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 embed（如 `GiftItem`）；`TabView` 活动面板内的 embed 在激活时自动加载 |
 | `backgrounds` | 空 | `{ home, release, news, page }` 各自 `() => import('./backgrounds/...')` |
 
 `zh` / `en` 的 `messages` 可部分覆盖主题内置文案；其他 locale key 必须提供完整 `LocaleMessages`。未知选项字段是构建错误。
@@ -339,7 +339,7 @@ import 'vuepress-theme-synctrolling/styles.css'
 - 多语言开启时，所有内容页都带 locale 前缀；Home 不能自定义 path。
 - 引用未声明的 tag / platform、未知 YAML 字段、嵌套内容包、同类型重复 slug、最终路由冲突、缺失资源都会导致构建失败。
 - `date` / `updated` 必须是 `YYYY-MM-DD`；`updated` 不得早于 `date`。
-- 平台 embed 只在交互或进入视口后加载；不能配置为立即加载。
+- 平台 embed 只在交互或进入视口后加载；不能配置为立即加载。例外：`TabView` 的活动面板（含初始挂载的默认面板）在激活时自动加载其 embed。
 - 展示字体默认使用 `'Archivo Black', 'Arial Black', Arial, ...`。可用 `featureFont` 覆盖展示字体栈。npm 包不附带 Archivo Black 的 WOFF2 文件，仓库里也没有可分发的授权字体。消费站点如需该字体，应自行托管或通过页面头部引入。
 - `.vuepress/public` 只放固定文件名资源（如 `CNAME`、`robots.txt`）。社交默认图与组织 logo 走全局哈希资源管线。
 

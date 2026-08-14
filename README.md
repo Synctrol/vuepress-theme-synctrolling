@@ -278,20 +278,18 @@ album:
 <AlbumArtwork />
 <AlbumIdentity />
 <AlbumTracklist />
-<AlbumPreviews />
-<AlbumPlatformLinks />
+<TabView><TabPanel label="试听"><AlbumPlatform platform="soundcloud" /></TabPanel><TabPanel label="收听与获取"><AlbumPlatform platform="spotify" /></TabPanel></TabView>
 <AlbumCredit />
 <AlbumCovers />
-<AlbumCopyright />
 <GiftItem id="poster" />
 ```
 
 - `<AlbumArtwork />` 渲染 content.yml 的 artwork（含占位图回退）。
-- `<AlbumIdentity />` 渲染专辑标题；`<AlbumCopyright />` 渲染版权文本。
-- `<AlbumTracklist />` 渲染曲目表；`<AlbumCovers />` 渲染封面组。
-- `<AlbumPreviews />` 渲染试听链接：definitions.yml 中声明为 soundcloud_player / audio_player / netease_player 类型（或自定义类型带 preview: true）的平台条目。
-- `<AlbumPlatformLinks />` 渲染其余数字平台链接。
-- `<AlbumCredit />` 按固定顺序渲染 credit：catalogNumber、illustrator、designer、mastering、mix、webDesign、producer、specialThanks。
+- `<AlbumIdentity />` 渲染专辑标题。
+- `<AlbumTracklist />` 渲染曲目表（不带区块标题与边框）；`<AlbumCovers />` 渲染封面组。
+- `<TabView>` 与 `<TabPanel label="...">` 组成通用标签页：默认选中第一个面板，切换到哪个面板就自动加载该面板内的 embed。
+- `<AlbumPlatform platform="...">` 渲染 book.yml 中该平台的条目（试听条目或数字平台链接条目都由此组件选取）。`platform` 对应 definitions.yml 中的平台 key，未找到条目时不渲染。借助它，不同语言版本可以选不同的平台：例如中文页放 `<AlbumPlatform platform="netease" />`，英文页放 `<AlbumPlatform platform="soundcloud" />`。
+- `<AlbumCredit />` 按固定顺序渲染 credit：catalogNumber、illustrator、designer、mastering、mix、webDesign、producer、specialThanks；credit 的值可以是字符串或字符串数组（数组每个值独占一行）。book.yml 的顶层 copyright 渲染为该区块的最后一行。
 - `<GiftItem id="..." />` 渲染指定 id 的周边条目（gift 类型 book）。
 
 本地预览：
