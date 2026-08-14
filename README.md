@@ -297,7 +297,7 @@ album:
 ### 通用组件
 
 - `<Button href="...">文字</Button>` 渲染工业风格描边按钮（有 `href` 时为链接，否则为普通按钮）。
-- `<ButtonGroup align="center">` 把多个 `<Button>` 组合成紧贴的按钮组，`align` 支持 `left` / `center` / `right` / `stretch`。
+- `<ButtonGroup align="center">` 把多个 `<Button>` 组合成紧贴的按钮组，`align` 支持 `left` / `center` / `right` / `stretch`（默认 `stretch`，撑满容器等分）。
 - `<Box>` 是带 3px 边框的包装盒，可包裹任意组件或正文；`<AlbumCovers />` 默认无边框，需要边框时写成 `<Box><AlbumCovers /></Box>`。
 - `<Notice type="info" title="标题">正文</Notice>` 渲染左侧 3px 竖线提示块；`type` 支持 `info` / `warning` / `success`，`title` 可选。
 - `<Accordion label="标题">内容</Accordion>` 渲染可折叠面板，默认折叠，`open` 可设为初始展开。

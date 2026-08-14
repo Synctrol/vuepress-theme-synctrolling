@@ -4,7 +4,7 @@ withDefaults(
     align?: 'left' | 'center' | 'right' | 'stretch'
   }>(),
   {
-    align: 'left',
+    align: 'stretch',
   },
 )
 </script>
