@@ -71,6 +71,8 @@ try {
   const enRelease = readFileSync(join(dest, 'en/releases/demo/index.html'), 'utf8')
   assert.match(enRelease, /Demo Release/)
   assert.match(enRelease, /canonical|og:title/)
+  assert.match(enRelease, /data-testid="album-tracklist"/)
+  assert.match(enRelease, /data-testid="album-previews"/)
 
   console.log('run-consumer-smoke: ok')
 } finally {

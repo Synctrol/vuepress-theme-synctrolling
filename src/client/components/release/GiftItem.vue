@@ -20,7 +20,9 @@ const platformMessages = computed(() => ({
 
 if (context !== undefined && item.value === undefined) {
   console.warn(
-    `[vuepress-theme-synctrolling] GiftItem: unknown id "${props.id}"`,
+    context.model.book?.type === 'gift'
+      ? `[vuepress-theme-synctrolling] GiftItem: unknown id "${props.id}"`
+      : `[vuepress-theme-synctrolling] GiftItem: no gift data for id "${props.id}"`,
   )
 }
 </script>
