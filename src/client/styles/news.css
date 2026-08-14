@@ -25,7 +25,6 @@
 
 .syn-news-list-item__title {
   display: inline-block;
-  font-family: var(--syn-font-display);
   font-size: 1.1rem;
   color: var(--syn-fg);
   text-decoration: none;

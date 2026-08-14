@@ -25,12 +25,19 @@ describe('article.css', () => {
   })
 
   it('defines shared article body typography for classless markdown blocks', () => {
-    expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*h2:not\(\[class\]\)\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
+    expect(css).not.toMatch(/\.syn-article-body\s*>\s*div\s*>\s*h2:not\(\[class\]\)\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*p:not\(\[class\]\)\s*\{[^}]*margin-block:\s*0\.75rem/)
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*blockquote:not\(\[class\]\)\s*\{[^}]*border-inline-start:\s*var\(--syn-border-strong\)/)
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*pre:not\(\[class\]\)\s*\{[^}]*border:\s*var\(--syn-border-subtle\)/)
     expect(css).toMatch(/\.syn-article-body\s+a:not\(\[class\]\)\s*\{[^}]*text-decoration:\s*underline/)
     expect(css).toMatch(/\.syn-article-body\s+code\s*\{[^}]*font-family:\s*ui-monospace/)
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*img:not\(\[class\]\)\s*\{[^}]*max-width:\s*100%/)
+  })
+
+  it('spaces the centered meta dates and enlarges meta padding', () => {
+    expect(css).toMatch(/\.syn-article-meta\s*\{[^}]*padding-block:\s*1\.25rem/)
+    expect(css).toMatch(/\.syn-article-meta__dates\s*\{[^}]*display:\s*flex/)
+    expect(css).toMatch(/\.syn-article-meta__dates\s*\{[^}]*gap:\s*0\.5rem/)
+    expect(css).toMatch(/\.syn-article-meta__tags\s*\{[^}]*margin:\s*0\.75rem\s+0\s+0/)
   })
 })

@@ -10,8 +10,8 @@ describe('news.css', () => {
     expect(css).toMatch(/\.syn-news-list-item:first-child\s*\{[^}]*border-block-start:\s*0/)
   })
 
-  it('styles titles with the display font and dims dates and descriptions', () => {
-    expect(css).toMatch(/\.syn-news-list-item__title\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
+  it('styles titles without the display font and dims dates and descriptions', () => {
+    expect(css).not.toMatch(/\.syn-news-list-item__title\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
     expect(css).toMatch(/\.syn-news-list-item__date\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
     expect(css).toMatch(/\.syn-news-list-item__description\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
   })
