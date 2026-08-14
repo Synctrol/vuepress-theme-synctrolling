@@ -9,14 +9,10 @@ description: 冒烟发布
 
 <AlbumTracklist />
 
-<AlbumPreviews />
-
-<AlbumPlatformLinks />
+<TabView><TabPanel label="试听"><AlbumPlatform platform="netease" /></TabPanel><TabPanel label="收听与获取"><AlbumPlatform platform="spotify" /></TabPanel></TabView>
 
 <AlbumCredit />
 
 <AlbumCovers />
-
-<AlbumCopyright />
 
 中文作品正文。

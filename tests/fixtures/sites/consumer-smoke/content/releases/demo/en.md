@@ -9,14 +9,10 @@ description: Smoke release
 
 <AlbumTracklist />
 
-<AlbumPreviews />
-
-<AlbumPlatformLinks />
-
-<AlbumCredit />
+<TabView><TabPanel label="Preview"><AlbumPlatform platform="soundcloud" /></TabPanel><TabPanel label="Listen & Get"><AlbumPlatform platform="spotify" /></TabPanel></TabView>
 
 <AlbumCovers />
 
-<AlbumCopyright />
+<AlbumCredit />
 
 English release body.

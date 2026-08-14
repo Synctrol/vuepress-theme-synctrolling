@@ -5,15 +5,20 @@ title:
 copyright: © 2026 Synctrol
 credit:
   catalogNumber: SYN-001
-  illustrator: 插画师
+  illustrator:
+    - 插画师
+    - 背景师
   designer: 设计师
   mastering: 母带师
 album:
   covers:
-    - ./assets/artwork.svg
+    - ./assets/artwork-ost.png
   links:
     - platform: soundcloud
       url: https://soundcloud.com/synctrol/demo
+    - platform: netease
+      id: '513360841'
+      resourceType: song
     - platform: spotify
       uri: spotify:album:demo
   discs:
@@ -31,3 +36,17 @@ album:
             en: Track Two
           artists: [Synctrol]
           duration: 61
+    - title:
+        zh: 第二碟
+        en: Disc Two
+      tracks:
+        - title:
+            zh: 第三曲
+            en: Track Three
+          artists: [Synctrol]
+          duration: 198
+        - title:
+            zh: 第四曲
+            en: Track Four
+          artists: [Synctrol]
+          duration: 240

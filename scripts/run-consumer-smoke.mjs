@@ -72,7 +72,17 @@ try {
   assert.match(enRelease, /Demo Release/)
   assert.match(enRelease, /canonical|og:title/)
   assert.match(enRelease, /data-testid="album-tracklist"/)
-  assert.match(enRelease, /data-testid="album-previews"/)
+  assert.match(enRelease, /data-testid="tabview"/)
+  assert.match(enRelease, /role="tab"/)
+  assert.match(enRelease, /Listen &amp; Get/)
+  assert.match(enRelease, /w\.soundcloud\.com\/player/)
+  assert.doesNotMatch(enRelease, /music\.163\.com/)
+
+  const zhRelease = readFileSync(join(dest, 'zh/releases/demo/index.html'), 'utf8')
+  assert.match(zhRelease, /data-testid="tabview"/)
+  assert.match(zhRelease, /试听/)
+  assert.match(zhRelease, /music\.163\.com/)
+  assert.doesNotMatch(zhRelease, /w\.soundcloud\.com\/player/)
 
   console.log('run-consumer-smoke: ok')
 } finally {
