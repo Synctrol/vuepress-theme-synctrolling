@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick, ref } from 'vue'
 import { BackgroundRuntime } from '../../../src/client/background/runtime'
 import {
   animatingProbeLoader,
@@ -9,8 +10,50 @@ import {
   solidProbeLoader,
   solidProbeLog,
 } from '../../fixtures/backgrounds/solid-probe'
-import type { BackgroundLoader } from '../../../src/shared/background'
+import { resolveBackgroundContentType } from '../../../src/client/background/resolve-type'
+import type {
+  BackgroundLoader,
+  BackgroundRequest,
+  PageContentType,
+} from '../../../src/shared/background'
 import type { ContentType } from '../../../src/shared/types'
+
+function makeRuntime(loader?: BackgroundLoader) {
+  const route = ref<{ path: string; identity?: string }>({ path: '' })
+  const contentType = ref<{ raw: PageContentType; resolved: ContentType }>({
+    raw: 'page',
+    resolved: 'page',
+  })
+  const locale = ref('')
+  const colorMode = ref<'light' | 'dark'>('light')
+  const reducedMotion = ref(false)
+  const runtime = new BackgroundRuntime({
+    loader,
+    context: { route, contentType, locale, colorMode, reducedMotion },
+  })
+  return { runtime, route, contentType, locale, colorMode, reducedMotion }
+}
+
+function request(input: {
+  reason?: 'init' | 'navigate'
+  routePath?: string
+  raw?: PageContentType
+  identity?: string
+  locale?: string
+  colorMode?: 'light' | 'dark'
+  reducedMotion?: boolean
+}): BackgroundRequest {
+  const raw = input.raw ?? 'home'
+  return {
+    reason: input.reason ?? 'navigate',
+    routePath: input.routePath ?? '/zh/',
+    contentType: { raw, resolved: resolveBackgroundContentType(raw) },
+    ...(input.identity === undefined ? {} : { identity: input.identity }),
+    locale: input.locale ?? 'zh',
+    colorMode: input.colorMode ?? 'light',
+    reducedMotion: input.reducedMotion ?? false,
+  }
+}
 
 describe('BackgroundRuntime', () => {
   let host: HTMLElement
@@ -29,79 +72,59 @@ describe('BackgroundRuntime', () => {
     document.documentElement.style.removeProperty('--syn-bg')
   })
 
-  function run(
-    backgrounds: Partial<Record<ContentType, BackgroundLoader>>,
-    input: {
-      contentType: ContentType | 'release-collection' | 'news-collection'
-      route: string
-      locale: string
-      colorMode: 'light' | 'dark'
-      reducedMotion: boolean
-    },
-  ) {
-    const runtime = new BackgroundRuntime({ backgrounds })
-    runtime.setHost(host)
-    return runtime.sync(input).then(() => runtime)
-  }
+  it('loads the provider on first request and initializes with the reactive context', async () => {
+    const { runtime, route, contentType, locale, colorMode, reducedMotion } =
+      makeRuntime(solidProbeLoader)
+    route.value = { path: '/zh/' }
+    contentType.value = { raw: 'home', resolved: 'home' }
+    locale.value = 'zh'
+    colorMode.value = 'dark'
+    reducedMotion.value = false
 
-  it('loads the module for the resolved content type and initializes with context', async () => {
-    const runtime = await run(
-      { home: solidProbeLoader },
-      {
-        contentType: 'home',
-        route: '/zh/',
-        locale: 'zh',
-        colorMode: 'dark',
-        reducedMotion: false,
-      },
-    )
-    expect(solidProbeLog).toEqual(['init:/zh/:zh:dark:false'])
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init', colorMode: 'dark' }))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(solidProbeLog).toEqual([
+      'init:/zh/:zh:dark:false',
+      'request:init:/zh/:zh:dark:false',
+    ])
     expect(host.dataset.probe).toBe('solid')
     expect(host.dataset.synBackground).toBe('module')
     runtime.dispose()
   })
 
-  it('uses the release module for release-collection pages', async () => {
-    const runtime = await run(
-      { release: solidProbeLoader },
-      {
-        contentType: 'release-collection',
-        route: '/zh/releases/',
-        locale: 'zh',
-        colorMode: 'light',
-        reducedMotion: true,
-      },
+  it('does not reload the provider for subsequent requests', async () => {
+    const { runtime, contentType } = makeRuntime(solidProbeLoader)
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init' }))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    contentType.value = { raw: 'release-collection', resolved: 'release' }
+    runtime.request(
+      request({
+        reason: 'navigate',
+        routePath: '/zh/releases/',
+        raw: 'release-collection',
+      }),
     )
-    expect(solidProbeLog[0]).toBe('init:/zh/releases/:zh:light:true')
+    await Promise.resolve()
+
+    expect(solidProbeLog.filter((e) => e.startsWith('init:')).length).toBe(1)
+    expect(solidProbeLog.at(-1)).toBe(
+      'request:navigate:/zh/releases/:zh:light:false',
+    )
     runtime.dispose()
   })
 
-  it('uses the news module for news-collection pages', async () => {
-    const runtime = await run(
-      { news: solidProbeLoader },
-      {
-        contentType: 'news-collection',
-        route: '/en/news/tags/release/',
-        locale: 'en',
-        colorMode: 'light',
-        reducedMotion: false,
-      },
-    )
-    expect(solidProbeLog[0]).toContain('/en/news/tags/release/')
-    runtime.dispose()
-  })
+  it('renders an empty solid background when no loader is configured', async () => {
+    const { runtime } = makeRuntime(undefined)
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init' }))
+    await Promise.resolve()
 
-  it('renders an empty solid background when the loader is missing', async () => {
-    const runtime = await run(
-      {},
-      {
-        contentType: 'page',
-        route: '/zh/about/',
-        locale: 'zh',
-        colorMode: 'light',
-        reducedMotion: false,
-      },
-    )
     expect(solidProbeLog).toEqual([])
     expect(host.dataset.synBackground).toBe('solid')
     expect(host.childNodes.length).toBe(0)
@@ -109,98 +132,75 @@ describe('BackgroundRuntime', () => {
     runtime.dispose()
   })
 
-  it('calls update when route/locale/colorMode/reducedMotion change for the same module', async () => {
-    const runtime = new BackgroundRuntime({
-      backgrounds: { home: solidProbeLoader },
+  it('falls back to solid when the loader rejects', async () => {
+    const { runtime } = makeRuntime(async () => {
+      throw new Error('background load failed')
     })
-    runtime.setHost(host)
-    await runtime.sync({
-      contentType: 'home',
-      route: '/zh/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    await runtime.sync({
-      contentType: 'home',
-      route: '/en/',
-      locale: 'en',
-      colorMode: 'dark',
-      reducedMotion: true,
-    })
-    expect(solidProbeLog).toEqual([
-      'init:/zh/:zh:light:false',
-      'update:/en/:en:dark:true',
-    ])
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init' }))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(host.dataset.synBackground).toBe('solid')
+    expect(host.style.backgroundColor).toBe('var(--syn-bg)')
+    expect(solidProbeLog).toEqual([])
     runtime.dispose()
   })
 
-  it('disposes the current module before replacing it with another type', async () => {
-    const runtime = new BackgroundRuntime({
-      backgrounds: {
-        home: solidProbeLoader,
-        page: solidProbeLoader,
-      },
-    })
-    runtime.setHost(host)
-    await runtime.sync({
-      contentType: 'home',
-      route: '/zh/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    await runtime.sync({
-      contentType: 'page',
-      route: '/zh/team/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    expect(solidProbeLog).toEqual([
-      'init:/zh/:zh:light:false',
-      'dispose',
-      'init:/zh/team/:zh:light:false',
-    ])
+  it('delivers the latest pending request once the provider finishes loading', async () => {
+    let resolveLoader!: (mod: Awaited<ReturnType<BackgroundLoader>>) => void
+    const pendingLoader: BackgroundLoader = () =>
+      new Promise((resolve) => {
+        resolveLoader = resolve
+      })
+
+    const { runtime } = makeRuntime(pendingLoader)
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init', routePath: '/zh/' }))
+    runtime.request(
+      request({ reason: 'navigate', routePath: '/zh/news/', raw: 'news' }),
+    )
+
+    resolveLoader(await solidProbeLoader())
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(solidProbeLog.filter((e) => e.startsWith('request:')).length).toBe(1)
+    expect(solidProbeLog.at(-1)).toBe(
+      'request:navigate:/zh/news/:zh:light:false',
+    )
     runtime.dispose()
   })
 
-  it('disposes before switching from a module to solid fallback', async () => {
-    const runtime = new BackgroundRuntime({
-      backgrounds: { home: solidProbeLoader },
-    })
-    runtime.setHost(host)
-    await runtime.sync({
-      contentType: 'home',
-      route: '/zh/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    await runtime.sync({
-      contentType: 'page',
-      route: '/zh/team/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    expect(solidProbeLog).toEqual(['init:/zh/:zh:light:false', 'dispose'])
+  it('ignores a pending loader after dispose', async () => {
+    let resolveLoader!: (mod: Awaited<ReturnType<BackgroundLoader>>) => void
+    const pendingLoader: BackgroundLoader = () =>
+      new Promise((resolve) => {
+        resolveLoader = resolve
+      })
+
+    const { runtime } = makeRuntime(pendingLoader)
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init' }))
+    runtime.dispose()
+
+    resolveLoader(await solidProbeLoader())
+    await Promise.resolve()
+
+    expect(solidProbeLog).toEqual([])
     expect(host.dataset.synBackground).toBe('solid')
     runtime.dispose()
   })
 
-  it('requires modules to clean up events, raf, observers, and DOM on dispose', async () => {
+  it('requires providers to clean up events, raf, observers, and DOM on dispose', async () => {
     const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame')
-    const runtime = await run(
-      { page: animatingProbeLoader },
-      {
-        contentType: 'page',
-        route: '/zh/about/',
-        locale: 'zh',
-        colorMode: 'light',
-        reducedMotion: false,
-      },
-    )
+    const { runtime } = makeRuntime(animatingProbeLoader)
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init' }))
+    await Promise.resolve()
+    await Promise.resolve()
+
     expect(animatingProbeState.nodes).toHaveLength(1)
     expect(animatingProbeState.listeners).toHaveLength(1)
     expect(animatingProbeState.observers).toHaveLength(1)
@@ -216,145 +216,24 @@ describe('BackgroundRuntime', () => {
     cancelSpy.mockRestore()
   })
 
-  it('passes reducedMotion so modules can disable animation', async () => {
-    const runtime = await run(
-      { page: animatingProbeLoader },
-      {
-        contentType: 'page',
-        route: '/zh/about/',
-        locale: 'zh',
-        colorMode: 'light',
-        reducedMotion: true,
-      },
-    )
+  it('lets the provider react to reducedMotion through the reactive context', async () => {
+    const { runtime, reducedMotion } = makeRuntime(animatingProbeLoader)
+    reducedMotion.value = true
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init', reducedMotion: true }))
+    await Promise.resolve()
+    await Promise.resolve()
+
     expect(animatingProbeState.reducedMotionHonored).toContain(true)
-    expect(host.querySelector('.animating-probe')?.getAttribute('data-motion')).toBe(
-      'static',
-    )
-    runtime.dispose()
-  })
+    expect(
+      host.querySelector('.animating-probe')?.getAttribute('data-motion'),
+    ).toBe('static')
 
-  it('ignores sync before setHost and remains safe on the server', async () => {
-    const runtime = new BackgroundRuntime({
-      backgrounds: { home: solidProbeLoader },
-    })
-    await runtime.sync({
-      contentType: 'home',
-      route: '/zh/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    expect(solidProbeLog).toEqual([])
-    runtime.dispose()
-  })
-
-  it('falls back to solid when the loader rejects', async () => {
-    const runtime = new BackgroundRuntime({
-      backgrounds: {
-        home: async () => {
-          throw new Error('background load failed')
-        },
-      },
-    })
-    runtime.setHost(host)
-
-    await expect(
-      runtime.sync({
-        contentType: 'home',
-        route: '/zh/',
-        locale: 'zh',
-        colorMode: 'light',
-        reducedMotion: false,
-      }),
-    ).resolves.toBeUndefined()
-
-    expect(host.dataset.synBackground).toBe('solid')
-    expect(host.style.backgroundColor).toBe('var(--syn-bg)')
-    expect(solidProbeLog).toEqual([])
-    runtime.dispose()
-  })
-
-  it('ignores a pending loader when sync falls back to solid before it resolves', async () => {
-    let resolveLoader!: (mod: Awaited<ReturnType<BackgroundLoader>>) => void
-    const pendingLoader: BackgroundLoader = () =>
-      new Promise((resolve) => {
-        resolveLoader = resolve
-      })
-
-    const runtime = new BackgroundRuntime({
-      backgrounds: { home: pendingLoader },
-    })
-    runtime.setHost(host)
-
-    const pending = runtime.sync({
-      contentType: 'home',
-      route: '/zh/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-
-    await runtime.sync({
-      contentType: 'page',
-      route: '/zh/about/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-    expect(host.dataset.synBackground).toBe('solid')
-
-    resolveLoader({
-      default() {
-        host.dataset.leaked = '1'
-        return { update() {}, dispose() {} }
-      },
-    })
-    await pending
-    expect(host.dataset.synBackground).toBe('solid')
-    expect(host.dataset.leaked).toBeUndefined()
-    runtime.dispose()
-  })
-
-  it('ignores a pending loader after setHost so it cannot mount into a stale host', async () => {
-    let resolveLoader!: (mod: Awaited<ReturnType<BackgroundLoader>>) => void
-    const pendingLoader: BackgroundLoader = () =>
-      new Promise((resolve) => {
-        resolveLoader = resolve
-      })
-
-    const oldHost = host
-    const newHost = document.createElement('div')
-    newHost.className = 'syn-background'
-    document.body.appendChild(newHost)
-
-    const runtime = new BackgroundRuntime({
-      backgrounds: { home: pendingLoader },
-    })
-    runtime.setHost(oldHost)
-
-    const pending = runtime.sync({
-      contentType: 'home',
-      route: '/zh/',
-      locale: 'zh',
-      colorMode: 'light',
-      reducedMotion: false,
-    })
-
-    runtime.setHost(newHost)
-
-    resolveLoader({
-      default(context) {
-        context.element.dataset.leaked = '1'
-        return { update() {}, dispose() {} }
-      },
-    })
-    await pending
-
-    expect(oldHost.dataset.leaked).toBeUndefined()
-    expect(newHost.dataset.leaked).toBeUndefined()
-    expect(newHost.dataset.synBackground).not.toBe('module')
-    expect(solidProbeLog).toEqual([])
+    reducedMotion.value = false
+    await nextTick()
+    expect(
+      host.querySelector('.animating-probe')?.getAttribute('data-motion'),
+    ).toBe('animated')
     runtime.dispose()
   })
 })

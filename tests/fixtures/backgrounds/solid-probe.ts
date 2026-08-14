@@ -1,23 +1,23 @@
 import type {
-  BackgroundContext,
-  BackgroundController,
   BackgroundModule,
+  BackgroundReactiveContext,
+  IBackgroundHost,
 } from '../../../src/shared/background'
 
 export const solidProbeLog: string[] = []
 
 const mod: BackgroundModule = {
-  default(context: BackgroundContext): BackgroundController {
+  default(context: BackgroundReactiveContext): IBackgroundHost {
     solidProbeLog.push(
-      `init:${context.route}:${context.locale}:${context.colorMode}:${context.reducedMotion}`,
+      `init:${context.route.value.path}:${context.locale.value}:${context.colorMode.value}:${context.reducedMotion.value}`,
     )
     context.element.dataset.probe = 'solid'
     return {
-      update(next) {
+      request(next) {
         solidProbeLog.push(
-          `update:${next.route}:${next.locale}:${next.colorMode}:${next.reducedMotion}`,
+          `request:${next.reason}:${next.routePath}:${next.locale}:${next.colorMode}:${next.reducedMotion}`,
         )
-        next.element.dataset.probe = 'solid'
+        context.element.dataset.probe = 'solid'
       },
       dispose() {
         solidProbeLog.push('dispose')

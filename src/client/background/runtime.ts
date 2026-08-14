@@ -1,133 +1,110 @@
+import type { Ref } from 'vue'
 import type {
-  BackgroundContext,
-  BackgroundController,
   BackgroundLoader,
   BackgroundModule,
+  BackgroundReactiveContext,
+  BackgroundRequest,
+  IBackgroundHost,
+  PageContentType,
 } from '../../shared/background.js'
 import type { ContentType } from '../../shared/types.js'
-import {
-  resolveBackgroundContentType,
-  type PageContentType,
-} from './resolve-type.js'
 
-export interface BackgroundRuntimeOptions {
-  backgrounds: Partial<Record<ContentType, BackgroundLoader>>
+export interface BackgroundRuntimeContextRefs {
+  route: Ref<{ path: string; identity?: string }>
+  contentType: Ref<{ raw: PageContentType; resolved: ContentType }>
+  locale: Ref<string>
+  colorMode: Ref<'light' | 'dark'>
+  reducedMotion: Ref<boolean>
 }
 
-export interface BackgroundSyncInput {
-  contentType: PageContentType
-  route: string
-  locale: string
-  colorMode: 'light' | 'dark'
-  reducedMotion: boolean
+export interface BackgroundRuntimeOptions {
+  loader?: BackgroundLoader
+  context: BackgroundRuntimeContextRefs
 }
 
 export class BackgroundRuntime {
-  private readonly backgrounds: Partial<Record<ContentType, BackgroundLoader>>
+  private readonly loader?: BackgroundLoader
+  private readonly context: BackgroundRuntimeContextRefs
   private host: HTMLElement | null = null
-  private activeKey: ContentType | null = null
-  private controller: BackgroundController | null = null
+  private provider: IBackgroundHost | null = null
   private loadGeneration = 0
+  private pendingRequest: BackgroundRequest | null = null
 
   constructor(options: BackgroundRuntimeOptions) {
-    this.backgrounds = options.backgrounds
+    this.loader = options.loader
+    this.context = options.context
   }
 
-  setHost(element: HTMLElement): void {
-    // Invalidate in-flight loads so a late resolve cannot mount into the old host.
+  mount(element: HTMLElement): void {
     this.loadGeneration += 1
-    this.disposeActive()
+    this.disposeProvider()
     this.host = element
     this.applySolidSurface(element)
   }
 
-  async sync(input: BackgroundSyncInput): Promise<void> {
+  request(input: BackgroundRequest): void {
     if (!this.host) return
-
-    const key = resolveBackgroundContentType(input.contentType)
-    const loader = this.backgrounds[key]
-    const context = this.buildContext(input)
-
-    if (!loader) {
-      await this.replaceWithSolid()
+    this.pendingRequest = input
+    if (!this.provider) {
+      void this.loadProvider()
       return
     }
-
-    if (this.activeKey === key && this.controller) {
-      this.controller.update(context)
-      this.host.dataset.synBackground = 'module'
-      return
-    }
-
-    await this.replaceWithModule(key, loader, context)
+    this.provider.request(input)
   }
 
   dispose(): void {
     this.loadGeneration += 1
-    this.disposeActive()
+    this.disposeProvider()
     if (this.host) {
       this.applySolidSurface(this.host)
       this.host.dataset.synBackground = 'solid'
+      this.host = null
     }
+    this.pendingRequest = null
   }
 
-  private buildContext(input: BackgroundSyncInput): BackgroundContext {
-    if (!this.host) {
-      throw new Error('BackgroundRuntime host is not set')
-    }
-    return {
-      element: this.host,
-      route: input.route,
-      locale: input.locale,
-      colorMode: input.colorMode,
-      reducedMotion: input.reducedMotion,
-    }
-  }
-
-  private async replaceWithSolid(): Promise<void> {
-    // Invalidate any in-flight module load (pending → solid).
-    this.loadGeneration += 1
-    this.disposeActive()
+  private async loadProvider(): Promise<void> {
     if (!this.host) return
-    this.applySolidSurface(this.host)
-    this.host.dataset.synBackground = 'solid'
-  }
-
-  private async replaceWithModule(
-    key: ContentType,
-    loader: BackgroundLoader,
-    context: BackgroundContext,
-  ): Promise<void> {
-    const generation = ++this.loadGeneration
-    this.disposeActive()
-
-    let mod: BackgroundModule
-    try {
-      mod = await loader()
-    } catch {
-      if (generation !== this.loadGeneration || !this.host) {
-        return
-      }
+    if (!this.loader) {
       this.applySolidSurface(this.host)
       this.host.dataset.synBackground = 'solid'
       return
     }
-
-    if (generation !== this.loadGeneration || !this.host) {
+    const generation = ++this.loadGeneration
+    let mod: BackgroundModule
+    try {
+      mod = await this.loader()
+    } catch {
+      if (generation !== this.loadGeneration || !this.host) return
+      this.applySolidSurface(this.host)
+      this.host.dataset.synBackground = 'solid'
       return
     }
-
-    this.controller = mod.default(context)
-    this.activeKey = key
+    if (generation !== this.loadGeneration || !this.host) return
+    this.provider = mod.default(this.buildContext())
     this.host.dataset.synBackground = 'module'
+    if (this.pendingRequest) {
+      this.provider.request(this.pendingRequest)
+    }
   }
 
-  private disposeActive(): void {
-    if (this.controller) {
-      this.controller.dispose()
+  private buildContext(): BackgroundReactiveContext {
+    if (!this.host) throw new Error('BackgroundRuntime host is not set')
+    return {
+      element: this.host,
+      route: this.context.route,
+      contentType: this.context.contentType,
+      locale: this.context.locale,
+      colorMode: this.context.colorMode,
+      reducedMotion: this.context.reducedMotion,
     }
-    this.controller = null
-    this.activeKey = null
+  }
+
+  private disposeProvider(): void {
+    if (this.provider) {
+      this.provider.dispose()
+    }
+    this.provider = null
     if (this.host) {
       this.host.replaceChildren()
     }

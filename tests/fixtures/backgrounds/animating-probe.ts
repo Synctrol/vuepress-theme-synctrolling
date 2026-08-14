@@ -1,7 +1,8 @@
+import { watch } from 'vue'
 import type {
-  BackgroundContext,
-  BackgroundController,
   BackgroundModule,
+  BackgroundReactiveContext,
+  IBackgroundHost,
 } from '../../../src/shared/background'
 
 export const animatingProbeState = {
@@ -27,7 +28,7 @@ function resetAnimatingProbeState(): void {
 export { resetAnimatingProbeState }
 
 const mod: BackgroundModule = {
-  default(context: BackgroundContext): BackgroundController {
+  default(context: BackgroundReactiveContext): IBackgroundHost {
     const node = document.createElement('div')
     node.className = 'animating-probe'
     context.element.appendChild(node)
@@ -47,7 +48,7 @@ const mod: BackgroundModule = {
 
     let rafId = 0
     const tick = () => {
-      if (context.reducedMotion) return
+      if (context.reducedMotion.value) return
       rafId = window.requestAnimationFrame(tick)
       animatingProbeState.rafIds.push(rafId)
     }
@@ -64,13 +65,17 @@ const mod: BackgroundModule = {
       }
     }
 
-    applyMotion(context.reducedMotion)
+    applyMotion(context.reducedMotion.value)
+    const stopWatch = watch(context.reducedMotion, (reduced) =>
+      applyMotion(reduced),
+    )
 
     return {
-      update(next) {
+      request(next) {
         applyMotion(next.reducedMotion)
       },
       dispose() {
+        stopWatch()
         if (rafId) window.cancelAnimationFrame(rafId)
         context.element.removeEventListener('click', onClick)
         observer.disconnect()
