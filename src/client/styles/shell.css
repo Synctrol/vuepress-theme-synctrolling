@@ -644,3 +644,108 @@ body {
   flex: 1 1 0;
   text-align: center;
 }
+
+.syn-box {
+  border: var(--syn-border-strong);
+  margin-block: 1.5rem;
+  padding: 1rem;
+}
+
+.syn-box > :first-child {
+  margin-block-start: 0;
+}
+
+.syn-notice {
+  border-inline-start: var(--syn-border-strong);
+  margin-block: 1.5rem;
+  padding-inline-start: 1rem;
+}
+
+.syn-notice__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.syn-notice__body > :first-child {
+  margin-block-start: 0;
+}
+
+.syn-notice__body > :last-child {
+  margin-block-end: 0;
+}
+
+.syn-accordion {
+  border: var(--syn-border-strong);
+  margin-block: 1.5rem;
+}
+
+.syn-accordion__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--syn-fg);
+  font: inherit;
+  letter-spacing: 1px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}
+
+.syn-accordion__header:hover,
+.syn-accordion__header:focus-visible {
+  background: var(--syn-fg);
+  color: var(--syn-bg);
+}
+
+.syn-accordion__indicator {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.syn-accordion__body {
+  border-block-start: var(--syn-border-subtle);
+  padding: 1rem;
+}
+
+.syn-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-block: 2rem;
+}
+
+.syn-divider::before,
+.syn-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--syn-fg);
+}
+
+.syn-divider__label {
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  color: var(--syn-sub-title-fg);
+  white-space: nowrap;
+}
+
+.syn-figure {
+  margin: 1.5rem auto;
+  text-align: center;
+}
+
+.syn-figure img {
+  max-width: 100%;
+  height: auto;
+}
+
+.syn-figure__caption {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--syn-sub-title-fg);
+}

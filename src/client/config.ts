@@ -3,6 +3,11 @@ import Layout from './layouts/Layout.vue'
 import Root from './layouts/Root.vue'
 import Button from './components/Button.vue'
 import ButtonGroup from './components/ButtonGroup.vue'
+import Box from './components/Box.vue'
+import Notice from './components/Notice.vue'
+import Accordion from './components/Accordion.vue'
+import Divider from './components/Divider.vue'
+import Figure from './components/Figure.vue'
 import AlbumArtwork from './components/release/AlbumArtwork.vue'
 import AlbumIdentity from './components/release/AlbumIdentity.vue'
 import AlbumTracklist from './components/release/AlbumTracklist.vue'
@@ -31,6 +36,11 @@ export default defineClientConfig({
   enhance({ app }) {
     app.component('Button', Button)
     app.component('ButtonGroup', ButtonGroup)
+    app.component('Box', Box)
+    app.component('Notice', Notice)
+    app.component('Accordion', Accordion)
+    app.component('Divider', Divider)
+    app.component('Figure', Figure)
     app.component('AlbumArtwork', AlbumArtwork)
     app.component('AlbumIdentity', AlbumIdentity)
     app.component('AlbumTracklist', AlbumTracklist)

@@ -134,6 +134,25 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-button-group\[data-align='stretch'\]\s*>\s*\.syn-button\s*\{[^}]*flex:\s*1/)
   })
 
+  it('defines the general Box, Notice, Accordion, Divider and Figure components', () => {
+    expect(css).toMatch(/\.syn-box\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-box\s*\{[^}]*padding:\s*1rem/)
+    expect(css).toMatch(/\.syn-box\s*>\s*:first-child\s*\{[^}]*margin-block-start:\s*0/)
+
+    expect(css).toMatch(/\.syn-notice\s*\{[^}]*border-inline-start:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-notice__title\s*\{[^}]*text-transform:\s*uppercase/)
+
+    expect(css).toMatch(/\.syn-accordion\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-accordion__header\s*\{[^}]*display:\s*flex/)
+    expect(css).toMatch(/\.syn-accordion__body\s*\{[^}]*border-block-start:\s*var\(--syn-border-subtle\)/)
+
+    expect(css).toMatch(/\.syn-divider::before[^{]*\{[^}]*height:\s*1px/)
+    expect(css).toMatch(/\.syn-divider__label\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
+
+    expect(css).toMatch(/\.syn-figure\s*\{[^}]*text-align:\s*center/)
+    expect(css).toMatch(/\.syn-figure__caption\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
+  })
+
   it('centers release, news and page headings with roomy vertical margins', () => {
     expect(css).toMatch(
       /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1,\s*\.syn-page-detail\s*>\s*h1\s*\{[^}]*text-align:\s*center/,
