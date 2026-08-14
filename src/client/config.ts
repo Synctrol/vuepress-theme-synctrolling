@@ -8,6 +8,7 @@ import Notice from './components/Notice.vue'
 import Accordion from './components/Accordion.vue'
 import Divider from './components/Divider.vue'
 import Figure from './components/Figure.vue'
+import NewAlbumReleased from './components/home/NewAlbumReleased.vue'
 import AlbumArtwork from './components/release/AlbumArtwork.vue'
 import AlbumIdentity from './components/release/AlbumIdentity.vue'
 import AlbumTracklist from './components/release/AlbumTracklist.vue'
@@ -41,6 +42,7 @@ export default defineClientConfig({
     app.component('Accordion', Accordion)
     app.component('Divider', Divider)
     app.component('Figure', Figure)
+    app.component('NewAlbumReleased', NewAlbumReleased)
     app.component('AlbumArtwork', AlbumArtwork)
     app.component('AlbumIdentity', AlbumIdentity)
     app.component('AlbumTracklist', AlbumTracklist)

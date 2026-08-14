@@ -53,6 +53,14 @@ describe('assertNoRawHtmlRelativeAssets', () => {
     ).not.toThrow()
   })
 
+  it('extracts package asset refs passed as component props', () => {
+    expect(
+      extractMarkdownAssetRefs(
+        '<NewAlbumReleased title="X" cover="./assets/new-album.svg" />',
+      ),
+    ).toEqual(['./assets/new-album.svg'])
+  })
+
   it('rejects raw HTML img src relative attributes', () => {
     try {
       assertNoRawHtmlRelativeAssets(

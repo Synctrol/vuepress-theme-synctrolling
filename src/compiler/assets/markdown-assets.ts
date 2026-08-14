@@ -3,6 +3,10 @@ import { fail } from '../diagnostics.js'
 const MARKDOWN_LINK_RE =
   /!?\[(?:[^\]]*)\]\((?<target><[^>]+>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'))?\)/g
 
+// Asset refs passed as component props, e.g. <NewAlbumReleased cover="./assets/x.png" />
+const COMPONENT_ASSET_PROP_RE =
+  /<[A-Z][\w]*(?:\s+[^>]*?)?\s[\w-]+\s*=\s*"(?<prop>(?:\.\.?\/|assets\/)[^"]*)"/g
+
 // Quoted or unquoted: ./ ../ / relatives, plus bare package assets/ refs
 const RAW_HTML_RELATIVE_ATTR_RE =
   /\b(?:src|href|poster)\s*=\s*(?:(["'])(?<quoted>(?:\.\.?\/|\/|assets\/)[^"']*)\1|(?<unquoted>(?:\.\.?\/|\/|assets\/)[^\s>"']*))/gi
@@ -33,6 +37,12 @@ export function extractMarkdownAssetRefs(body: string): string[] {
   const refs: string[] = []
   for (const match of body.matchAll(MARKDOWN_LINK_RE)) {
     const target = normalizeTarget(match.groups?.target ?? '')
+    if (!isPackageAssetTarget(target)) continue
+    if (!refs.includes(target)) refs.push(target)
+  }
+  // Asset refs passed as PascalCase component props (e.g. cover="...")
+  for (const match of body.matchAll(COMPONENT_ASSET_PROP_RE)) {
+    const target = match.groups?.prop ?? ''
     if (!isPackageAssetTarget(target)) continue
     if (!refs.includes(target)) refs.push(target)
   }

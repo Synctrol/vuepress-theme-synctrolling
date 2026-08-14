@@ -210,9 +210,11 @@ description: 首页简介
 副标题第一行
 副标题第二行
 :::
+
+<NewAlbumReleased title="专辑名" text="一句话介绍" href="/zh/releases/my-release/" cover="./assets/album.svg" />
 ```
 
-首页必须有 `home-logo` 区块，而且全站只能有一个首页。
+首页必须有 `home-logo` 区块，而且全站只能有一个首页。`<NewAlbumReleased />` 可选：展示一张封面、专辑名与介绍文案，和 Logo 一样靠右对齐；`cover` 指向首页内容包里的图片（如 `./assets/album.svg`），`href` 可选。
 
 ### 6. 再添加作品、新闻或页面
 

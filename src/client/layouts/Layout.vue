@@ -215,11 +215,13 @@ const formatDate = (date: string) =>
     >
       <Content />
     </PageDetailLayout>
-    <HomeLogoSlot
-      v-else-if="home?.kind === 'home'"
-      :html="home.logoHtml"
-      :seo-title="String(page.frontmatter.title ?? '')"
-    />
+    <template v-else-if="home?.kind === 'home'">
+      <HomeLogoSlot
+        :html="home.logoHtml"
+        :seo-title="String(page.frontmatter.title ?? '')"
+      />
+      <Content />
+    </template>
     <Content v-else />
     <template #footer>
       <p

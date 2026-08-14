@@ -764,6 +764,8 @@ album:
     expect(homeSynctrol.alternates).toEqual(expect.any(Array))
     expect(homeSynctrol.platformDefinitions).toEqual(expect.any(Object))
     expect(homeSynctrol.release).toBeUndefined()
+    expect(home!.content).toContain('首页正文')
+    expect(home!.content).not.toContain('home-logo')
   })
 
   it('attaches SEO head tags and writes rss/sitemap while preserving root router and CSP', async () => {

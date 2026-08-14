@@ -749,3 +749,37 @@ body {
   font-size: 0.75rem;
   color: var(--syn-sub-title-fg);
 }
+
+.syn-new-album {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  margin-block: 1.5rem;
+}
+
+.syn-new-album__cover {
+  display: block;
+}
+
+.syn-new-album__cover img {
+  display: block;
+  width: 180px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border: var(--syn-border-strong);
+}
+
+.syn-new-album__title {
+  font-family: var(--syn-font-display);
+  font-size: 1.25rem;
+  letter-spacing: 1px;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.syn-new-album__intro {
+  margin: 0;
+  max-width: 320px;
+  font-size: 0.75rem;
+  color: var(--syn-sub-title-fg);
+}

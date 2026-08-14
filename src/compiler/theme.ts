@@ -52,6 +52,22 @@ function isContentSourcePage(page: Page): boolean {
   )
 }
 
+function stripHomeLogoFence(body: string): string {
+  return body.replace(/^:{3,}\s*home-logo\s*$[\s\S]*?^:{3,}\s*$/m, '')
+}
+
+function replaceMarkdownLinkRefs(
+  body: string,
+  ref: string,
+  publicPath: string,
+): string {
+  const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return body.replace(
+    new RegExp(`(\\]\\(\\s*)${escaped}(?=\\s*(?:[")]|$))`, 'g'),
+    `$1${publicPath}`,
+  )
+}
+
 function bodyFor(
   compiled: CompiledPage,
   byDir: Map<string, RouteContentPackage>,
@@ -59,13 +75,18 @@ function bodyFor(
 ): string {
   if (compiled.packagePath === undefined) return ''
   let body = byDir.get(compiled.packagePath)?.locales[compiled.bodyLocale]?.body ?? ''
-  // Replace the longest refs first so `./assets/x` wins over the bare
-  // `assets/x` alias registered by the asset registry.
+  if (compiled.contentType === 'home') {
+    body = stripHomeLogoFence(body)
+  }
+  // Rewrite only Markdown link/image targets. Component props keep their
+  // package-relative refs and resolve them client-side via
+  // resolveContentAsset. Longest refs first so `./assets/x` wins over the
+  // bare `assets/x` alias.
   const entries = Object.entries(contentAssets).sort(
     ([a], [b]) => b.length - a.length,
   )
   for (const [ref, publicPath] of entries) {
-    body = body.split(ref).join(publicPath)
+    body = replaceMarkdownLinkRefs(body, ref, publicPath)
   }
   return body
 }
