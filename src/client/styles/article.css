@@ -26,9 +26,19 @@
 
 .syn-article-meta__tags a,
 .syn-news-list-item__tags a {
-  font-size: 16px;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  color: var(--syn-sub-title-fg);
+  text-decoration: none;
+  border: 1px solid currentColor;
+  padding: 0.125rem 0.5rem;
+}
+
+.syn-article-meta__tags a:hover,
+.syn-article-meta__tags a:focus-visible,
+.syn-news-list-item__tags a:hover,
+.syn-news-list-item__tags a:focus-visible {
   color: var(--syn-fg);
-  text-decoration: underline;
 }
 
 .syn-article-body {

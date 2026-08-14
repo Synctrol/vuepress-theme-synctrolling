@@ -11,9 +11,11 @@ describe('article.css', () => {
     expect(css).toMatch(/\.syn-article-meta\s*\{[^}]*border-block-end:\s*var\(--syn-border-subtle\)/)
   })
 
-  it('styles meta and news list tag links like the link cloud', () => {
-    expect(css).toMatch(/\.syn-article-meta__tags\s+a,\s*\.syn-news-list-item__tags\s+a\s*\{[^}]*color:\s*var\(--syn-fg\)/)
-    expect(css).toMatch(/\.syn-article-meta__tags\s+a,\s*\.syn-news-list-item__tags\s+a\s*\{[^}]*text-decoration:\s*underline/)
+  it('styles meta and news list tag links as bordered chips', () => {
+    expect(css).toMatch(/\.syn-article-meta__tags\s+a,\s*\.syn-news-list-item__tags\s+a\s*\{[^}]*border:\s*1px\s+solid\s+currentColor/)
+    expect(css).toMatch(/\.syn-article-meta__tags\s+a,\s*\.syn-news-list-item__tags\s+a\s*\{[^}]*font-size:\s*0\.75rem/)
+    expect(css).toMatch(/\.syn-article-meta__tags\s+a,\s*\.syn-news-list-item__tags\s+a\s*\{[^}]*text-decoration:\s*none/)
+    expect(css).toMatch(/\.syn-article-meta__tags\s+a,\s*\.syn-news-list-item__tags\s+a\s*\{[^}]*color:\s*var\(--syn-sub-title-fg\)/)
   })
 
   it('defines shared article body typography for classless markdown blocks', () => {
