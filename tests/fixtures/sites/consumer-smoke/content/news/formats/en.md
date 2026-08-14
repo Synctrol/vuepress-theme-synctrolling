@@ -33,7 +33,7 @@ console.log('code block')
 
 <Divider>More</Divider>
 
-<Figure caption="Fig 1: sample">![Sample image](./assets/sample.svg)</Figure>
+<Figure src="./assets/sample.svg" alt="Sample image" caption="Fig 1: sample" />
 
 <Box>A bordered wrapper for arbitrary content.</Box>
 

@@ -33,7 +33,7 @@ console.log('代码块')
 
 <Divider>更多内容</Divider>
 
-<Figure caption="图 1：示例图片">![示例图片](./assets/sample.svg)</Figure>
+<Figure src="./assets/sample.svg" alt="示例图片" caption="图 1：示例图片" />
 
 <Box>这是一个包装盒子，可以放任意内容。</Box>
 

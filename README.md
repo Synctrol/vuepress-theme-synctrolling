@@ -302,7 +302,7 @@ album:
 - `<Notice type="info" title="标题">正文</Notice>` 渲染左侧 3px 竖线提示块；`type` 支持 `info` / `warning` / `success`，`title` 可选。
 - `<Accordion label="标题">内容</Accordion>` 渲染可折叠面板，默认折叠，`open` 可设为初始展开。
 - `<Divider>文字</Divider>` 渲染带可选居中文字的分隔线。
-- `<Figure caption="说明">图片</Figure>` 渲染居中图片与灰色说明文字。
+- `<Figure src="./assets/cover.svg" alt="封面" caption="图 1">` 渲染居中图片与灰色说明文字。
 
 本地预览：
 
