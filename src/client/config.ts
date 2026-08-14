@@ -3,13 +3,13 @@ import Layout from './layouts/Layout.vue'
 import Root from './layouts/Root.vue'
 import AlbumArtwork from './components/release/AlbumArtwork.vue'
 import AlbumIdentity from './components/release/AlbumIdentity.vue'
-import AlbumCopyright from './components/release/AlbumCopyright.vue'
-import AlbumPreviews from './components/release/AlbumPreviews.vue'
-import AlbumPlatformLinks from './components/release/AlbumPlatformLinks.vue'
 import AlbumTracklist from './components/release/AlbumTracklist.vue'
 import AlbumCredit from './components/release/AlbumCredit.vue'
 import AlbumCovers from './components/release/AlbumCovers.vue'
+import AlbumPlatform from './components/release/AlbumPlatform.vue'
 import GiftItem from './components/release/GiftItem.vue'
+import TabPanel from './components/release/TabPanel.vue'
+import TabView from './components/release/TabView.vue'
 import './styles/index.js'
 
 declare const __SYNCTROL_THEME_OPTIONS__: {
@@ -29,13 +29,13 @@ export default defineClientConfig({
   enhance({ app }) {
     app.component('AlbumArtwork', AlbumArtwork)
     app.component('AlbumIdentity', AlbumIdentity)
-    app.component('AlbumCopyright', AlbumCopyright)
-    app.component('AlbumPreviews', AlbumPreviews)
-    app.component('AlbumPlatformLinks', AlbumPlatformLinks)
     app.component('AlbumTracklist', AlbumTracklist)
     app.component('AlbumCredit', AlbumCredit)
     app.component('AlbumCovers', AlbumCovers)
+    app.component('AlbumPlatform', AlbumPlatform)
     app.component('GiftItem', GiftItem)
+    app.component('TabPanel', TabPanel)
+    app.component('TabView', TabView)
   },
   setup() {
     const featureFont = __SYNCTROL_THEME_OPTIONS__.featureFont
