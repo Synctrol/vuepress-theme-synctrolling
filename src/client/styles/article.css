@@ -5,6 +5,7 @@
   border-block-start: var(--syn-border-subtle);
   border-block-end: var(--syn-border-subtle);
   padding-block: 1.25rem;
+  margin-block-end: 2rem;
 }
 
 .syn-article-meta__dates {

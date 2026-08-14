@@ -9,6 +9,7 @@ describe('article.css', () => {
     expect(css).toMatch(/\.syn-article-meta\s*\{[^}]*text-align:\s*center/)
     expect(css).toMatch(/\.syn-article-meta\s*\{[^}]*border-block-start:\s*var\(--syn-border-subtle\)/)
     expect(css).toMatch(/\.syn-article-meta\s*\{[^}]*border-block-end:\s*var\(--syn-border-subtle\)/)
+    expect(css).toMatch(/\.syn-article-meta\s*\{[^}]*margin-block-end:\s*2rem/)
   })
 
   it('styles meta and news list tag links as bordered chips', () => {
