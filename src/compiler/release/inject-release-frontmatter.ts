@@ -28,7 +28,6 @@ export interface BuildReleaseFrontmatterInput {
   mainLocale: LocaleKey
   messages: LocaleMessages
   collectionTitle: string
-  formatDate: (yyyyMmDd: string, locale: LocaleKey) => string
   definitions: ContentDefinitions['platforms']
   platformTypes: Record<string, PlatformTypeRegistration>
 }

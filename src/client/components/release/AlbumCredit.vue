@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useReleasePage } from './release-context.js'
-import type { BookCreditKey, LocaleMessages } from '../../../shared/types.js'
+import type { BookCreditKey } from '../../../shared/types.js'
 
-const CREDIT_ORDER: Array<[BookCreditKey, keyof LocaleMessages]> = [
+const CREDIT_ORDER: Array<
+  [BookCreditKey, `credit${Capitalize<BookCreditKey>}`]
+> = [
   ['catalogNumber', 'creditCatalogNumber'],
   ['illustrator', 'creditIllustrator'],
   ['designer', 'creditDesigner'],

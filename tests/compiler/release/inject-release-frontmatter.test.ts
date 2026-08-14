@@ -103,7 +103,6 @@ describe('buildReleaseFrontmatterForPage', () => {
       mainLocale: 'zh',
       messages: zhMessages,
       collectionTitle: '作品',
-      formatDate: (d) => d,
       definitions,
       platformTypes: builtInPlatformTypes,
     })
@@ -196,7 +195,6 @@ describe('buildReleaseFrontmatterForPage', () => {
       mainLocale: 'zh',
       messages: zhMessages,
       collectionTitle: '作品',
-      formatDate: (d) => d,
       definitions,
       platformTypes: builtInPlatformTypes,
     })
@@ -266,7 +264,6 @@ describe('buildReleaseFrontmatterForPage', () => {
       mainLocale: 'zh',
       messages: zhMessages,
       collectionTitle: '作品',
-      formatDate: (d) => d,
       definitions,
       platformTypes: builtInPlatformTypes,
     })
@@ -329,7 +326,6 @@ describe('buildReleaseFrontmatterForPage', () => {
       mainLocale: 'zh',
       messages: zhMessages,
       collectionTitle: '作品',
-      formatDate: (d: string) => d,
       definitions,
       platformTypes: builtInPlatformTypes,
     }
@@ -375,7 +371,6 @@ describe('buildReleaseFrontmatterForPage', () => {
         mainLocale: 'zh',
         messages: zhMessages,
         collectionTitle: '作品',
-        formatDate: (d) => d,
         definitions,
         platformTypes: builtInPlatformTypes,
       }),

@@ -176,10 +176,6 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           mainLocale: resolved.mainLocale,
           messages: localeMessages,
           collectionTitle,
-          formatDate: (yyyyMmDd) => {
-            // minimal stable formatter for v1; locale dateFormat from options may be used
-            return yyyyMmDd
-          },
           definitions: platformDefinitions,
           platformTypes: resolvePlatformTypes(resolved.platforms.types),
         })
