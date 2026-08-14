@@ -2,6 +2,7 @@ import { defineClientConfig } from 'vuepress/client'
 import Layout from './layouts/Layout.vue'
 import Root from './layouts/Root.vue'
 import Button from './components/Button.vue'
+import ButtonGroup from './components/ButtonGroup.vue'
 import AlbumArtwork from './components/release/AlbumArtwork.vue'
 import AlbumIdentity from './components/release/AlbumIdentity.vue'
 import AlbumTracklist from './components/release/AlbumTracklist.vue'
@@ -29,6 +30,7 @@ export default defineClientConfig({
   },
   enhance({ app }) {
     app.component('Button', Button)
+    app.component('ButtonGroup', ButtonGroup)
     app.component('AlbumArtwork', AlbumArtwork)
     app.component('AlbumIdentity', AlbumIdentity)
     app.component('AlbumTracklist', AlbumTracklist)

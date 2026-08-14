@@ -44,6 +44,15 @@ describe('assertNoRawHtmlRelativeAssets', () => {
     ).not.toThrow()
   })
 
+  it('allows root-absolute hrefs inside Vue component tags', () => {
+    expect(() =>
+      assertNoRawHtmlRelativeAssets(
+        '<ButtonGroup align="center"><Button href="/zh/releases/">作品</Button></ButtonGroup>',
+        '/content/news/formats/zh.md',
+      ),
+    ).not.toThrow()
+  })
+
   it('rejects raw HTML img src relative attributes', () => {
     try {
       assertNoRawHtmlRelativeAssets(

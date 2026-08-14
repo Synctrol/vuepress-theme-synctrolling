@@ -26,5 +26,5 @@ console.log('代码块')
 
 ![示例图片](./assets/sample.svg)
 
-<Button href="https://example.com/">了解更多</Button>
+<ButtonGroup align="center"><Button href="https://example.com/">了解更多</Button><Button href="/zh/releases/">作品</Button><Button>订阅</Button></ButtonGroup>
 

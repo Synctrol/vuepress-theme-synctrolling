@@ -1,12 +1,9 @@
 type: album
-title:
-  zh: 演示专辑
-  en: Demo Album
-copyright: © 2026 Synctrol
+title:  Museum No.9 OST
+copyright: © 2024 Chengdu Yaoyi Technology LTD, CO
 credit:
-  catalogNumber: SYN-001
-  designer: 设计师
-  mastering: 母带师
+  designer: Ca2didi
+  mastering: LelouchSound
 album:
   covers:
     - ./assets/artwork-ost.png

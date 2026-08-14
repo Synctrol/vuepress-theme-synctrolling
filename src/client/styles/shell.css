@@ -610,3 +610,27 @@ body {
   background: var(--syn-fg);
   color: var(--syn-bg);
 }
+
+.syn-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  border: var(--syn-border-strong);
+}
+
+.syn-button-group > .syn-button {
+  border: 0;
+  border-inline-start: var(--syn-border-strong);
+}
+
+.syn-button-group > .syn-button:first-child {
+  border-inline-start: 0;
+}
+
+.syn-button-group[data-align='center'] {
+  margin-inline: auto;
+}
+
+.syn-button-group[data-align='right'] {
+  margin-inline-start: auto;
+}

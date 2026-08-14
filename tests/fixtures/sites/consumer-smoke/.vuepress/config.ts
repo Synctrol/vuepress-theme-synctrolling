@@ -40,12 +40,12 @@ export default defineUserConfig({
     navigation: {
       items: [
         {
-          label: 'Release',
+          label: 'RELEASE',
           href: '/releases/',
           icon: '/assets/icons/github.svg',
         },
-        { label: 'News', href: '/news/' },
-        { label: 'About', href: '/about/' },
+        { label: 'NEWA', href: '/news/' },
+        { label: 'ABOUT', href: '/about/' },
       ],
     },
     socialLinks: {

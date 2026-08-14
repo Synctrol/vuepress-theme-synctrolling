@@ -292,6 +292,11 @@ album:
 - `<AlbumCredit />` 按固定顺序渲染 credit：catalogNumber、illustrator、designer、mastering、mix、webDesign、producer、specialThanks；credit 的值可以是字符串或字符串数组（数组每个值独占一行）。book.yml 的顶层 copyright 渲染为该区块的最后一行。
 - `<GiftItem id="..." />` 渲染指定 id 的周边条目（gift 类型 book）。
 
+### 通用组件
+
+- `<Button href="...">文字</Button>` 渲染工业风格描边按钮（有 `href` 时为链接，否则为普通按钮）。
+- `<ButtonGroup align="center">` 把多个 `<Button>` 组合成紧贴的按钮组，`align` 支持 `left` / `center` / `right`。
+
 本地预览：
 
 ```bash

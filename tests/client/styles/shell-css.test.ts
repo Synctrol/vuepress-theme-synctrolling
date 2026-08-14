@@ -123,6 +123,15 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-button:hover[^{]*\{[^}]*color:\s*var\(--syn-bg\)/)
   })
 
+  it('defines the joined ButtonGroup layout', () => {
+    expect(css).toMatch(/\.syn-button-group\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-button-group\s*\{[^}]*flex-wrap:\s*wrap/)
+    expect(css).toMatch(/\.syn-button-group\s*>\s*\.syn-button\s*\{[^}]*border-inline-start:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-button-group\s*>\s*\.syn-button:first-child\s*\{[^}]*border-inline-start:\s*0/)
+    expect(css).toMatch(/\.syn-button-group\[data-align='center'\]\s*\{[^}]*margin-inline:\s*auto/)
+    expect(css).toMatch(/\.syn-button-group\[data-align='right'\]\s*\{[^}]*margin-inline-start:\s*auto/)
+  })
+
   it('centers release, news and page headings with roomy vertical margins', () => {
     expect(css).toMatch(
       /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1,\s*\.syn-page-detail\s*>\s*h1\s*\{[^}]*text-align:\s*center/,
