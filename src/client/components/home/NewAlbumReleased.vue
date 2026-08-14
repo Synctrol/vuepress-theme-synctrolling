@@ -18,15 +18,15 @@ const props = withDefaults(
 const rootStyle = computed(() => {
   let image = ''
   try {
-    image = `, url("${resolveContentAsset(props.background)}")`
+    image = `url("${resolveContentAsset(props.background)}")`
   } catch {
     console.warn(
       `NewAlbumReleased: unknown package asset "${props.background}"`,
     )
   }
   return {
-    backgroundImage: `linear-gradient(var(--syn-new-album-scrim), var(--syn-new-album-scrim))${image}`,
-    backgroundPosition: props.position,
+    '--syn-new-album-image': image,
+    '--syn-new-album-position': props.position,
   }
 })
 </script>

@@ -23,11 +23,10 @@ describe('NewAlbumReleased', () => {
     expect(root.get('.syn-new-album__arrow').text()).toBe('↗')
     expect(root.get('.syn-new-album__intro').text()).toBe('九号博物馆原声带')
     const rootStyle = (wrapper.vm as unknown as {
-      rootStyle: { backgroundImage?: string; backgroundPosition?: string }
+      rootStyle: Record<string, string | undefined>
     }).rootStyle
-    expect(rootStyle.backgroundImage).toContain('new-album.svg.hash.svg')
-    expect(rootStyle.backgroundImage).toContain('var(--syn-new-album-scrim)')
-    expect(rootStyle.backgroundPosition).toBe('right center')
+    expect(rootStyle['--syn-new-album-image']).toContain('new-album.svg.hash.svg')
+    expect(rootStyle['--syn-new-album-position']).toBe('right center')
     expect(root.find('img').exists()).toBe(false)
     expect(root.find('a.syn-new-album__cover').exists()).toBe(false)
   })
@@ -41,9 +40,9 @@ describe('NewAlbumReleased', () => {
       },
     })
     const rootStyle = (wrapper.vm as unknown as {
-      rootStyle: { backgroundPosition?: string }
+      rootStyle: Record<string, string | undefined>
     }).rootStyle
-    expect(rootStyle.backgroundPosition).toBe('80% 20%')
+    expect(rootStyle['--syn-new-album-position']).toBe('80% 20%')
   })
 
   it('renders a non-clickable block without href and hides the intro when omitted', () => {
