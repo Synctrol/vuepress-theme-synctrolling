@@ -579,13 +579,14 @@ body {
   }
 }
 
-/* Collection and news page headings: centered, roomy vertical rhythm. */
+/* Collection, news and page headings: centered, roomy vertical rhythm. */
 .syn-release-index > h1,
 .syn-news-index > h1,
 .syn-news-tags-index > h1,
 .syn-news-tag-archive > h1,
-.syn-news-detail > h1 {
+.syn-news-detail > h1,
+.syn-page-detail > h1 {
   text-align: center;
-  margin-block: 2rem;
+  margin-block: 3rem;
   padding: 0;
 }

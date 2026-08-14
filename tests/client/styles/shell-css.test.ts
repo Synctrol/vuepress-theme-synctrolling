@@ -115,15 +115,15 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*color:\s*var\(--syn-fg\)/)
   })
 
-  it('centers release and news page headings with roomy vertical margins', () => {
+  it('centers release, news and page headings with roomy vertical margins', () => {
     expect(css).toMatch(
-      /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1\s*\{[^}]*text-align:\s*center/,
+      /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1,\s*\.syn-page-detail\s*>\s*h1\s*\{[^}]*text-align:\s*center/,
     )
     expect(css).toMatch(
-      /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1\s*\{[^}]*margin-block:\s*2rem/,
+      /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1,\s*\.syn-page-detail\s*>\s*h1\s*\{[^}]*margin-block:\s*3rem/,
     )
     expect(css).toMatch(
-      /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1\s*\{[^}]*padding:\s*0/,
+      /\.syn-release-index\s*>\s*h1,\s*\.syn-news-index\s*>\s*h1,\s*\.syn-news-tags-index\s*>\s*h1,\s*\.syn-news-tag-archive\s*>\s*h1,\s*\.syn-news-detail\s*>\s*h1,\s*\.syn-page-detail\s*>\s*h1\s*\{[^}]*padding:\s*0/,
     )
   })
 
