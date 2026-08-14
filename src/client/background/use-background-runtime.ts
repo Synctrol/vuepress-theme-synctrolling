@@ -73,7 +73,7 @@ export function useBackgroundRuntime(): {
       const data = pageData.value
       if (!data?.contentType) return null
       const routePath = data.routePath || route.path || page.value.path
-      return `${routePath}|${data.contentType}|${data.identity ?? ''}|${colorMode.value}|${reducedMotion.value}`
+      return `${routePath}|${data.contentType}|${data.identity ?? ''}`
     },
     () => {
       const data = pageData.value

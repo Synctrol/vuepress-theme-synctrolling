@@ -115,7 +115,6 @@ describe('useBackgroundRuntime', () => {
         return () =>
           h('div', {
             'data-route': requestInput.value?.routePath ?? 'none',
-            'data-mode': requestInput.value?.colorMode ?? 'none',
           })
       },
     })
@@ -125,7 +124,6 @@ describe('useBackgroundRuntime', () => {
 
     colorMode.value = 'dark'
     await nextTick()
-    expect(wrapper.get('div').attributes('data-mode')).toBe('dark')
     expect(requestSpy).not.toHaveBeenCalled()
     expect(solidProbeLog).toEqual([])
   })
