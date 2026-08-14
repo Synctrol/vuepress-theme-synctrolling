@@ -765,10 +765,10 @@ body {
   display: block;
   box-sizing: border-box;
   width: auto;
-  min-height: 120px;
   margin-block: 1.5rem;
   margin-inline: calc(-1 * var(--syn-main-padding-inline, 16px));
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.25rem calc(1rem + 1.5em);
+  line-height: 1.5;
   text-align: right;
   text-decoration: none;
   color: var(--syn-new-album-fg);
@@ -784,7 +784,7 @@ body {
   position: absolute;
   inset-block: 0;
   inset-inline-end: 0;
-  width: min(400px, 100%);
+  width: min(460px, 100%);
   z-index: -1;
   background-image: var(--syn-new-album-image, none);
   background-size: cover;
@@ -800,6 +800,11 @@ body {
   background: var(--syn-new-album-scrim);
   opacity: var(--syn-new-album-scrim-opacity);
   transition: opacity 0.2s ease;
+}
+
+.syn-new-album__body {
+  width: min(460px, 100%);
+  margin-inline-start: auto;
 }
 
 :root[data-theme='dark'] .syn-new-album {

@@ -19,6 +19,7 @@ describe('NewAlbumReleased', () => {
     const root = wrapper.get('[data-testid="new-album-released"]')
     expect(root.element.tagName).toBe('A')
     expect(root.attributes('href')).toBe('/zh/releases/demo/')
+    expect(root.find('.syn-new-album__body').exists()).toBe(true)
     expect(root.get('.syn-new-album__title').text()).toContain('NO.9 MUSEUM')
     expect(root.get('.syn-new-album__arrow').text()).toBe('↗')
     expect(root.get('.syn-new-album__intro').text()).toBe('九号博物馆原声带')

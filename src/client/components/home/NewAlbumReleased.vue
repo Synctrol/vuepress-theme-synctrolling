@@ -39,10 +39,12 @@ const rootStyle = computed(() => {
     data-testid="new-album-released"
     :style="rootStyle"
   >
-    <h2 class="syn-new-album__title">
-      {{ title }}<span class="syn-new-album__arrow" aria-hidden="true">↗</span>
-    </h2>
-    <p v-if="text" class="syn-new-album__intro">{{ text }}</p>
+    <div class="syn-new-album__body">
+      <h2 class="syn-new-album__title">
+        {{ title }}<span class="syn-new-album__arrow" aria-hidden="true">↗</span>
+      </h2>
+      <p v-if="text" class="syn-new-album__intro">{{ text }}</p>
+    </div>
   </a>
   <div
     v-else
@@ -50,9 +52,11 @@ const rootStyle = computed(() => {
     data-testid="new-album-released"
     :style="rootStyle"
   >
-    <h2 class="syn-new-album__title">
-      {{ title }}<span class="syn-new-album__arrow" aria-hidden="true">↗</span>
-    </h2>
-    <p v-if="text" class="syn-new-album__intro">{{ text }}</p>
+    <div class="syn-new-album__body">
+      <h2 class="syn-new-album__title">
+        {{ title }}<span class="syn-new-album__arrow" aria-hidden="true">↗</span>
+      </h2>
+      <p v-if="text" class="syn-new-album__intro">{{ text }}</p>
+    </div>
   </div>
 </template>

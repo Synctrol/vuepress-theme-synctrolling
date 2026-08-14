@@ -214,7 +214,7 @@ description: 首页简介
 <NewAlbumReleased title="专辑名" text="一句话介绍" href="/zh/releases/my-release/" cover="./assets/album.svg" />
 ```
 
-首页必须有 `home-logo` 区块，而且全站只能有一个首页。`<NewAlbumReleased />` 可选：像插在 Logo 下方的一整块可点击横幅（无边框、左右贴满容器、右对齐文字），展示专辑名与介绍文案，标题右侧带 ↗ 箭头；`background` 指向首页内容包里的图片（如 `./assets/album.svg`）作为背景（右对齐、不裁切、最大宽度 400px，图片以外的区域只显示遮罩），`position` 可选指定背景重心（默认 `right center`），`href` 可选（提供后整块都是链接）。遮罩与文字颜色随主题模式自动翻转：亮色为深色遮罩配白字，暗色为浅色遮罩配黑字。
+首页必须有 `home-logo` 区块，而且全站只能有一个首页。`<NewAlbumReleased />` 可选：像插在 Logo 下方的一整块可点击横幅（无边框、左右贴满容器、右对齐文字），展示专辑名与介绍文案，标题右侧带 ↗ 箭头；`background` 指向首页内容包里的图片（如 `./assets/album.svg`）作为背景（右对齐、不裁切、最大宽度 460px，图片以外的区域只显示遮罩），`position` 可选指定背景重心（默认 `right center`），`href` 可选（提供后整块都是链接）。文字限制在背景区域内；区块高度 = 内边距 + 标题行 +（介绍行数 + 1）× 行高。遮罩与文字颜色随主题模式自动翻转：亮色为深色遮罩配白字，暗色为浅色遮罩配黑字。
 
 ### 6. 再添加作品、新闻或页面
 
