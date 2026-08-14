@@ -40,6 +40,7 @@ export class BackgroundRuntime {
     this.disposeProvider()
     this.host = element
     this.applySolidSurface(element)
+    element.dataset.synBackground = 'solid'
   }
 
   request(input: BackgroundRequest): void {
@@ -81,10 +82,17 @@ export class BackgroundRuntime {
       return
     }
     if (generation !== this.loadGeneration || !this.host) return
-    this.provider = mod.default(this.buildContext())
-    this.host.dataset.synBackground = 'module'
-    if (this.pendingRequest) {
-      this.provider.request(this.pendingRequest)
+    try {
+      const provider = mod.default(this.buildContext())
+      this.provider = provider
+      this.host.dataset.synBackground = 'module'
+      if (this.pendingRequest) {
+        provider.request(this.pendingRequest)
+      }
+    } catch {
+      this.disposeProvider()
+      this.applySolidSurface(this.host)
+      this.host.dataset.synBackground = 'solid'
     }
   }
 

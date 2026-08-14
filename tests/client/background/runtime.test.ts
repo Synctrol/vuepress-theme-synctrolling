@@ -147,6 +147,23 @@ describe('BackgroundRuntime', () => {
     runtime.dispose()
   })
 
+  it('falls back to solid when the provider factory throws', async () => {
+    const { runtime } = makeRuntime(async () => ({
+      default() {
+        throw new Error('factory failed')
+      },
+    }))
+    runtime.mount(host)
+    runtime.request(request({ reason: 'init' }))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(host.dataset.synBackground).toBe('solid')
+    expect(host.style.backgroundColor).toBe('var(--syn-bg)')
+    expect(solidProbeLog).toEqual([])
+    runtime.dispose()
+  })
+
   it('delivers the latest pending request once the provider finishes loading', async () => {
     let resolveLoader!: (mod: Awaited<ReturnType<BackgroundLoader>>) => void
     const pendingLoader: BackgroundLoader = () =>
