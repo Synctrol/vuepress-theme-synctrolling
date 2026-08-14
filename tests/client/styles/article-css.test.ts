@@ -25,6 +25,7 @@ describe('article.css', () => {
   })
 
   it('defines shared article body typography for classless markdown blocks', () => {
+    expect(css).toMatch(/\.syn-article-body\s+:is\(h2,\s*h3,\s*h4,\s*h5,\s*h6\)\s*\{[^}]*font-family:\s*var\(--syn-font-body\)/)
     expect(css).not.toMatch(/\.syn-article-body\s*>\s*div\s*>\s*h2:not\(\[class\]\)\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*p:not\(\[class\]\)\s*\{[^}]*margin-block:\s*0\.75rem/)
     expect(css).toMatch(/\.syn-article-body\s*>\s*div\s*>\s*blockquote:not\(\[class\]\)\s*\{[^}]*border-inline-start:\s*var\(--syn-border-strong\)/)

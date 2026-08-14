@@ -49,6 +49,12 @@
   line-height: 1.75;
 }
 
+/* Body content never uses the display font; it is reserved for the shell
+   bars, the home logo section, and the navigation column. */
+.syn-article-body :is(h2, h3, h4, h5, h6) {
+  font-family: var(--syn-font-body);
+}
+
 .syn-article-body > div > h2:not([class]) {
   font-size: 1.3rem;
   letter-spacing: 1px;
