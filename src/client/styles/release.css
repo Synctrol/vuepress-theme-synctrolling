@@ -59,6 +59,16 @@
   position: relative;
 }
 
+.syn-main:has(.syn-release-detail) > .cell {
+  max-width: 600px;
+}
+
+.syn-album-identity {
+  text-align: center;
+  margin-block: 2rem;
+  padding: 0;
+}
+
 .syn-release-detail-artwork {
   max-width: var(--syn-artwork-width);
   width: 100%;
@@ -91,6 +101,11 @@
 
 .syn-album-section h2 {
   margin-block-start: 0;
+}
+
+.syn-album-tracklist {
+  border: 0;
+  padding: 0;
 }
 
 .syn-album-tracklist .syn-album-disc + .syn-album-disc {
@@ -132,6 +147,11 @@
   margin: 0;
 }
 
+.syn-album-credit {
+  border: 0;
+  padding: 0;
+}
+
 .syn-album-credit__row {
   display: grid;
   grid-template-columns: 1fr 1.618fr;
@@ -146,6 +166,10 @@
 
 .syn-album-credit__row dd {
   margin: 0;
+}
+
+.syn-album-credit__value {
+  display: block;
 }
 
 .syn-album-covers ul,
@@ -173,8 +197,69 @@
   object-fit: cover;
 }
 
-.syn-album-previews .syn-platform-embed {
+.syn-tabview {
+  border: var(--syn-border-strong);
+  margin-block: 1.5rem;
+  padding: 1rem;
+}
+
+.syn-tabview__bar {
+  display: flex;
+  gap: 0;
+  border: 0;
+  border-block-end: var(--syn-border-strong);
+  margin: -1rem -1rem 1rem;
+}
+
+.syn-tabview__tab {
+  flex: 1;
+  border: 0;
+  border-inline-start: var(--syn-border-strong);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}
+
+.syn-tabview__tab:first-child {
+  border-inline-start: 0;
+}
+
+.syn-tabview__tab[aria-selected='true'] {
+  background: var(--syn-white);
+  color: var(--syn-black);
+}
+
+.syn-tabview__panel {
+  margin-block-start: 1rem;
+}
+
+.syn-platform-entry {
+  display: block;
+}
+
+.syn-platform-entry + .syn-platform-entry {
+  margin-block-start: 0.75rem;
+}
+
+.syn-platform-iframe {
+  display: block;
   width: 100%;
+  border: 0;
+}
+
+.syn-platform-embed__activate {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.syn-platform-link {
+  display: block;
 }
 
 .syn-gift-item {
