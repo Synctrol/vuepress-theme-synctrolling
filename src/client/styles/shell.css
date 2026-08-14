@@ -431,13 +431,13 @@ body {
 
 .syn-language__option[aria-selected='true'] {
   font-weight: 600;
-  background: var(--syn-bg);
-  color: var(--syn-fg);
+  background: var(--syn-fg);
+  color: var(--syn-bg);
 }
 
 .syn-language__option[aria-selected='false'] {
-  background: var(--syn-fg);
-  color: var(--syn-bg);
+  background: var(--syn-bg);
+  color: var(--syn-fg);
 }
 
 .syn-nav-drawer {

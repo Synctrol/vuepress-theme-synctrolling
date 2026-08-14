@@ -108,6 +108,13 @@ describe('shell.css', () => {
     expect(css).not.toMatch(/\.syn-shell--drawer-open[\s\S]*\.syn-language/)
   })
 
+  it('highlights the selected language with an inverted scheme', () => {
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*color:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*background:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*color:\s*var\(--syn-fg\)/)
+  })
+
   it('styles header and footer as reference bars', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toMatch(/\.syn-header\s*\{[^}]*background:\s*var\(--syn-bar-bg\)/)
@@ -186,10 +193,10 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*background:\s*var\(--syn-bg\)/)
     expect(css).toMatch(/\.syn-nav-drawer\s*\.syn-navigation__side-panel\s*\{[^}]*background:\s*transparent/)
     expect(css).toMatch(/\.syn-language__list\s*\{[^}]*bottom:\s*40px/)
-    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-bg\)/)
-    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*color:\s*var\(--syn-fg\)/)
-    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*background:\s*var\(--syn-fg\)/)
-    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*color:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*color:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*background:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-language__option\[aria-selected='false'\]\s*\{[^}]*color:\s*var\(--syn-fg\)/)
     expect(css).toMatch(/\.syn-site-footer\s*\{[^}]*z-index:\s*50/)
     expect(css).not.toMatch(/\.syn-language\s*\{[^}]*z-index:/)
     expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*max-width:\s*40vw/)
