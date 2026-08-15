@@ -112,7 +112,7 @@ describe('synctrolTheme production integration', () => {
           news: { title: 'N', description: 'n' },
         },
       },
-      background: (async () => ({})) as never,
+      background: './backgrounds/host',
     })
 
     expect(theme.name).toBe('vuepress-theme-synctrolling')
@@ -141,7 +141,7 @@ describe('synctrolTheme production integration', () => {
           news: { title: 'N', description: 'n' },
         },
       },
-      background: (async () => ({})) as never,
+      background: './backgrounds/host',
     })
 
     expect(theme.extendsBundlerOptions).toBeTypeOf('function')

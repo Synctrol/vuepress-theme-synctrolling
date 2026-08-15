@@ -40,12 +40,12 @@ afterEach(() => {
 })
 
 describe('background theme config and exclusions', () => {
-  it('accepts background as a loader function', () => {
+  it('accepts background as a path string', () => {
     const resolved = resolveThemeOptions({
       ...baseInput,
       background: exampleBackground,
     })
-    expect(typeof resolved.background).toBe('function')
+    expect(resolved.background).toBe(exampleBackground)
   })
 
   it('defaults background to undefined (solid fallback everywhere)', () => {

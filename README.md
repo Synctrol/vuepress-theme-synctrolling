@@ -135,7 +135,7 @@ export default defineUserConfig({
 | 预览草稿 | `showDrafts: true` |
 | 默认明暗模式 | `defaultColorMode: 'auto'` / `'light'` / `'dark'` |
 | 展示字体 | `featureFont`（字体文件请自己在站点里引入） |
-| 自定义背景 | `background: () => import('./backgrounds/host')`（见下） |
+| 自定义背景 | `background: './backgrounds/host'`（见下） |
 | 关掉订阅源或站点地图 | `feeds: { rss: false, sitemap: false }` |
 
 要自绘背景（图片 / Canvas / WebGL 都行），写一个背景提供者模块并在 `synctrolTheme` 里注册：
@@ -160,7 +160,7 @@ const module: BackgroundModule = {
 export default module.default
 ```
 
-配置里写 `background: () => import('./backgrounds/host')`。页面切换时主题只会「通知」提供者，具体动画怎么切由提供者自己决定；不配置 `background` 就是纯色背景。
+配置里写 `background: './backgrounds/host'`（相对 `.vuepress` 目录的模块路径）。页面切换时主题只会「通知」提供者，具体动画怎么切由提供者自己决定；不配置 `background` 就是纯色背景。
 
 ### 4. 建好内容目录
 

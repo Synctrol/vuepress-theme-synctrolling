@@ -809,15 +809,7 @@ describe('resolveThemeOptions', () => {
       cspOrigins,
     }
     const platformTypes = { youtube: registration }
-    const backgroundLoader = async () => ({
-      default() {
-        return {
-          request() {},
-          dispose() {},
-        }
-      },
-    })
-    const background = backgroundLoader
+    const background = './backgrounds/host'
     const input: SynctrolThemeOptions = {
       ...base,
       topbarText,
@@ -903,7 +895,7 @@ describe('resolveThemeOptions', () => {
     expect(resolved.platforms.types.youtube.component).toBe(component)
     expect(resolved.platforms.types.youtube.validate).toBe(validate)
     expect(resolved.platforms.types.youtube.cspOrigins).toBe(cspOrigins)
-    expect(resolved.background).toBe(backgroundLoader)
+    expect(resolved.background).toBe(background)
   })
 
   it('does not mutate the input object', () => {

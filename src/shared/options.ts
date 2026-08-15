@@ -4,7 +4,6 @@ import {
   assertRouteSegment,
   validateThemeOptions,
 } from './options-validation.js'
-import type { BackgroundLoader } from './background.js'
 import type {
   LocaleKey,
   LocaleMessages,
@@ -12,8 +11,6 @@ import type {
   Multilanguage,
   PlatformEntryBase,
 } from './types.js'
-
-export type { BackgroundLoader } from './background.js'
 
 export type UrlSegment = string
 
@@ -131,7 +128,8 @@ export interface SynctrolThemeOptions {
   release?: ReleaseOptions
   news?: NewsOptions
   platforms?: PlatformsOptions
-  background?: BackgroundLoader
+  /** Path (relative to the VuePress config dir) to the background provider module. */
+  background?: string
   seo: SeoOptions
 }
 
@@ -159,7 +157,7 @@ export interface ResolvedSynctrolThemeOptions {
   release: ReleaseOptions
   news: NewsOptions
   platforms: PlatformsOptions
-  background?: BackgroundLoader
+  background?: string
   seo: SeoOptions
 }
 

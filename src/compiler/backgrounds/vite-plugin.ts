@@ -1,12 +1,11 @@
 import type { Plugin } from 'vite'
-import type { BackgroundLoader } from '../../shared/background.js'
 import { emitBackgroundsVirtualModule } from './emit-virtual-module.js'
 
 const VIRTUAL_ID = 'virtual:synctrol-backgrounds'
 const RESOLVED_ID = `\0${VIRTUAL_ID}`
 
 export function createSynctrolBackgroundsVitePlugin(options: {
-  background?: BackgroundLoader
+  background?: string
   configDir: string
 }): Plugin {
   return {

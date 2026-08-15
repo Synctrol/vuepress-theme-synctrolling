@@ -182,7 +182,7 @@ export default defineUserConfig({
 | `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段 |
 | `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
 | `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 embed（如 `GiftItem`）；`TabView` 活动面板内的 embed 在激活时自动加载 |
-| `background` | 未设置 | 单一背景提供者 loader，形如 `() => import('./backgrounds/host')`；模块默认导出工厂 `(context) => IBackgroundHost`。未设置则纯色背景 |
+| `background` | 未设置 | 背景提供者模块路径（相对 VuePress 配置目录），形如 `'./backgrounds/host'`；模块默认导出工厂 `(context) => IBackgroundHost`。未设置则纯色背景 |
 
 `zh` / `en` 的 `messages` 可部分覆盖主题内置文案；其他 locale key 必须提供完整 `LocaleMessages`。未知选项字段是构建错误。
 

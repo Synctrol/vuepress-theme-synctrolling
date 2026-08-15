@@ -36,6 +36,7 @@ export default defineUserConfig({
     },
     topbarText: 'SYNCTROL © 2026',
     footbarText: '敬请期待 · STAY TUNED',
+    background: './backgrounds/host',
     featureFont: "'Archivo Black', 'Arial Black', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
     navigation: {
       items: [

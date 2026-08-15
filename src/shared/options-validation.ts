@@ -477,8 +477,8 @@ function validatePlatforms(value: unknown): void {
 
 function validateBackground(value: unknown): void {
   if (value === undefined) return
-  if (typeof value !== 'function') {
-    throw new Error('Invalid options.background: expected a function')
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error('Invalid options.background: expected a non-empty string')
   }
 }
 

@@ -14,7 +14,7 @@
 
 ## 决策摘要
 
-- 删除 `backgrounds` 按类型模块 map；新增单一 loader 配置项 `background: () => import('./backgrounds/host')`（breaking change）。
+- 删除 `backgrounds` 按类型模块 map；新增单一配置项 `background: './backgrounds/host'`（模块路径字符串，breaking change）。
 - 消费者实现 `IBackgroundHost` 接口；模块默认导出为工厂 `(context) => IBackgroundHost`（等价于 `(context) => new XXXHost(context)`，工厂体写在 host 模块文件里而非 config 内联）。
 - 主题向提供者交付一个**响应式上下文**（Vue 只读 refs）供其自行 watch；每次导航（含首次挂载）以**同步** `request(snapshot)` 推送，不产生 Promise，动画混合交给提供者自理。
 - 视口尺寸 / DPR 不进主题契约：提供者从自身绘图上下文读取，每个 `requestAnimationFrame` 自行适配；主题不监听 resize。
@@ -26,7 +26,7 @@
 ```ts
 // config.ts
 synctrolTheme({
-  background: () => import('./backgrounds/host'),
+  background: './backgrounds/host',
 })
 ```
 
@@ -43,7 +43,7 @@ export default module.default
 ```
 
 - 不配置 `background` → 纯色背景。
-- `background` 必须是 `() => import('…')` 形式（编译器源码级提取路径，见 `extract-loader-specifier.ts`），不接受 `new XXXHost()` 内联：config 在 Node 侧求值会真构造实例（WebGL 宿主崩构建）、实例无法 JSON 序列化进客户端、且失去代码分割。
+- `background` 是模块路径字符串（相对 VuePress 配置目录），主题解析后生成客户端懒加载 `() => import(<abs path>)`。之所以是字符串而非内联 `() => import(...)` 工厂：VuePress 会用 esbuild 打包 config 文件，内联的动态 `import()` 会被改写（`Function.prototype.toString` 无法还原路径）；字符串字面量则原样保留。
 
 ## 契约（`src/shared/background.ts` 重写）
 
@@ -112,7 +112,7 @@ type BackgroundLoader = () => Promise<BackgroundModule>
 
 - 公开选项：`backgrounds` 移除，`background` 新增；`backgrounds` 再出现时报 `UNKNOWN_FIELD`。
 - 公开类型：移除 `BackgroundController`（`update` 语义消亡）；`BackgroundContext` 改名/重构为 `BackgroundReactiveContext`；新增 `BackgroundRequest`、`IBackgroundHost`。
-- 编译器：`emit-virtual-module` / `vite-plugin` / `extract-loader-specifier` 从「按类型 map」改为「单一 loader」；虚拟模块 id `virtual:synctrol-backgrounds` 与别名 `@synctrol/backgrounds` 保留，仅默认导出形状改为单 loader。
+- 编译器：`emit-virtual-module` / `vite-plugin` 从「按类型 map」改为「单一路径字符串 → 单 loader」；移除 `extract-loader-specifier`（源码级路径提取不可靠）。虚拟模块 id `virtual:synctrol-backgrounds` 与别名 `@synctrol/backgrounds` 保留，默认导出形状改为单 loader。
 - `resolve-type.ts`：保留 `PageContentType` 与 `resolveBackgroundContentType`（resolution 变上下文字段，不再驱动模块切换）。
 - 文档：`AGENTS.md`（`backgrounds` 选项说明）与 README 同步更新。
 

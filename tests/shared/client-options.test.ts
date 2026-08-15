@@ -39,14 +39,7 @@ const registration = {
   component: () => 'custom-platform-component',
   cspOrigins: () => ['https://platform.example'],
 }
-const backgroundLoader = async () => ({
-  default() {
-    return {
-      request() {},
-      dispose() {},
-    }
-  },
-})
+const background = './backgrounds/host'
 
 describe('client theme options', () => {
   it('projects a complete JSON-safe payload without Node-only registrations', () => {
@@ -56,14 +49,14 @@ describe('client theme options', () => {
         loadStrategy: 'viewport',
         types: { custom: registration },
       },
-      background: backgroundLoader,
+      background,
     })
 
     const clientOptions: ClientSynctrolThemeOptions =
       toClientThemeOptions(resolved)
 
     expect(resolved.platforms.types.custom).toBe(registration)
-    expect(resolved.background).toBe(backgroundLoader)
+    expect(resolved.background).toBe(background)
     expect(clientOptions).not.toHaveProperty('background')
     expect(clientOptions).not.toHaveProperty('definitionsPath')
     expect(clientOptions).not.toHaveProperty('feeds')
@@ -80,7 +73,7 @@ describe('client theme options', () => {
         loadStrategy: 'interaction',
         types: { custom: registration },
       },
-      background: backgroundLoader,
+      background,
     })
 
     const clientOptions = theme.define.__SYNCTROL_THEME_OPTIONS__
@@ -92,7 +85,7 @@ describe('client theme options', () => {
   it('registers backgrounds via Vite plugin, not define JSON', async () => {
     const theme = synctrolTheme({
       ...base,
-      background: backgroundLoader,
+      background,
     })
 
     expect(theme.define.__SYNCTROL_THEME_OPTIONS__).not.toHaveProperty(

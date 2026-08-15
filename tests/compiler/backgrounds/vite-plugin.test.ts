@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createSynctrolBackgroundsVitePlugin } from '../../../src/compiler/backgrounds/vite-plugin'
 import { emitBackgroundsVirtualModule } from '../../../src/compiler/backgrounds/emit-virtual-module'
-import type { BackgroundLoader } from '../../../src/shared/background'
-
-/** Build a loader whose toString retains the dynamic-import literal (Vitest may rewrite inline import()). */
-function loaderFromSource(source: string): BackgroundLoader {
-  return new Function(`return ${source}`)() as BackgroundLoader
-}
 
 function asHookFn<T extends (...args: never[]) => unknown>(
   hook: T | { handler: T } | undefined,
@@ -36,16 +30,15 @@ describe('createSynctrolBackgroundsVitePlugin', () => {
   })
 
   it('loads the emitted module source', () => {
-    const background = loaderFromSource("() => import('./backgrounds/host')")
     const plugin = createSynctrolBackgroundsVitePlugin({
-      background,
+      background: './backgrounds/host',
       configDir: '/site/.vuepress',
     })
     const load = asHookFn(plugin.load as never) as (
       id: string,
     ) => string | undefined
     expect(load('\0virtual:synctrol-backgrounds')).toBe(
-      emitBackgroundsVirtualModule(background, '/site/.vuepress'),
+      emitBackgroundsVirtualModule('./backgrounds/host', '/site/.vuepress'),
     )
   })
 })
