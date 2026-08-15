@@ -29,10 +29,9 @@ describe('publish workflows', () => {
     expect(ci).toContain('npm run test:consumer-smoke')
   })
 
-  it('publishes tags with OIDC and token fallback', () => {
+  it('publishes tags with an npm token', () => {
     expect(publish).toContain("tags: ['v*']")
-    expect(publish).toContain('id-token: write')
-    expect(publish).toContain('npm publish --provenance --access public')
+    expect(publish).toContain('npm publish --access public')
     expect(publish).toContain('NODE_AUTH_TOKEN')
     expect(publish).toContain('secrets.NPM_TOKEN')
   })
