@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -78,7 +78,7 @@ async function runBuild(base: '/' | `/${string}/` = '/') {
 }
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'synctrol-theme-'))
+  root = mkdtempSync(join(realpathSync(tmpdir()), 'synctrol-theme-'))
   write('content/definitions.yml', 'tags:\n  release:\n    title:\n      zh: 作品\n      en: Releases\n')
   write('content/home/content.yml', 'type: home\n')
   write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n')
