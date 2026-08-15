@@ -4,12 +4,18 @@ All notable changes to `vuepress-theme-synctrolling` are documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-08-15
+
+### Added
+
+- 平台条目可直接粘贴分享链接：`youtube_player` / `bilibili_player` / `netease_player` / `spotify_player` 新增 `url` 字段，自动解析为内嵌参数。
+- 作品平台区块新增 `video` / `player` / `fixed-height` 三种嵌入尺寸：视频 4:3、音频播放器 2:1（窄屏 1:1）、Apple Music 固定 450px。
 
 ### Changed
 
 - 重写中文 README：按步骤说明如何安装和配置主题；标明仅供 Synctrol 团队使用，改设计请自行 fork。
 - 新闻文章详情 URL 与新闻索引/标签 URL 解耦：新增 `news.articleUrlSegment`（默认 `article`），详情 URL 改为 `/{news.articleUrlSegment}/{slug}/`，索引与标签仍用 `news.urlSegment`。
+- 网易云 outchain 播放器以 sandbox 内嵌，抑制其接口限流时的阻塞弹窗。
 
 ### Fixed
 

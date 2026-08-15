@@ -38,7 +38,7 @@ const lock = JSON.parse(readFileSync(resolve('package-lock.json'), 'utf8')) as {
 describe('publishable package.json', () => {
   it('uses approved public package metadata', () => {
     expect(pkg.name).toBe('vuepress-theme-synctrolling')
-    expect(pkg.version).toBe('0.1.0')
+    expect(pkg.version).toBe('0.2.0')
     expect(pkg.private).toBeUndefined()
     expect(pkg.type).toBe('module')
     expect(pkg.license).toBe('MIT')

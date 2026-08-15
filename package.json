@@ -1,6 +1,6 @@
 {
   "name": "vuepress-theme-synctrolling",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Synctrol-specific VuePress 2 theme for releases, news, pages, SEO, feeds, and multilingual static sites.",
   "license": "MIT",
   "type": "module",

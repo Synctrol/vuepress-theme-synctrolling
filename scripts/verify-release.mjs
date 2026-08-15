@@ -12,4 +12,4 @@ run('npm', ['run', 'assert:pack'])
 run('npm', ['run', 'assert:exports'])
 run('npm', ['run', 'test:consumer-smoke'])
 
-console.log('\nverify-release: ready to tag v0.1.0 and push for npm publish')
+console.log('\nverify-release: ready to tag and push for npm publish')
