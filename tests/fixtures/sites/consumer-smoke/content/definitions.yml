@@ -18,3 +18,29 @@ platforms:
     category: digital
     type: spotify_player
     name: Spotify
+  youtube:
+    category: digital
+    type: youtube_player
+    name: YouTube
+  bilibili:
+    category: digital
+    type: bilibili_player
+    name:
+      zh: B 站
+      en: Bilibili
+  apple_music:
+    category: digital
+    type: apple_music_player
+    name: Apple Music
+  bandcamp:
+    category: digital
+    type: link
+    name: Bandcamp
+  ditto:
+    category: digital
+    type: link
+    name: Ditto
+  dizzylab:
+    category: digital
+    type: link
+    name: DizzyLab

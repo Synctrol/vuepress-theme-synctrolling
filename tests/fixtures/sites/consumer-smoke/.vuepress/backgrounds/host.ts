@@ -10,8 +10,10 @@ import { FlowController } from './flow'
  * Base opacity of the wave. The per-pixel alpha is `intensity * WAVE_ALPHA`,
  * so the wave is semi-transparent and the solid `var(--syn-bg)` underneath
  * (painted by the theme shell) stays visible through the transparent canvas.
+ * Kept low so the wave reads as a subtle decoration rather than a gray wash
+ * that fights the theme's near-black background in dark mode.
  */
-const WAVE_ALPHA = 0.5
+const WAVE_ALPHA = 1
 
 /**
  * Shifts the wave pattern in screen space (in normalized-by-height units).
@@ -26,6 +28,13 @@ const WAVE_SHIFT_Y = 0.2
  * < 1 zooms out.
  */
 const WAVE_SCALE = 0.8
+
+/**
+ * Render resolution as a fraction of the device pixel ratio. The wave is a
+ * soft decorative background, so it renders below native resolution and is
+ * upscaled by CSS — a large GPU savings with no visible quality loss.
+ */
+const RENDER_SCALE = 0.5
 
 const VERTEX_SOURCE = `#version 300 es
 void main() {
@@ -64,7 +73,7 @@ void main() {
   h = sin(atan(uv.y, uv.x) * 1.0);
 
   vec4 o = vec4(0.0);
-  for (i = 1.0; i <= 16.0; i += 1.0) {
+  for (i = 1.0; i <= 12.0; i += 1.0) {
     vec2 v = p;
     for (f = 1.0; f <= 50.0; f *= 1.5) {
       v += mod(tan(cos(v.yx * f + f + i - iTime)), 5.0) / f;
@@ -76,7 +85,10 @@ void main() {
 
   float lum = dot(o.rgb, vec3(0.2126, 0.7152, 0.0722));
   float intensity = clamp((lum + 2.0) * 0.25, 0.0, 1.0);
-  fragColor = vec4(uColor, intensity * uAlpha);
+  // Premultiplied output: the context uses premultipliedAlpha and
+  // blendFunc(ONE, ONE_MINUS_SRC_ALPHA), so the color must be pre-scaled.
+  float alpha = intensity * uAlpha;
+  fragColor = vec4(((uColor * uColor * uColor * uColor) - 0.5) * alpha, alpha);
 }
 `
 
@@ -132,6 +144,9 @@ class WaveHost implements IBackgroundHost {
   private rafId = 0
   private time = 0
   private lastFrame = 0
+  private lastWidth = 0
+  private lastHeight = 0
+  private lastColor = ''
   private disposed = false
   private readonly stopMotionWatch: () => void
 
@@ -211,7 +226,7 @@ class WaveHost implements IBackgroundHost {
     this.uScale = gl.getUniformLocation(program, 'uScale')
 
     gl.enable(gl.BLEND)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
     gl.disable(gl.DEPTH_TEST)
   }
 
@@ -224,7 +239,23 @@ class WaveHost implements IBackgroundHost {
       this.lastFrame = now
       const flow = this.flow.step(dt)
       this.time += dt * flow
-      this.renderFrame()
+
+      // Skip the GPU draw when the wave is frozen (flow 0) and neither the
+      // canvas size nor the color mode changed since the last frame.
+      const size = this.currentSize()
+      const color = this.context.colorMode.value
+      const changed =
+        flow > 0 ||
+        size.width !== this.lastWidth ||
+        size.height !== this.lastHeight ||
+        color !== this.lastColor
+      if (changed) {
+        this.renderFrame(size)
+        this.lastWidth = size.width
+        this.lastHeight = size.height
+        this.lastColor = color
+      }
+
       this.rafId = requestAnimationFrame(tick)
     }
     this.rafId = requestAnimationFrame(tick)
@@ -237,12 +268,20 @@ class WaveHost implements IBackgroundHost {
     }
   }
 
-  private renderFrame(): void {
+  private currentSize(): { width: number; height: number } {
+    if (!this.canvas) return { width: 0, height: 0 }
+    const dpr = (window.devicePixelRatio || 1) * RENDER_SCALE
+    return {
+      width: Math.max(1, Math.floor(this.canvas.clientWidth * dpr)),
+      height: Math.max(1, Math.floor(this.canvas.clientHeight * dpr)),
+    }
+  }
+
+  private renderFrame(size = this.currentSize()): void {
     if (!this.gl || !this.canvas || !this.program) return
     const gl = this.gl
-    const dpr = window.devicePixelRatio || 1
-    const width = Math.max(1, Math.floor(this.canvas.clientWidth * dpr))
-    const height = Math.max(1, Math.floor(this.canvas.clientHeight * dpr))
+    const width = size.width
+    const height = size.height
     if (this.canvas.width !== width || this.canvas.height !== height) {
       this.canvas.width = width
       this.canvas.height = height
