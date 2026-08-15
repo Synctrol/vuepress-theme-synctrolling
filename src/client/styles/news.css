@@ -57,3 +57,58 @@
   padding: 0;
   list-style: none;
 }
+
+.syn-pagination {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  /* Strong rule so the pagination block reads as distinct from the subtle
+     rules that separate the news list items above it. */
+  border-block-start: var(--syn-border-strong);
+  padding-block-start: 1.5rem;
+  margin-block-start: 1.5rem;
+}
+
+/* Prev sits left, next sits right; the empty slot keeps the status centered
+   when one of them is absent. */
+.syn-pagination > :first-child {
+  justify-self: start;
+}
+
+.syn-pagination > :last-child {
+  justify-self: end;
+}
+
+.syn-pagination__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: var(--syn-border-strong);
+  background: transparent;
+  color: var(--syn-fg);
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.syn-pagination__link:hover,
+.syn-pagination__link:focus-visible {
+  background: var(--syn-fg);
+  color: var(--syn-bg);
+}
+
+.syn-pagination__arrow {
+  letter-spacing: 0;
+}
+
+.syn-pagination__status {
+  justify-self: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--syn-sub-title-fg);
+  white-space: nowrap;
+}

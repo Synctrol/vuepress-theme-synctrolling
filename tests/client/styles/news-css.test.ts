@@ -20,4 +20,14 @@ describe('news.css', () => {
     expect(css).toMatch(/\.syn-news-list-item\[data-layout='cover'\]\s*\{[^}]*display:\s*grid/)
     expect(css).toMatch(/\.syn-news-list-item__tags\s*\{[^}]*display:\s*flex/)
   })
+
+  it('styles pagination as bordered buttons with a centered status (no display font)', () => {
+    expect(css).toMatch(/\.syn-pagination\s*\{[^}]*grid-template-columns:\s*1fr\s*auto\s*1fr/)
+    expect(css).toMatch(/\.syn-pagination\s*\{[^}]*border-block-start:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-pagination__link\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
+    expect(css).not.toMatch(/\.syn-pagination__link\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
+    expect(css).toMatch(/\.syn-pagination__link:hover[^{]*\{[^}]*background:\s*var\(--syn-fg\)/)
+    expect(css).toMatch(/\.syn-pagination__link:hover[^{]*\{[^}]*color:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-pagination__status\s*\{[^}]*justify-self:\s*center/)
+  })
 })

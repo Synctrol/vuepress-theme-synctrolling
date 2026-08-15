@@ -32,6 +32,8 @@ defineProps<{
         :next-href="data.pagination.nextPublicPath"
         :prev-label="previousPageLabel"
         :next-label="nextPageLabel"
+        :page="data.pagination.page"
+        :page-count="data.pagination.pageCount"
       />
     </section>
   </ContentColumn>

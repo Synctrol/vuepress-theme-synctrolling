@@ -28,11 +28,29 @@ describe('Plan 09 shared content components', () => {
         nextHref: '/base/en/news/page/3/',
         prevLabel: 'Previous',
         nextLabel: 'Next',
+        page: 2,
+        pageCount: 3,
       },
     })
     expect(wrapper.find('nav').attributes('aria-label')).toBe('Pagination')
     expect(wrapper.find('[data-testid="pagination-prev"]').attributes('href')).toBe('/base/en/news/')
     expect(wrapper.find('[data-testid="pagination-next"]').attributes('href')).toBe('/base/en/news/page/3/')
+    expect(wrapper.find('[data-testid="pagination-status"]').text()).toBe('2 / 3')
+  })
+
+  it('renders a page indicator without a prev link on the first page', () => {
+    const wrapper = mount(PaginationNav, {
+      props: {
+        nextHref: '/base/en/news/page/2/',
+        prevLabel: 'Previous',
+        nextLabel: 'Next',
+        page: 1,
+        pageCount: 2,
+      },
+    })
+    expect(wrapper.find('[data-testid="pagination-prev"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="pagination-next"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="pagination-status"]').text()).toBe('1 / 2')
   })
 
   it('renders optional covers with lazy/eager loading', () => {
