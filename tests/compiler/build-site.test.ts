@@ -63,7 +63,7 @@ describe('buildSite', () => {
     const paths = built.site.pages.map((page) => page.url.routePath)
     expect(paths).toContain('/zh/')
     expect(paths).toContain('/en/')
-    expect(paths).toContain('/zh/news/launch/')
+    expect(paths).toContain('/zh/article/launch/')
     expect(paths).toContain('/zh/news/tags/release/')
 
     expect(built.packages.map((pkg) => pkg.identity).sort()).toEqual([

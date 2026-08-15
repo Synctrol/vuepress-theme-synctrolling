@@ -9,7 +9,7 @@ import type { NewsCollectionPageData, NewsListItem } from '../../../src/shared/t
 const listItem: NewsListItem = {
   identity: 'news:a',
   slug: 'a',
-  publicPath: '/base/en/news/a/',
+  publicPath: '/base/en/article/a/',
   title: 'A',
   titleLang: 'en-US',
   date: '2026-08-11',

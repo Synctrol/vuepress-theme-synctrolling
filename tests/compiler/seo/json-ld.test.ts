@@ -10,7 +10,7 @@ const gift: GiftBook = { type: 'gift', title: { zh: '周边', en: 'Gifts' }, gif
 describe('json-ld builders', () => {
   it('formats durations and article schema', () => {
     expect(secondsToIsoDuration(120)).toBe('PT2M')
-    expect(buildArticleJsonLd({ headline: 'Launch', description: 'Summary', canonicalUrl: 'https://synctrol.com/en/news/launch/', image: 'https://synctrol.com/og.webp', datePublished: '2026-08-11', dateModified: '2026-08-12', organizationName: 'Synctrol' })).toMatchObject({ '@type': 'Article', headline: 'Launch', dateModified: '2026-08-12' })
+    expect(buildArticleJsonLd({ headline: 'Launch', description: 'Summary', canonicalUrl: 'https://synctrol.com/en/article/launch/', image: 'https://synctrol.com/og.webp', datePublished: '2026-08-11', dateModified: '2026-08-12', organizationName: 'Synctrol' })).toMatchObject({ '@type': 'Article', headline: 'Launch', dateModified: '2026-08-12' })
   })
 
   it('builds album recordings and omits Product for gifts', () => {
@@ -30,7 +30,7 @@ describe('json-ld builders', () => {
     const homeNodes = buildPageJsonLd(page({ identity: 'home', locale: 'en', contentType: 'home', url: url('https://synctrol.com/en/'), title: 'Home' }), options, seoContentContext(), { title: 'Home', description: 'Home desc', canonicalUrl: 'https://synctrol.com/en/', image: 'https://synctrol.com/og.webp' })
     expect(homeNodes.map((node) => node['@type'])).toEqual(['Organization', 'WebSite'])
 
-    const newsNodes = buildPageJsonLd(page({ identity: 'news:launch', locale: 'en', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/en/news/launch/'), title: 'Launch' }), options, seoContentContext({ dateByPackagePath: new Map([['/site/content/news/launch', '2026-08-11']]) }), { title: 'Launch', description: 'Summary', canonicalUrl: 'https://synctrol.com/en/news/launch/', image: 'https://synctrol.com/og.webp' })
+    const newsNodes = buildPageJsonLd(page({ identity: 'news:launch', locale: 'en', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/en/article/launch/'), title: 'Launch' }), options, seoContentContext({ dateByPackagePath: new Map([['/site/content/news/launch', '2026-08-11']]) }), { title: 'Launch', description: 'Summary', canonicalUrl: 'https://synctrol.com/en/article/launch/', image: 'https://synctrol.com/og.webp' })
     expect(newsNodes.map((node) => node['@type'])).toEqual(['Article'])
   })
 })

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - 重写中文 README：按步骤说明如何安装和配置主题；标明仅供 Synctrol 团队使用，改设计请自行 fork。
+- 新闻文章详情 URL 与新闻索引/标签 URL 解耦：新增 `news.articleUrlSegment`（默认 `article`），详情 URL 改为 `/{news.articleUrlSegment}/{slug}/`，索引与标签仍用 `news.urlSegment`。
 
 ### Fixed
 

@@ -45,7 +45,7 @@ const LINK_CLOUD_FIELDS = ['items'] as const
 const LINK_CLOUD_ITEM_FIELDS = ['label', 'href'] as const
 const RELEASE_FIELDS = ['urlSegment', 'index', 'artworkPlaceholder'] as const
 const RELEASE_INDEX_FIELDS = ['enabled', 'pagination'] as const
-const NEWS_FIELDS = ['urlSegment', 'index', 'tags'] as const
+const NEWS_FIELDS = ['urlSegment', 'articleUrlSegment', 'index', 'tags'] as const
 const NEWS_INDEX_FIELDS = ['enabled', 'pagination'] as const
 const NEWS_TAG_FIELDS = ['urlSegment', 'index'] as const
 const ENABLED_FIELDS = ['enabled'] as const
@@ -436,6 +436,12 @@ function validateNews(value: unknown): void {
   assertKnownFields(value, NEWS_FIELDS, 'options.news')
   if (value.urlSegment !== undefined) {
     assertRouteSegment(value.urlSegment, 'options.news.urlSegment')
+  }
+  if (value.articleUrlSegment !== undefined) {
+    assertRouteSegment(
+      value.articleUrlSegment,
+      'options.news.articleUrlSegment',
+    )
   }
 
   if (value.index !== undefined) {

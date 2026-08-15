@@ -11,8 +11,8 @@ describe('sitemap', () => {
     const urls = selectSitemapUrls([
       page({ identity: 'home', locale: 'zh', contentType: 'home', url: url('https://synctrol.com/zh/'), title: '首页' }),
       page({ identity: 'home', locale: 'en', contentType: 'home', url: url('https://synctrol.com/en/'), title: 'Home' }),
-      page({ identity: 'news:draft', locale: 'zh', contentType: 'news', url: url('https://synctrol.com/zh/news/draft/'), title: 'Draft', isDraft: true, noindex: true }),
-      page({ identity: 'news:only-zh', locale: 'en', contentType: 'news', url: url('https://synctrol.com/en/news/only-zh/'), title: 'Only', isFallback: true, noindex: true, canonicalLocale: 'zh' }),
+      page({ identity: 'news:draft', locale: 'zh', contentType: 'news', url: url('https://synctrol.com/zh/article/draft/'), title: 'Draft', isDraft: true, noindex: true }),
+      page({ identity: 'news:only-zh', locale: 'en', contentType: 'news', url: url('https://synctrol.com/en/article/only-zh/'), title: 'Only', isFallback: true, noindex: true, canonicalLocale: 'zh' }),
     ])
     expect(urls).toEqual(['https://synctrol.com/en/', 'https://synctrol.com/zh/'])
     expect(generateSitemapXml(urls)).toContain('<loc>https://synctrol.com/en/</loc>')

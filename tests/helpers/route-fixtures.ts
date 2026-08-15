@@ -23,6 +23,7 @@ export interface ThemeOptionOverrides {
   }
   news?: {
     urlSegment?: string
+    articleUrlSegment?: string
     index?: Partial<NewsOptions['index']>
     tags?: { urlSegment?: string; index?: { enabled?: boolean } }
   }

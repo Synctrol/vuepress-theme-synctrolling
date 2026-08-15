@@ -37,6 +37,7 @@ export function resolvedOptions(
     },
     news: {
       urlSegment: 'news',
+      articleUrlSegment: 'article',
       index: { enabled: true, pagination: 12 },
       tags: { urlSegment: 'tags', index: { enabled: true } },
     },

@@ -135,7 +135,7 @@ describe('resolveDetailPathSuffix', () => {
       '/releases/first-release/',
     )
     expect(resolveDetailPathSuffix(newsPackage(), 'en', options)).toBe(
-      '/news/launch/',
+      '/article/launch/',
     )
     expect(resolveDetailPathSuffix(pagePackage(), 'zh', options)).toBe('/about/')
     expect(resolveDetailPathSuffix(homePackage(), 'zh', options)).toBe('/')
@@ -144,7 +144,7 @@ describe('resolveDetailPathSuffix', () => {
   it('uses configured urlSegment values shared by every locale', () => {
     const custom = themeOptions({
       release: { urlSegment: 'works' },
-      news: { urlSegment: 'journal' },
+      news: { articleUrlSegment: 'journal' },
     })
 
     expect(resolveDetailPathSuffix(releasePackage(), 'en', custom)).toBe(

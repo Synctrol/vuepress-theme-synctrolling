@@ -11,10 +11,10 @@ describe('rss', () => {
 
   it('selects non-draft non-fallback news and release pages newest first', () => {
     const pages = [
-      page({ identity: 'news:older', locale: 'en', contentType: 'news', packagePath: '/site/content/news/older', url: url('https://synctrol.com/en/news/older/'), title: 'Older', description: 'Old news' }),
+      page({ identity: 'news:older', locale: 'en', contentType: 'news', packagePath: '/site/content/news/older', url: url('https://synctrol.com/en/article/older/'), title: 'Older', description: 'Old news' }),
       page({ identity: 'release:first', locale: 'en', contentType: 'release', packagePath: '/site/content/releases/first', url: url('https://synctrol.com/en/releases/first/'), title: 'First' }),
-      page({ identity: 'news:draft', locale: 'en', contentType: 'news', packagePath: '/site/content/news/draft', url: url('https://synctrol.com/en/news/draft/'), title: 'Draft', isDraft: true, noindex: true }),
-      page({ identity: 'news:fallback', locale: 'en', contentType: 'news', packagePath: '/site/content/news/fallback', url: url('https://synctrol.com/en/news/fallback/'), title: 'Fallback', isFallback: true, noindex: true, canonicalLocale: 'zh' }),
+      page({ identity: 'news:draft', locale: 'en', contentType: 'news', packagePath: '/site/content/news/draft', url: url('https://synctrol.com/en/article/draft/'), title: 'Draft', isDraft: true, noindex: true }),
+      page({ identity: 'news:fallback', locale: 'en', contentType: 'news', packagePath: '/site/content/news/fallback', url: url('https://synctrol.com/en/article/fallback/'), title: 'Fallback', isFallback: true, noindex: true, canonicalLocale: 'zh' }),
       page({ identity: 'home', locale: 'en', contentType: 'home', url: url('https://synctrol.com/en/'), title: 'Home' }),
     ]
     const items = selectRssItems(pages, 'en', options, seoContentContext({ dateByPackagePath: new Map([['/site/content/news/older', '2026-08-01'], ['/site/content/releases/first', '2026-08-05'], ['/site/content/news/draft', '2026-08-10'], ['/site/content/news/fallback', '2026-08-09']]) }))
@@ -23,9 +23,9 @@ describe('rss', () => {
   })
 
   it('renders RSS XML metadata', () => {
-    const xml = generateLocaleRssXml({ locale: 'en', options, channelLink: 'https://synctrol.com/en/', items: [{ title: 'Launch', description: 'Summary', link: 'https://synctrol.com/en/news/launch/', guid: 'https://synctrol.com/en/news/launch/', pubDate: 'Tue, 11 Aug 2026 00:00:00 GMT' }] })
+    const xml = generateLocaleRssXml({ locale: 'en', options, channelLink: 'https://synctrol.com/en/', items: [{ title: 'Launch', description: 'Summary', link: 'https://synctrol.com/en/article/launch/', guid: 'https://synctrol.com/en/article/launch/', pubDate: 'Tue, 11 Aug 2026 00:00:00 GMT' }] })
     expect(xml).toContain('<rss version="2.0">')
     expect(xml).toContain('<title>Synctrol</title>')
-    expect(xml).toContain('<guid>https://synctrol.com/en/news/launch/</guid>')
+    expect(xml).toContain('<guid>https://synctrol.com/en/article/launch/</guid>')
   })
 })

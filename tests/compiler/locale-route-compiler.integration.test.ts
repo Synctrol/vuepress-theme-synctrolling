@@ -90,8 +90,8 @@ describe('locale route compiler integration', () => {
       '/en/releases/first-release/',
       '/zh/releases/',
       '/en/releases/',
-      '/zh/news/launch/',
-      '/en/news/launch/',
+      '/zh/article/launch/',
+      '/en/article/launch/',
       '/zh/news/',
       '/en/news/',
       '/zh/news/tags/',
@@ -119,11 +119,11 @@ describe('locale route compiler integration', () => {
       bodyLocale: 'zh',
       title: '发布',
     })
-    expect(enNews?.url.absoluteUrl).toBe('https://synctrol.com/en/news/launch/')
-    expect(enNews?.url.outputPath).toBe('en/news/launch/index.html')
-    expect(enNews?.url.publicPath).toBe('/en/news/launch/')
+    expect(enNews?.url.absoluteUrl).toBe('https://synctrol.com/en/article/launch/')
+    expect(enNews?.url.outputPath).toBe('en/article/launch/index.html')
+    expect(enNews?.url.publicPath).toBe('/en/article/launch/')
 
-    expect(paths).not.toContain('/zh/news/secret/')
+    expect(paths).not.toContain('/zh/article/secret/')
     expect(result.diagnostics.some((d) => d.code === 'LOCALE_FALLBACK')).toBe(true)
     expect(result.diagnostics.every((d) => d.severity === 'warning')).toBe(true)
     expect(result.rootRouterHtml).toContain('synctrol:locale')

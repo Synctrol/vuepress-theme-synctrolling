@@ -37,7 +37,7 @@ describe('news and page integration fixture', () => {
     expect(paths).toContain('/base/zh/news/')
     expect(paths).toContain('/base/zh/news/tags/')
     expect(paths).toContain('/base/zh/news/tags/release/')
-    expect(paths).toContain('/base/en/news/beta/')
+    expect(paths).toContain('/base/en/article/beta/')
     expect(paths).toContain('/base/zh/team/')
     expect(paths).not.toContain('/base/zh/pages/')
 
@@ -71,6 +71,7 @@ describe('news and page integration fixture', () => {
     const { site } = compileFixture({
       news: {
         urlSegment: 'journal',
+        articleUrlSegment: 'entry',
         index: { enabled: false, pagination: 12 },
         tags: { urlSegment: 'topics', index: { enabled: false } },
       },
@@ -78,7 +79,7 @@ describe('news and page integration fixture', () => {
     const paths = site.pages.map((page) => page.url.publicPath)
     expect(paths).not.toContain('/base/zh/journal/')
     expect(paths).not.toContain('/base/zh/journal/topics/')
-    expect(paths).toContain('/base/zh/journal/alpha/')
+    expect(paths).toContain('/base/zh/entry/alpha/')
     expect(paths).toContain('/base/zh/journal/topics/release/')
   })
 })

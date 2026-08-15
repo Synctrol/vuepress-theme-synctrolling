@@ -102,6 +102,7 @@ function copyRelease(release: ReleaseOptions): ReleaseOptions {
 function copyNews(news: NewsOptions): NewsOptions {
   return {
     urlSegment: news.urlSegment,
+    articleUrlSegment: news.articleUrlSegment,
     index: { ...news.index },
     tags: {
       urlSegment: news.tags.urlSegment,

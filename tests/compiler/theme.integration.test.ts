@@ -719,7 +719,7 @@ album:
     const app = await runBuild()
 
     const newsDetail = app.pages.find(
-      (candidate: Page) => candidate.path === '/zh/news/alpha/',
+      (candidate: Page) => candidate.path === '/zh/article/alpha/',
     )
     expect(newsDetail).toBeDefined()
     expect(
@@ -770,12 +770,12 @@ album:
     write('content/news/alpha/en.md', '---\ntitle: Alpha EN\ndescription: Alpha EN desc\n---\nBody\n')
 
     const app = await runBuild()
-    const page = app.pages.find((candidate: Page) => candidate.path === '/en/news/alpha/')
+    const page = app.pages.find((candidate: Page) => candidate.path === '/en/article/alpha/')
     expect(page).toBeDefined()
     expect(page!.frontmatter.title).toBe('Alpha EN')
     expect(page!.frontmatter.head).toEqual(
       expect.arrayContaining([
-        ['link', { rel: 'canonical', href: 'https://synctrol.com/en/news/alpha/' }],
+        ['link', { rel: 'canonical', href: 'https://synctrol.com/en/article/alpha/' }],
         ['meta', { property: 'og:type', content: 'article' }],
       ]),
     )

@@ -30,7 +30,7 @@ describe('buildNewsListItems', () => {
     })
     expect(items.map((item) => item.slug)).toEqual(['b', 'c', 'a'])
     expect(items[0]).toMatchObject({
-      publicPath: '/base/en/news/b/',
+      publicPath: '/base/en/article/b/',
       coverPublicPath: '/base/assets/b/assets/b.webp',
       title: 'Launch',
       titleLang: 'en-US',
@@ -82,7 +82,7 @@ describe('buildNewsListItems', () => {
       isFallback: true,
       isDraft: true,
       excludeFromRss: true,
-      publicPath: '/base/en/news/fallback/',
+      publicPath: '/base/en/article/fallback/',
     })
   })
 

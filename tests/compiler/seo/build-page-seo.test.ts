@@ -6,13 +6,13 @@ const options = resolvedOptions()
 
 describe('buildPageSeo', () => {
   it('assembles SEO for translated news, collections, and fallback pages', () => {
-    const zhNews = page({ identity: 'news:launch', locale: 'zh', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/zh/news/launch/'), title: '发布', description: '中文摘要' })
-    const enNews = page({ identity: 'news:launch', locale: 'en', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/en/news/launch/'), title: 'Launch', description: 'English summary' })
+    const zhNews = page({ identity: 'news:launch', locale: 'zh', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/zh/article/launch/'), title: '发布', description: '中文摘要' })
+    const enNews = page({ identity: 'news:launch', locale: 'en', contentType: 'news', packagePath: '/site/content/news/launch', url: url('https://synctrol.com/en/article/launch/'), title: 'Launch', description: 'English summary' })
     const newsSeo = buildPageSeo(enNews, [enNews, zhNews], options, seoContentContext({ dateByPackagePath: new Map([['/site/content/news/launch', '2026-08-11']]) }))
     expect(newsSeo.title).toBe('Launch')
     expect(newsSeo.hreflang).toEqual([
-      { hreflang: 'zh-CN', href: 'https://synctrol.com/zh/news/launch/' },
-      { hreflang: 'en-US', href: 'https://synctrol.com/en/news/launch/' },
+      { hreflang: 'zh-CN', href: 'https://synctrol.com/zh/article/launch/' },
+      { hreflang: 'en-US', href: 'https://synctrol.com/en/article/launch/' },
     ])
     expect(newsSeo.jsonLd[0]!['@type']).toBe('Article')
 

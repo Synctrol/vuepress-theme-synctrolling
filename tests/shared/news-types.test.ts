@@ -12,7 +12,7 @@ describe('Plan 09 frontmatter types', () => {
     const item: NewsListItem = {
       identity: 'news:launch',
       slug: 'launch',
-      publicPath: '/base/en/news/launch/',
+      publicPath: '/base/en/article/launch/',
       title: '发布',
       titleLang: 'zh-CN',
       description: '摘要',

@@ -100,6 +100,7 @@ describe('resolveThemeOptions', () => {
     })
     expect(options.news).toEqual({
       urlSegment: 'news',
+      articleUrlSegment: 'article',
       index: {
         enabled: true,
         pagination: 12,
@@ -525,6 +526,7 @@ describe('resolveThemeOptions', () => {
     })
     expect(options.news).toEqual({
       urlSegment: 'updates',
+      articleUrlSegment: 'article',
       index: { enabled: true, pagination: 12 },
       tags: {
         urlSegment: 'tags',
@@ -546,6 +548,28 @@ describe('resolveThemeOptions', () => {
       urlSegment: 'topics',
       index: { enabled: true },
     })
+  })
+
+  it('defaults the news article segment and honors a custom one', () => {
+    const defaults = resolveThemeOptions(base)
+    expect(defaults.news.articleUrlSegment).toBe('article')
+
+    const custom = resolveThemeOptions({
+      ...base,
+      news: { articleUrlSegment: 'entry' },
+    } as unknown as SynctrolThemeOptions)
+    expect(custom.news.articleUrlSegment).toBe('entry')
+  })
+
+  it('rejects unsafe news article url segments', () => {
+    for (const articleUrlSegment of [' entries', 'entries ', 'entry\\x', 'entry%2fx']) {
+      expect(() =>
+        resolveThemeOptions({
+          ...base,
+          news: { articleUrlSegment },
+        } as unknown as SynctrolThemeOptions),
+      ).toThrow(/articleUrlSegment/)
+    }
   })
 
   it.each([42, null])(
@@ -797,6 +821,7 @@ describe('resolveThemeOptions', () => {
         ...base,
         news: {
           urlSegment: 'news',
+          articleUrlSegment: 'article',
           index: { enabled: true, pagination },
           tags: {
             urlSegment: 'tags',

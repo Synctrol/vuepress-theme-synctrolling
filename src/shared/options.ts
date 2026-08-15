@@ -56,6 +56,7 @@ export interface ReleaseOptions {
 
 export interface NewsOptions {
   urlSegment: UrlSegment
+  articleUrlSegment: UrlSegment
   index: {
     enabled: boolean
     pagination: number | false
@@ -263,6 +264,10 @@ export function resolveThemeOptions(
   const news: NewsOptions = {
     urlSegment:
       input.news?.urlSegment === undefined ? 'news' : input.news.urlSegment,
+    articleUrlSegment:
+      input.news?.articleUrlSegment === undefined
+        ? 'article'
+        : input.news.articleUrlSegment,
     index: {
       enabled: input.news?.index?.enabled ?? true,
       pagination: input.news?.index?.pagination ?? 12,
@@ -279,6 +284,10 @@ export function resolveThemeOptions(
   }
 
   assertRouteSegment(news.urlSegment, 'options.news.urlSegment')
+  assertRouteSegment(
+    news.articleUrlSegment,
+    'options.news.articleUrlSegment',
+  )
   assertRouteSegment(news.tags.urlSegment, 'options.news.tags.urlSegment')
   assertPagination(news.index.pagination, 'options.news.index.pagination')
 

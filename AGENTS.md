@@ -69,7 +69,7 @@ Home 的身份固定为 `home`。其他包的身份是 `{type}:{slug}`；省略 
 | Release 索引 | `/{release.urlSegment}/` |
 | Release 详情 | `/{release.urlSegment}/{slug}/` |
 | News 索引 | `/{news.urlSegment}/` |
-| News 详情 | `/{news.urlSegment}/{slug}/` |
+| News 详情 | `/{news.articleUrlSegment}/{slug}/` |
 | News 标签索引 | `/{news.urlSegment}/{news.tags.urlSegment}/` |
 | News 标签归档 | `/{news.urlSegment}/{news.tags.urlSegment}/{tag}/` |
 | Page 详情 | `/{slug}/` |
@@ -179,7 +179,8 @@ export default defineUserConfig({
 | `linkCloud.items` | 未设置 | 侧栏文字链接云；内部 href 与 `navigation.items` 一样不得携带语言前缀 |
 | `release.urlSegment` | `'releases'` | 所有语言共用的作品 URL 段 |
 | `release.index.pagination` | `12` | 正整数或 `false`（单页不分页） |
-| `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段 |
+| `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段（新闻索引与标签页） |
+| `news.articleUrlSegment` | `'article'` | 所有语言共用的新闻文章详情 URL 段 |
 | `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
 | `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 embed（如 `GiftItem`）；`TabView` 活动面板内的 embed 在激活时自动加载 |
 | `background` | 未设置 | 背景提供者模块路径（相对 VuePress 配置目录），形如 `'./backgrounds/host'`；模块默认导出工厂 `(context) => IBackgroundHost`。未设置则纯色背景 |

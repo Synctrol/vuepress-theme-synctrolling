@@ -126,8 +126,8 @@ function typeDefaultSuffix(
   }
   if (pkg.type === 'news') {
     const segment = encodeRouteSegment(
-      options.news.urlSegment,
-      'options.news.urlSegment',
+      options.news.articleUrlSegment,
+      'options.news.articleUrlSegment',
     )
     return `/${segment}/${slug}/`
   }
