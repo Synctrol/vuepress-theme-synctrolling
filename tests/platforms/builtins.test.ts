@@ -66,6 +66,37 @@ describe('builtInPlatformTypes', () => {
     ])
   })
 
+  it('accepts and normalizes Spotify share URLs to canonical URIs', () => {
+    const reg = builtInPlatformTypes.spotify_player
+    expect(
+      reg.validate({
+        platform: 'spotify',
+        uri: 'https://open.spotify.com/album/6sTGvo4ElkLW573RbrH5Yk',
+      }),
+    ).toMatchObject({ uri: 'spotify:album:6sTGvo4ElkLW573RbrH5Yk' })
+    expect(
+      reg.validate({
+        platform: 'spotify',
+        uri: 'https://open.spotify.com/intl-zh/track/abc123?si=xyz',
+      }),
+    ).toMatchObject({ uri: 'spotify:track:abc123' })
+    expect(
+      reg.validate({ platform: 'spotify', uri: 'spotify:playlist:abc' }),
+    ).toMatchObject({ uri: 'spotify:playlist:abc' })
+    expect(() =>
+      reg.validate({
+        platform: 'spotify',
+        uri: 'https://open.spotify.com/artist/abc',
+      }),
+    ).toThrow()
+    expect(() =>
+      reg.validate({
+        platform: 'spotify',
+        uri: 'https://example.com/album/abc',
+      }),
+    ).toThrow()
+  })
+
   it('defaults autoplay to false and checks audio mime prefix', () => {
     const audio = builtInPlatformTypes.audio_player.validate({
       platform: 'host',
@@ -139,5 +170,73 @@ describe('builtInPlatformTypes', () => {
     expect(builtInPlatformTypes.netease_player.cspOrigins(entry)).toEqual([
       'https://music.163.com',
     ])
+  })
+
+  it('parses netease song/album/playlist share links into id and resourceType', () => {
+    const reg = builtInPlatformTypes.netease_player
+    expect(
+      reg.validate({
+        platform: 'netease',
+        url: 'https://music.163.com/#/album?id=368479005',
+      }),
+    ).toMatchObject({ id: '368479005', resourceType: 'album' })
+    expect(
+      reg.validate({
+        platform: 'netease',
+        url: 'https://music.163.com/song?id=123&userid=456',
+      }),
+    ).toMatchObject({ id: '123', resourceType: 'song' })
+    expect(
+      reg.validate({
+        platform: 'netease',
+        url: 'https://music.163.com/#/playlist?id=777',
+      }),
+    ).toMatchObject({ id: '777', resourceType: 'playlist' })
+    expect(() =>
+      reg.validate({ platform: 'netease', url: 'https://example.com/song?id=1' }),
+    ).toThrow()
+    expect(() =>
+      reg.validate({
+        platform: 'netease',
+        url: 'https://music.163.com/#/artist?id=1',
+      }),
+    ).toThrow()
+    expect(() =>
+      reg.validate({
+        platform: 'netease',
+        url: 'https://music.163.com/#/song?id=1',
+        id: '2',
+        resourceType: 'song',
+      }),
+    ).toThrow(/either url or id/)
+  })
+
+  it('parses youtube watch and youtu.be links into videoId', () => {
+    const reg = builtInPlatformTypes.youtube_player
+    expect(
+      reg.validate({
+        platform: 'youtube',
+        url: 'https://www.youtube.com/watch?v=nDXVFY_4Aq4',
+      }),
+    ).toMatchObject({ videoId: 'nDXVFY_4Aq4' })
+    expect(
+      reg.validate({ platform: 'youtube', url: 'https://youtu.be/nDXVFY_4Aq4' }),
+    ).toMatchObject({ videoId: 'nDXVFY_4Aq4' })
+    expect(() =>
+      reg.validate({ platform: 'youtube', url: 'https://example.com/watch?v=abc' }),
+    ).toThrow()
+  })
+
+  it('parses bilibili video links into bvid', () => {
+    const reg = builtInPlatformTypes.bilibili_player
+    expect(
+      reg.validate({
+        platform: 'bilibili',
+        url: 'https://www.bilibili.com/video/BV1TAjT6GEvH/',
+      }),
+    ).toMatchObject({ bvid: 'BV1TAjT6GEvH' })
+    expect(() =>
+      reg.validate({ platform: 'bilibili', url: 'https://example.com/video/BV1TAjT6GEvH' }),
+    ).toThrow()
   })
 })

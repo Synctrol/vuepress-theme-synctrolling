@@ -13,32 +13,77 @@ import {
   requirePlatformKey,
 } from './validate-helpers.js'
 
+const BILIBILI_URL_PATTERN =
+  /^https:\/\/(?:www\.|m\.)?bilibili\.com\/video\/(BV[A-Za-z0-9]{10})/
+
+/**
+ * Extract the BV id from a bilibili video page link. Returns undefined when
+ * the link shape is not recognized.
+ */
+export function normalizeBilibiliUrl(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const match = BILIBILI_URL_PATTERN.exec(raw)
+  if (!match) return undefined
+  return match[1]
+}
+
 export const bilibiliPlayerType: PlatformTypeRegistration<BilibiliPlayerEntry> =
   {
     validate(raw: unknown): BilibiliPlayerEntry {
       const entry = asEntryMap(raw)
-      rejectUnknown(entry, ['platform', 'label', 'bvid', 'page', 'autoplay'])
+      rejectUnknown(entry, ['platform', 'label', 'bvid', 'page', 'autoplay', 'url'])
       const platform = requirePlatformKey(entry)
-      if (
-        typeof entry.bvid !== 'string' ||
-        !/^BV[A-Za-z0-9]{10}$/.test(entry.bvid)
-      ) {
-        invalid(
-          'INVALID_PLATFORM_ENTRY',
-          'bilibili_player.bvid must be BV followed by ten ASCII letters or digits',
+
+      let bvid: string
+      let page: number | undefined
+      let autoplay: boolean
+
+      if (entry.url !== undefined) {
+        if (
+          entry.bvid !== undefined ||
+          entry.page !== undefined ||
+          entry.autoplay !== undefined
+        ) {
+          invalid(
+            'INVALID_PLATFORM_ENTRY',
+            'bilibili_player: provide either url or bvid/page/autoplay, not both',
+          )
+        }
+        const parsed = normalizeBilibiliUrl(entry.url)
+        if (!parsed) {
+          invalid(
+            'INVALID_PLATFORM_ENTRY',
+            'bilibili_player.url must be a bilibili.com/video/BV… link',
+          )
+        }
+        bvid = parsed
+        page = undefined
+        autoplay = false
+      } else {
+        if (
+          typeof entry.bvid !== 'string' ||
+          !/^BV[A-Za-z0-9]{10}$/.test(entry.bvid)
+        ) {
+          invalid(
+            'INVALID_PLATFORM_ENTRY',
+            'bilibili_player.bvid must be BV followed by ten ASCII letters or digits',
+          )
+        }
+        bvid = entry.bvid
+        page = optionalInteger(
+          entry.page,
+          1,
+          'bilibili_player.page must be an integer >= 1',
         )
+        autoplay = assertAutoplay(entry.autoplay)
       }
-      const page = optionalInteger(
-        entry.page,
-        1,
-        'bilibili_player.page must be an integer >= 1',
-      )
+
       const label = optionalLabel(entry)
       return {
         ...createBase(platform, label),
-        bvid: entry.bvid,
+        bvid,
         ...(page === undefined ? {} : { page }),
-        autoplay: assertAutoplay(entry.autoplay),
+        autoplay,
       }
     },
     component: BilibiliPlayerPlatform,
