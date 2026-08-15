@@ -1,6 +1,7 @@
-import { defineClientConfig } from 'vuepress/client'
+import { defineClientConfig, useRouter, useSiteData } from 'vuepress/client'
 import Layout from './layouts/Layout.vue'
 import Root from './layouts/Root.vue'
+import { installInternalLinkInterception } from './navigation/intercept-internal-links.js'
 import Button from './components/Button.vue'
 import ButtonGroup from './components/ButtonGroup.vue'
 import Box from './components/Box.vue'
@@ -60,6 +61,14 @@ export default defineClientConfig({
         '--syn-font-display',
         featureFont,
       )
+    }
+
+    // Turn internal `<a href>` clicks into SPA navigations so the shell (and
+    // its persistent background) is reused instead of full page reloads.
+    if (typeof document !== 'undefined') {
+      const router = useRouter()
+      const siteData = useSiteData()
+      installInternalLinkInterception(router, siteData.value.base)
     }
   },
 })
