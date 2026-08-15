@@ -13,6 +13,20 @@ import { FlowController } from './flow'
  */
 const WAVE_ALPHA = 0.5
 
+/**
+ * Shifts the wave pattern in screen space (in normalized-by-height units).
+ * Positive X moves it left, positive Y moves it down, so this default biases
+ * the pattern toward the bottom-left corner.
+ */
+const WAVE_SHIFT_X = 0.2
+const WAVE_SHIFT_Y = 0.2
+
+/**
+ * Scales the wave pattern size. 1 = reference size, > 1 zooms in,
+ * < 1 zooms out.
+ */
+const WAVE_SCALE = 0.8
+
 const VERTEX_SOURCE = `#version 300 es
 void main() {
   vec2 positions[4] = vec2[4](
@@ -35,10 +49,14 @@ uniform vec2 iResolution;
 uniform float iTime;
 uniform vec3 uColor;
 uniform float uAlpha;
+uniform vec2 uShift;
+uniform float uScale;
 
 void main() {
   float i, f, r, a, h;
-  vec2 uv = gl_FragCoord.xy / iResolution.xy - 1.45;
+  // Normalize both axes by the height so the pattern keeps its aspect ratio
+  // on any viewport (no stretching). uScale zooms it, uShift repositions it.
+  vec2 uv = gl_FragCoord.xy / iResolution.y * uScale - 1.45 + uShift;
   vec2 p = (uv + vec2(0.6, -0.1)) * 16.0;
   uv *= vec2(sin(log(length(uv.y)) + 2.0));
   r = normalize(vec3(length(uv), 0.1, 0.51)).x;
@@ -108,6 +126,8 @@ class WaveHost implements IBackgroundHost {
   private uResolution: WebGLUniformLocation | null = null
   private uColor: WebGLUniformLocation | null = null
   private uAlpha: WebGLUniformLocation | null = null
+  private uShift: WebGLUniformLocation | null = null
+  private uScale: WebGLUniformLocation | null = null
 
   private rafId = 0
   private time = 0
@@ -187,6 +207,8 @@ class WaveHost implements IBackgroundHost {
     this.uResolution = gl.getUniformLocation(program, 'iResolution')
     this.uColor = gl.getUniformLocation(program, 'uColor')
     this.uAlpha = gl.getUniformLocation(program, 'uAlpha')
+    this.uShift = gl.getUniformLocation(program, 'uShift')
+    this.uScale = gl.getUniformLocation(program, 'uScale')
 
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -237,6 +259,8 @@ class WaveHost implements IBackgroundHost {
       gl.uniform3f(this.uColor, light, light, light)
     }
     if (this.uAlpha) gl.uniform1f(this.uAlpha, WAVE_ALPHA)
+    if (this.uShift) gl.uniform2f(this.uShift, WAVE_SHIFT_X, WAVE_SHIFT_Y)
+    if (this.uScale) gl.uniform1f(this.uScale, WAVE_SCALE)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
   }
 }
