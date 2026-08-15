@@ -2,8 +2,9 @@
 import { computed } from 'vue'
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
+import { resolveLinkHref } from '../navigation/resolve-link-href.js'
 
-const { theme, locale } = useLocaleShell()
+const { theme, shell, locale } = useLocaleShell()
 
 const items = computed(() =>
   theme.linkCloud === undefined
@@ -14,10 +15,15 @@ const items = computed(() =>
           locale.value,
           theme.mainLocale,
         )
+        const resolved = resolveLinkHref({
+          href: item.href,
+          locale: locale.value,
+          base: shell.base,
+        })
         return {
           label: label.text,
           labelLang: label.fellBack ? label.locale : undefined,
-          href: item.href,
+          href: resolved.href,
         }
       }),
 )

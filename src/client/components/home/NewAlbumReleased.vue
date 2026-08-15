@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { resolveContentAsset } from '../../assets/resolve-content-asset.js'
+import { useLocaleShell } from '../../composables/useLocaleShell.js'
+import { resolveLinkHref } from '../../navigation/resolve-link-href.js'
 
 const props = withDefaults(
   defineProps<{
@@ -13,6 +15,17 @@ const props = withDefaults(
   {
     position: 'right center',
   },
+)
+
+const { shell, locale } = useLocaleShell()
+const resolvedHref = computed(() =>
+  props.href === undefined
+    ? undefined
+    : resolveLinkHref({
+        href: props.href,
+        locale: locale.value,
+        base: shell.base,
+      }).href,
 )
 
 const rootStyle = computed(() => {
@@ -33,8 +46,8 @@ const rootStyle = computed(() => {
 
 <template>
   <a
-    v-if="href"
-    :href="href"
+    v-if="resolvedHref"
+    :href="resolvedHref"
     class="syn-new-album"
     data-testid="new-album-released"
     :style="rootStyle"

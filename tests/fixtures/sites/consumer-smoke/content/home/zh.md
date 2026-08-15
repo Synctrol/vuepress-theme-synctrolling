@@ -10,4 +10,4 @@ WE SHAPE WAVE
 AND DESCRIBE SOUND
 :::
 
-<NewAlbumReleased title="NO.9 MUSEUM" text="九号博物馆原声带，现已发行。" href="/zh/releases/demo/" background="./assets/new-album.jpg" />
+<NewAlbumReleased title="NO.9 MUSEUM" text="九号博物馆原声带，现已发行。" href="/releases/demo/" background="./assets/new-album.jpg" />

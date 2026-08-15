@@ -1,22 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
 import Button from '../../../src/client/components/Button.vue'
+import { mountShell } from '../harness/mount'
 
 describe('Button', () => {
-  it('renders an anchor when href is provided', () => {
-    const wrapper = mount(Button, {
+  it('resolves an internal href against the current locale', () => {
+    const wrapper = mountShell(Button, {
+      locale: 'en',
       props: { href: '/docs/' },
-      slots: { default: '阅读更多' },
+      slots: { default: 'Read more' },
     })
     const link = wrapper.get('a')
-    expect(link.attributes('href')).toBe('/docs/')
+    expect(link.attributes('href')).toBe('/en/docs/')
     expect(link.classes()).toContain('syn-button')
-    expect(link.text()).toBe('阅读更多')
+    expect(link.text()).toBe('Read more')
     expect(wrapper.find('button').exists()).toBe(false)
   })
 
+  it('passes external hrefs through unchanged', () => {
+    const wrapper = mountShell(Button, {
+      props: { href: 'https://example.com/' },
+      slots: { default: 'Learn more' },
+    })
+    expect(wrapper.get('a').attributes('href')).toBe('https://example.com/')
+  })
+
   it('renders a plain button without href', () => {
-    const wrapper = mount(Button, {
+    const wrapper = mountShell(Button, {
       slots: { default: '订阅' },
     })
     const button = wrapper.get('button')

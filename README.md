@@ -126,6 +126,8 @@ export default defineUserConfig({
 
 把 `siteUrl` 换成你的网站地址，不要末尾斜杠。自己的域名把 `base` 留成 `'/'`；如果发在仓库子路径上，写成 `'/仓库名/'`。
 
+站内链接（`navigation`、`linkCloud`）都相对语言根书写，不要带语言前缀——写 `/releases/` 而不是 `/zh/releases/`，主题会自动补上当前语言前缀。
+
 还需要按同样规则准备两张图，放在 `.vuepress/assets/`：社交分享默认图 `social-default.svg`，以及组织标志 `logo.svg`。社交图标路径按你实际文件改。
 
 常用可选项（不写就用默认值）：

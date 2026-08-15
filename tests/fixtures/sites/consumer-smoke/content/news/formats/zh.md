@@ -26,7 +26,7 @@ console.log('代码块')
 
 ![示例图片](./assets/sample.svg)
 
-<ButtonGroup align="stretch"><Button href="https://example.com/">了解更多</Button><Button href="/zh/releases/">作品</Button><Button>订阅</Button></ButtonGroup>
+<ButtonGroup align="stretch"><Button href="https://example.com/">了解更多</Button><Button href="/releases/">作品</Button><Button>订阅</Button></ButtonGroup>
 <Notice type="info" title="信息">这是一条信息提示。</Notice>
 
 <Notice type="warning" title="注意">这是一条警告提示。</Notice>

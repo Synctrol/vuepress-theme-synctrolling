@@ -11,8 +11,8 @@ AND DESCRIBE SOUND
 :::
 
 <NewAlbumReleased
-    title="NO.9 MUSEUM"
+    title="MUSEUM NO.9 OST"
     text="The No.9 Museum OST is out now." 
-    href="/en/releases/demo/"
+    href="/releases/demo/"
     background="./assets/new-album.jpg"
 />

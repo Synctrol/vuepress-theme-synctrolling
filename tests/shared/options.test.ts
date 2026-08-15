@@ -361,6 +361,48 @@ describe('resolveThemeOptions', () => {
     ).toThrow(/loadStrategy/)
   })
 
+  it('rejects locale-prefixed internal hrefs in navigation and link cloud', () => {
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        navigation: {
+          externalTarget: '_blank',
+          items: [{ label: '作品', href: '/zh/releases/' }],
+        },
+      }),
+    ).toThrow(/locale-agnostic/)
+
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        navigation: {
+          externalTarget: '_blank',
+          items: [{ label: { zh: '作品', en: 'Releases' }, href: { zh: '/releases/', en: '/en/releases/' } }],
+        },
+      }),
+    ).toThrow(/options\.navigation\.items\[0\]\.href\.en/)
+
+    expect(() =>
+      resolveThemeOptions({
+        ...base,
+        linkCloud: { items: [{ label: '文档', href: '/en/docs/' }] },
+      }),
+    ).toThrow(/locale-agnostic/)
+  })
+
+  it('accepts locale-agnostic internal hrefs', () => {
+    const resolved = resolveThemeOptions({
+      ...base,
+      navigation: {
+        externalTarget: '_blank',
+        items: [{ label: '作品', href: '/releases/' }],
+      },
+      linkCloud: { items: [{ label: '文档', href: '/docs/' }] },
+    })
+    expect(resolved.navigation.items[0]?.href).toBe('/releases/')
+    expect(resolved.linkCloud?.items[0]?.href).toBe('/docs/')
+  })
+
   it('requires each platform registration to own its component field', () => {
     expect(() =>
       resolveRuntimeOptions({

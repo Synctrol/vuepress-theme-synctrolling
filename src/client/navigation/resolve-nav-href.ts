@@ -1,8 +1,7 @@
-import { encodePathSegment } from '../../shared/encode-path-segment.js'
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
-import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
 import type { LocaleKey, Multilanguage } from '../../shared/types.js'
 import { isExternalHref } from './is-external-href.js'
+import { resolveInternalPath } from './resolve-link-href.js'
 
 export interface ResolveNavHrefInput {
   href: Multilanguage
@@ -61,13 +60,8 @@ export function resolveNavHref(input: ResolveNavHrefInput): ResolvedNavHref {
     )
   }
 
-  const encodedLocale = encodePathSegment(input.locale)
-  const routePath = `/${encodedLocale}${text}`.replace(/\/{2,}/g, '/')
-  const normalized =
-    text.endsWith('/') && !routePath.endsWith('/') ? `${routePath}/` : routePath
-
   return {
-    href: joinPublicPath(normalizeBase(input.base), normalized),
+    href: resolveInternalPath(text, input.locale, input.base),
     external: false,
   }
 }

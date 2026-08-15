@@ -26,7 +26,7 @@ console.log('code block')
 
 ![Sample image](./assets/sample.svg)
 
-<ButtonGroup align="stretch"><Button href="https://example.com/">Learn more</Button><Button href="/en/releases/">Releases</Button><Button>Subscribe</Button></ButtonGroup>
+<ButtonGroup align="stretch"><Button href="https://example.com/">Learn more</Button><Button href="/releases/">Releases</Button><Button>Subscribe</Button></ButtonGroup>
 <Notice type="info" title="Info">This is an info notice.</Notice>
 
 <Notice type="warning" title="Warning">This is a warning notice.</Notice>

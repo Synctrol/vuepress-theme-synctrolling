@@ -7,7 +7,7 @@ import type {
   SocialLink,
   SynctrolThemeOptions,
 } from './options.js'
-import type { LocaleOptions, Multilanguage } from './types.js'
+import type { LocaleOptions } from './types.js'
 
 type PlainObject = Record<string, unknown>
 
@@ -272,22 +272,60 @@ function validateFeeds(value: unknown): void {
   assertOptionalBoolean(value.sitemap, 'options.feeds.sitemap')
 }
 
+function assertLocaleAgnosticHrefText(
+  text: string,
+  field: string,
+  localeKeys: readonly string[],
+): void {
+  // Only internal, leading-slash links are locale-prefixed by the theme.
+  if (!text.startsWith('/')) return
+  const segment = text.split('/')[1] ?? ''
+  if (segment && localeKeys.includes(segment)) {
+    throw new Error(
+      `Invalid ${field}: internal links must be locale-agnostic (remove the "/${segment}" prefix); got "${text}"`,
+    )
+  }
+}
+
+function assertLocaleAgnosticHref(
+  href: unknown,
+  field: string,
+  localeKeys: readonly string[],
+): void {
+  if (typeof href === 'string') {
+    assertLocaleAgnosticHrefText(href, field, localeKeys)
+    return
+  }
+  if (href === null || typeof href !== 'object') return
+  for (const [key, text] of Object.entries(href)) {
+    if (typeof text === 'string') {
+      assertLocaleAgnosticHrefText(text, `${field}.${key}`, localeKeys)
+    }
+  }
+}
+
 function validateNavigationItem(
   value: unknown,
   index: number,
   mainLocale: string,
+  localeKeys: readonly string[],
 ): asserts value is NavigationItem {
   const field = `options.navigation.items[${index}]`
   assertPlainObject(value, field)
   assertKnownFields(value, NAVIGATION_ITEM_FIELDS, field)
   validateMultilanguage(value.label, `${field}.label`, mainLocale)
   validateMultilanguage(value.href, `${field}.href`, mainLocale)
+  assertLocaleAgnosticHref(value.href, `${field}.href`, localeKeys)
   if (value.icon !== undefined) {
     assertNonEmptyString(value.icon, `${field}.icon`)
   }
 }
 
-function validateNavigation(value: unknown, mainLocale: string): void {
+function validateNavigation(
+  value: unknown,
+  mainLocale: string,
+  localeKeys: readonly string[],
+): void {
   if (value === undefined) return
   assertPlainObject(value, 'options.navigation')
   assertKnownFields(value, NAVIGATION_FIELDS, 'options.navigation')
@@ -300,7 +338,7 @@ function validateNavigation(value: unknown, mainLocale: string): void {
   if (value.items !== undefined) {
     assertArray(value.items, 'options.navigation.items')
     value.items.forEach((item, index) =>
-      validateNavigationItem(item, index, mainLocale),
+      validateNavigationItem(item, index, mainLocale, localeKeys),
     )
   }
 }
@@ -335,15 +373,21 @@ function validateLinkCloudItem(
   value: unknown,
   index: number,
   mainLocale: string,
+  localeKeys: readonly string[],
 ): asserts value is LinkCloudItem {
   const field = `options.linkCloud.items[${index}]`
   assertPlainObject(value, field)
   assertKnownFields(value, LINK_CLOUD_ITEM_FIELDS, field)
   validateMultilanguage(value.label, `${field}.label`, mainLocale)
   assertNonEmptyString(value.href, `${field}.href`)
+  assertLocaleAgnosticHref(value.href, `${field}.href`, localeKeys)
 }
 
-function validateLinkCloud(value: unknown, mainLocale: string): void {
+function validateLinkCloud(
+  value: unknown,
+  mainLocale: string,
+  localeKeys: readonly string[],
+): void {
   if (value === undefined) return
   assertPlainObject(value, 'options.linkCloud')
   assertKnownFields(value, LINK_CLOUD_FIELDS, 'options.linkCloud')
@@ -351,7 +395,7 @@ function validateLinkCloud(value: unknown, mainLocale: string): void {
   if (value.items !== undefined) {
     assertArray(value.items, 'options.linkCloud.items')
     value.items.forEach((item, index) =>
-      validateLinkCloudItem(item, index, mainLocale),
+      validateLinkCloudItem(item, index, mainLocale, localeKeys),
     )
   }
 }
@@ -552,9 +596,10 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
     assertNonEmptyString(input.featureFont, 'options.featureFont')
   }
   validateFeeds(input.feeds)
-  validateNavigation(input.navigation, input.mainLocale)
+  const localeKeys = Object.keys(input.locales)
+  validateNavigation(input.navigation, input.mainLocale, localeKeys)
   validateSocialLinks(input.socialLinks, input.mainLocale)
-  validateLinkCloud(input.linkCloud, input.mainLocale)
+  validateLinkCloud(input.linkCloud, input.mainLocale, localeKeys)
   validateRelease(input.release)
   validateNews(input.news)
   validatePlatforms(input.platforms)

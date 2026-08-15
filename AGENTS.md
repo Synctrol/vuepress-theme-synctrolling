@@ -173,10 +173,10 @@ export default defineUserConfig({
 | `footbarText` | 未设置 | 底栏文案；未设置则底栏左侧为空 |
 | `featureFont` | token 默认栈 | 应用到 Logo、顶栏/底栏文案与导航链接的 CSS `font-family` |
 | `feeds.rss` / `feeds.sitemap` | `true` | 关闭后仍保留 canonical、Open Graph、JSON-LD、`hreflang` |
-| `navigation.items` | `[]` | 内部 href 以 `/` 开头、相对语言根，例如 `/releases/` |
+| `navigation.items` | `[]` | 内部 href 以 `/` 开头、相对语言根，例如 `/releases/`；不得携带语言前缀（如 `/zh/releases/`） |
 | `navigation.externalTarget` | `'_blank'` | `'_blank' \| '_self'` |
 | `socialLinks.items` | `[]` | 侧栏图标链接；`icon` 相对 VuePress 配置文件 |
-| `linkCloud.items` | 未设置 | 侧栏文字链接云 |
+| `linkCloud.items` | 未设置 | 侧栏文字链接云；内部 href 与 `navigation.items` 一样不得携带语言前缀 |
 | `release.urlSegment` | `'releases'` | 所有语言共用的作品 URL 段 |
 | `release.index.pagination` | `12` | 正整数或 `false`（单页不分页） |
 | `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段 |

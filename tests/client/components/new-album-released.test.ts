@@ -1,18 +1,20 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
 import NewAlbumReleased from '../../../src/client/components/home/NewAlbumReleased.vue'
+import { mountShell } from '../harness/mount'
 
 vi.mock('../../../src/client/assets/resolve-content-asset.js', () => ({
-  resolveContentAsset: (ref: string) => `/assets/content/home/${ref.replace('./assets/', '')}.hash.svg`,
+  resolveContentAsset: (ref: string) =>
+    `/assets/content/home/${ref.replace('./assets/', '')}.hash.svg`,
 }))
 
 describe('NewAlbumReleased', () => {
-  it('renders a fully clickable block with title, arrow and intro', () => {
-    const wrapper = mount(NewAlbumReleased, {
+  it('renders a fully clickable block with a locale-resolved href', () => {
+    const wrapper = mountShell(NewAlbumReleased, {
+      locale: 'zh',
       props: {
         title: 'NO.9 MUSEUM',
         text: '九号博物馆原声带',
-        href: '/zh/releases/demo/',
+        href: '/releases/demo/',
         background: './assets/new-album.svg',
       },
     })
@@ -32,8 +34,21 @@ describe('NewAlbumReleased', () => {
     expect(root.find('a.syn-new-album__cover').exists()).toBe(false)
   })
 
+  it('passes external hrefs through unchanged', () => {
+    const wrapper = mountShell(NewAlbumReleased, {
+      props: {
+        title: 'NO.9 MUSEUM',
+        href: 'https://example.com/',
+        background: './assets/new-album.svg',
+      },
+    })
+    expect(
+      wrapper.get('[data-testid="new-album-released"]').attributes('href'),
+    ).toBe('https://example.com/')
+  })
+
   it('honors a custom background position', () => {
-    const wrapper = mount(NewAlbumReleased, {
+    const wrapper = mountShell(NewAlbumReleased, {
       props: {
         title: 'NO.9 MUSEUM',
         background: './assets/new-album.svg',
@@ -47,7 +62,7 @@ describe('NewAlbumReleased', () => {
   })
 
   it('renders a non-clickable block without href and hides the intro when omitted', () => {
-    const wrapper = mount(NewAlbumReleased, {
+    const wrapper = mountShell(NewAlbumReleased, {
       props: { title: 'NO.9 MUSEUM', background: './assets/new-album.svg' },
     })
     const root = wrapper.get('[data-testid="new-album-released"]')

@@ -47,7 +47,7 @@ describe('assertNoRawHtmlRelativeAssets', () => {
   it('allows root-absolute hrefs inside Vue component tags', () => {
     expect(() =>
       assertNoRawHtmlRelativeAssets(
-        '<ButtonGroup align="center"><Button href="/zh/releases/">作品</Button></ButtonGroup>',
+        '<ButtonGroup align="center"><Button href="/releases/">作品</Button></ButtonGroup>',
         '/content/news/formats/zh.md',
       ),
     ).not.toThrow()
