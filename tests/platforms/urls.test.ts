@@ -68,7 +68,7 @@ describe('buildEmbedUrl / buildFallbackUrl', () => {
       resourceType: 'song' as const,
     }
     expect(buildEmbedUrl('netease_player', ne)).toBe(
-      'https://music.163.com/outchain/player?type=2&id=12345&auto=0&height=66',
+      'https://music.163.com/outchain/player?type=2&id=12345&auto=0',
     )
     expect(buildFallbackUrl('netease_player', ne)).toBe(
       'https://music.163.com/#/song?id=12345',

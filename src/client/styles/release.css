@@ -302,6 +302,32 @@
   border: 0;
 }
 
+/* Video embeds (YouTube, Bilibili): 4:3, height follows width. */
+.syn-platform-iframe[data-embed-kind='video'] {
+  aspect-ratio: 4 / 3;
+}
+
+/* Embeds with a self-determined fixed height (Apple Music renders at its
+   own 450px regardless of the iframe height). */
+.syn-platform-iframe[data-embed-kind='fixed-height'] {
+  aspect-ratio: auto;
+  height: 450px;
+}
+
+/* Audio player embeds (Spotify, SoundCloud, NetEase): wide 2:1. */
+.syn-platform-iframe[data-embed-kind='player'] {
+  aspect-ratio: 2 / 1;
+}
+
+/* On narrow screens the wide 2:1 bar becomes too short for tracklists
+   (NetEase album, SoundCloud): give the players a square ratio instead.
+   Video embeds keep 4:3. */
+@media (max-width: 768px) {
+  .syn-platform-iframe[data-embed-kind='player'] {
+    aspect-ratio: 1 / 1;
+  }
+}
+
 .syn-platform-embed__activate {
   border: 0;
   background: transparent;
@@ -312,7 +338,24 @@
 }
 
 .syn-platform-link {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--syn-border-strong);
+  background: transparent;
+  color: var(--syn-fg);
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.syn-platform-link:hover,
+.syn-platform-link:focus-visible {
+  background: var(--syn-fg);
+  color: var(--syn-bg);
 }
 
 .syn-gift-item {

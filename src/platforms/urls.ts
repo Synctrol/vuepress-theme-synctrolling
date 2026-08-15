@@ -60,7 +60,9 @@ export function buildEmbedUrl(
     case 'netease_player': {
       const e = entry as unknown as NeteasePlayerEntry
       const typeNum = NETEASE_TYPE[e.resourceType]
-      return `https://music.163.com/outchain/player?type=${typeNum}&id=${e.id}&auto=0&height=66`
+      // No height param: the outchain player renders its tracklist (album /
+      // playlist) or single-track view (song), and the theme sizes the iframe.
+      return `https://music.163.com/outchain/player?type=${typeNum}&id=${e.id}&auto=0`
     }
     default:
       return undefined

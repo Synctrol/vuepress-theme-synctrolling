@@ -21,6 +21,7 @@ describe('iframe player renderers', () => {
     )
     expect(yt.get('iframe').attributes('loading')).toBe('lazy')
     expect(yt.get('iframe').attributes('referrerpolicy')).toBe('strict-origin-when-cross-origin')
+    expect(yt.get('iframe').attributes('data-embed-kind')).toBe('video')
 
     const bi = mount(BilibiliPlayerPlatform, {
       props: {
@@ -29,6 +30,7 @@ describe('iframe player renderers', () => {
       },
     })
     expect(bi.get('iframe').attributes('src')).toContain('player.bilibili.com')
+    expect(bi.get('iframe').attributes('data-embed-kind')).toBe('video')
 
     const apple = mount(AppleMusicPlayerPlatform, {
       props: {
@@ -38,6 +40,9 @@ describe('iframe player renderers', () => {
     })
     expect(apple.get('iframe').attributes('src')).toBe(
       'https://embed.music.apple.com/us/album/x/1',
+    )
+    expect(apple.get('iframe').attributes('data-embed-kind')).toBe(
+      'fixed-height',
     )
 
     const spotify = mount(SpotifyPlayerPlatform, {
@@ -49,6 +54,7 @@ describe('iframe player renderers', () => {
     expect(spotify.get('iframe').attributes('src')).toBe(
       'https://open.spotify.com/embed/playlist/abc',
     )
+    expect(spotify.get('iframe').attributes('data-embed-kind')).toBe('video')
 
     const sc = mount(SoundCloudPlayerPlatform, {
       props: {
@@ -57,6 +63,7 @@ describe('iframe player renderers', () => {
       },
     })
     expect(sc.get('iframe').attributes('src')).toContain('w.soundcloud.com/player')
+    expect(sc.get('iframe').attributes('data-embed-kind')).toBe('player')
 
     const ne = mount(NeteasePlayerPlatform, {
       props: {
@@ -65,5 +72,11 @@ describe('iframe player renderers', () => {
       },
     })
     expect(ne.get('iframe').attributes('src')).toContain('music.163.com/outchain/player')
+    expect(ne.get('iframe').attributes('data-embed-kind')).toBe('player')
+    // The outchain player fires a blocking alert when its API fetch fails;
+    // the sandbox (without allow-modals) suppresses it.
+    expect(ne.get('iframe').attributes('sandbox')).toBe(
+      'allow-scripts allow-same-origin allow-popups',
+    )
   })
 })
