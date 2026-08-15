@@ -51,6 +51,9 @@ export interface LocaleMessages {
   openExternal: string
   emptyReleases: string
   emptyNews: string
+  notFoundTitle: string
+  notFoundDescription: string
+  notFoundBackHome: string
   paginatedTitle: string
   tagArchiveTitle: string
   previewSectionTitle: string

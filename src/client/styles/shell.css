@@ -187,7 +187,10 @@ body {
   /* Nested grid keeps the golden ratio exact: fr rows ignore content
      and padding, so the side-panel can carry full 24px padding. */
   grid-template-rows: minmax(0, 1.618fr) minmax(0, 1fr);
-  background: var(--syn-deco-bg);
+  /* Transparent so the transparent side-panel reveals the page background
+     (and any dynamic background) behind the column; the list carries the
+     deco color instead. */
+  background: transparent;
   color: var(--syn-deco-label-fg);
   padding: 0;
 }
@@ -199,6 +202,7 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
+  background: var(--syn-deco-bg);
 }
 
 .syn-navigation__item {
@@ -273,8 +277,8 @@ body {
   justify-content: center;
   gap: 16px;
   border-top: var(--syn-border-strong);
-  /* Desktop: blend with the page background instead of the deco column. */
-  background: var(--syn-bg);
+  /* Desktop: transparent so the decorative background shows through. */
+  background: transparent;
   padding: 20px;
   --syn-dock-control-size: 28px;
 }
@@ -481,6 +485,8 @@ body {
 .syn-nav-drawer .syn-navigation {
   flex: 1;
   border-bottom: 0;
+  /* Mobile: keep the deco column color behind the side-panel. */
+  background: var(--syn-deco-bg);
 }
 
 /* Mobile: the in-drawer side-panel keeps the deco column color. */
@@ -659,6 +665,46 @@ body {
 
 .syn-box > :first-child {
   margin-block-start: 0;
+}
+
+.syn-notfound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+  padding: 48px 24px;
+  min-height: 100%;
+}
+
+.syn-notfound__code {
+  margin: 0;
+  font-family: var(--syn-font-display);
+  font-size: clamp(96px, 18vw, 200px);
+  line-height: 0.9;
+  font-weight: 900;
+  letter-spacing: -4px;
+  color: var(--syn-sub-title-fg);
+}
+
+.syn-notfound__title {
+  margin: 0;
+  font-family: var(--syn-font-display);
+  font-size: 20px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.syn-notfound__description {
+  margin: 0;
+  max-width: 40ch;
+  font-size: 14px;
+  color: var(--syn-status-sub-fg);
+}
+
+.syn-notfound__home {
+  margin-top: 8px;
 }
 
 .syn-notice {

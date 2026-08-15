@@ -7,7 +7,7 @@ const keys = Object.keys(enMessages) as Array<keyof LocaleMessages>
 describe('default locale messages', () => {
   it('exports complete chinese and english catalogs with the same keys', () => {
     expect(Object.keys(zhMessages).sort()).toEqual(keys.sort())
-    expect(keys).toHaveLength(41)
+    expect(keys).toHaveLength(44)
   })
 
   it('uses the approved english translation-unavailable copy', () => {
@@ -29,6 +29,10 @@ describe('default locale messages', () => {
     expect(zhMessages.readMore).toBe('阅读更多')
     expect(zhMessages.emptyReleases).toBe('暂无作品')
     expect(zhMessages.emptyNews).toBe('暂无新闻')
+    expect(zhMessages.notFoundTitle).toBe('页面不存在')
+    expect(enMessages.notFoundTitle).toBe('PAGE NOT FOUND')
+    expect(zhMessages.notFoundBackHome).toBe('返回首页')
+    expect(enMessages.notFoundBackHome).toBe('BACK TO HOME')
     expect(zhMessages.previewSectionTitle).toBe('试听')
     expect(zhMessages.credits).toBe('幕后')
     expect(enMessages.credits).toBe('Credits')

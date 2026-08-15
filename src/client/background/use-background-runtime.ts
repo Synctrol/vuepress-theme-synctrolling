@@ -71,25 +71,24 @@ export function useBackgroundRuntime(): {
   watch(
     () => {
       const data = pageData.value
-      if (!data?.contentType) return null
-      const routePath = data.routePath || route.path || page.value.path
-      return `${routePath}|${data.contentType}|${data.identity ?? ''}`
+      // A page without a content type (e.g. the 404 page) behaves as a
+      // generic non-home "page", so the wave eases to a stop there too.
+      const contentType = data?.contentType ?? 'page'
+      const routePath = data?.routePath || route.path || page.value.path
+      return `${routePath}|${contentType}|${data?.identity ?? ''}`
     },
     () => {
       const data = pageData.value
-      if (!data?.contentType) {
-        requestInput.value = null
-        return
-      }
+      const raw = data?.contentType ?? 'page'
       requestInput.value = {
         reason: 'navigate',
-        routePath: data.routePath || route.path || page.value.path,
+        routePath: data?.routePath || route.path || page.value.path,
         contentType: {
-          raw: data.contentType,
-          resolved: resolveBackgroundContentType(data.contentType),
+          raw,
+          resolved: resolveBackgroundContentType(raw),
         },
-        ...(data.identity === undefined ? {} : { identity: data.identity }),
-        locale: data.locale,
+        ...(data?.identity === undefined ? {} : { identity: data.identity }),
+        locale: data?.locale ?? '',
         colorMode: colorMode.value,
         reducedMotion: reducedMotion.value,
       }

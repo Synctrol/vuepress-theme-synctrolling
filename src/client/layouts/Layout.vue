@@ -31,6 +31,7 @@ import NewsIndexLayout from './NewsIndexLayout.vue'
 import NewsTagArchiveLayout from './NewsTagArchiveLayout.vue'
 import NewsTagsIndexLayout from './NewsTagsIndexLayout.vue'
 import PageDetailLayout from './PageDetailLayout.vue'
+import NotFoundView from '../components/NotFoundView.vue'
 import ReleaseIndex from './ReleaseIndex.vue'
 import ReleaseDetail from './ReleaseDetail.vue'
 
@@ -137,6 +138,9 @@ const release = computed(() => synctrol.value.release)
 const news = computed(() => synctrol.value.news)
 const pageFrontmatter = computed(() => synctrol.value.page)
 const home = computed(() => synctrol.value.home)
+const isNotFound = computed(
+  () => page.value.frontmatter.layout === 'NotFound',
+)
 const platformDefinitions = computed(
   () => synctrol.value.platformDefinitions ?? {},
 )
@@ -222,6 +226,7 @@ const formatDate = (date: string) =>
       />
       <Content />
     </template>
+    <NotFoundView v-else-if="isNotFound" />
     <Content v-else />
     <template #footer>
       <p

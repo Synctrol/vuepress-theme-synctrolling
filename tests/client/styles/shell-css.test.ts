@@ -246,7 +246,9 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*padding:\s*20px/)
     expect(css).not.toMatch(/\.syn-nav-drawer__side-panel/)
     expect(css).not.toMatch(/\.syn-side-panel/)
-    expect(css).toMatch(/\.syn-navigation\s*\{[^}]*background:\s*var\(--syn-deco-bg\)/)
+    expect(css).toMatch(/\.syn-navigation\s*\{[^}]*background:\s*transparent/)
+    expect(css).toMatch(/\.syn-navigation__list\s*\{[^}]*background:\s*var\(--syn-deco-bg\)/)
+    expect(css).toMatch(/\.syn-nav-drawer\s*\.syn-navigation\s*\{[^}]*background:\s*var\(--syn-deco-bg\)/)
     expect(css).toMatch(/\.syn-navigation\s*\{[^}]*color:\s*var\(--syn-deco-label-fg\)/)
     expect(css).toMatch(/\.syn-navigation\s*\{[^}]*display:\s*grid/)
     expect(css).toMatch(/\.syn-navigation__link\s*\{[^}]*display:\s*flex/)
@@ -285,7 +287,7 @@ describe('shell.css', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
     expect(css).toMatch(/\.syn-social-links__link:hover[^{]*\s*\.syn-social-links__icon[^{]*\{[^}]*opacity:\s*0\.6/)
     expect(css).not.toMatch(/\.syn-social-links__link:hover[^{]*\{[^}]*background:\s*var\(--syn-deco-symbol-bg\)/)
-    expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*background:\s*var\(--syn-bg\)/)
+    expect(css).toMatch(/\.syn-navigation__side-panel\s*\{[^}]*background:\s*transparent/)
     expect(css).toMatch(/\.syn-nav-drawer\s*\.syn-navigation__side-panel\s*\{[^}]*background:\s*transparent/)
     expect(css).toMatch(/\.syn-language__list\s*\{[^}]*bottom:\s*40px/)
     expect(css).toMatch(/\.syn-language__option\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--syn-fg\)/)
@@ -322,6 +324,15 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*background:\s*transparent/)
     expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*border:\s*0/)
     expect(css).toMatch(/\.syn-header__menu\s*\{[^}]*color:\s*var\(--syn-bar-fg\)/)
+  })
+
+  it('styles the 404 view with the display typeface and centered layout', () => {
+    const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
+    expect(css).toMatch(/\.syn-notfound\s*\{[^}]*align-items:\s*center/)
+    expect(css).toMatch(/\.syn-notfound\s*\{[^}]*justify-content:\s*center/)
+    expect(css).toMatch(/\.syn-notfound\s*\{[^}]*text-align:\s*center/)
+    expect(css).toMatch(/\.syn-notfound__code\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
+    expect(css).toMatch(/\.syn-notfound__title\s*\{[^}]*text-transform:\s*uppercase/)
   })
 
   it('adds the reference 640px mobile breakpoint', () => {

@@ -149,16 +149,18 @@ describe('useBackgroundRuntime', () => {
     )
   })
 
-  it('does not load a background when synctrol contentType is missing', async () => {
+  it('treats a page without contentType (e.g. the 404 page) as a non-home page', async () => {
     synctrol.value = {
       locale: 'zh',
       contentType: undefined as never,
-      routePath: '/',
+      routePath: '/404.html',
     }
     wrapper = mountHarness()
     await nextTick()
     await Promise.resolve()
     await Promise.resolve()
-    expect(solidProbeLog).toEqual([])
+    // The background still loads and is forwarded as a non-home request.
+    expect(solidProbeLog[0]).toMatch(/^init:\/404\.html:/)
+    expect(solidProbeLog[1]).toMatch(/^request:init:\/404\.html:/)
   })
 })
