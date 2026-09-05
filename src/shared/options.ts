@@ -10,9 +10,20 @@ import type {
   LocaleOptions,
   Multilanguage,
   PlatformEntryBase,
+  SoundKey,
 } from './types.js'
 
+export { SOUND_KEYS } from './types.js'
+export type { SoundKey } from './types.js'
+
 export type UrlSegment = string
+
+export interface SoundsOptions {
+  /** Initial state when the visitor has no stored preference (default true). */
+  enabled?: boolean
+  /** Public URL paths (leading '/') of the per-key audio files. */
+  keys?: Partial<Record<SoundKey, string>>
+}
 
 export interface NavigationItem {
   label: Multilanguage
@@ -131,6 +142,10 @@ export interface SynctrolThemeOptions {
   platforms?: PlatformsOptions
   /** Path (relative to the VuePress config dir) to the background provider module. */
   background?: string
+  /** Interaction sound effects: per-key public audio URLs (see SoundsOptions). */
+  sounds?: SoundsOptions
+  /** Optional background music track: public URL path (leading '/'). */
+  music?: string
   seo: SeoOptions
 }
 
@@ -159,6 +174,11 @@ export interface ResolvedSynctrolThemeOptions {
   news: NewsOptions
   platforms: PlatformsOptions
   background?: string
+  sounds: {
+    enabled: boolean
+    keys: Partial<Record<SoundKey, string>>
+  }
+  music?: string
   seo: SeoOptions
 }
 
@@ -353,6 +373,11 @@ export function resolveThemeOptions(
       types: copyPlatformTypes(input.platforms?.types),
     },
     background: input.background,
+    sounds: {
+      enabled: input.sounds?.enabled ?? true,
+      keys: { ...(input.sounds?.keys ?? {}) },
+    },
+    music: input.music,
     seo: copySeo(input.seo),
   }
 }

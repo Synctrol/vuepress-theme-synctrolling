@@ -2,6 +2,7 @@ import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } 
 import type { PropType } from 'vue'
 import type { PlatformTypeRegistration } from '../../../shared/options.js'
 import { formatMessage } from '../../../platforms/format-message.js'
+import { playSound } from '../../sounds/runtime.js'
 
 type LoadStrategy = 'interaction' | 'viewport'
 
@@ -43,9 +44,12 @@ export const PlatformEmbed = defineComponent({
       () => props.typeRegistration.fallbackUrl?.(props.entry as never) ?? undefined,
     )
 
-    function activate() {
+    function activate(byUser = false) {
       if (state.value !== 'idle') return
       state.value = 'ready'
+      // Cue only the direct activation control; tab-driven auto loads already
+      // carry their own tabSelect cue and initial panel loads lack a gesture.
+      if (byUser) playSound('embedActivate')
     }
 
     function onError() {
@@ -56,7 +60,7 @@ export const PlatformEmbed = defineComponent({
       if (props.loadStrategy !== 'viewport' || !root.value) return
       observer = new IntersectionObserver((entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          activate()
+          activate(false)
           observer?.disconnect()
         }
       })
@@ -68,7 +72,7 @@ export const PlatformEmbed = defineComponent({
     watch(
       () => props.autoActivate,
       (value) => {
-        if (value) activate()
+        if (value) activate(false)
       },
       { immediate: true },
     )
@@ -90,7 +94,7 @@ export const PlatformEmbed = defineComponent({
               type: 'button',
               class: 'syn-platform-embed__activate',
               'aria-label': activateLabel.value,
-              onClick: activate,
+              onClick: () => activate(true),
             },
             activateLabel.value,
           ),

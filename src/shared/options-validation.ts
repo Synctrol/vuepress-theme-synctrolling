@@ -1,4 +1,5 @@
 import { enMessages } from './messages.js'
+import { SOUND_KEYS } from './types.js'
 import type {
   LinkCloudItem,
   NavigationItem,
@@ -31,6 +32,8 @@ const TOP_LEVEL_FIELDS = [
   'news',
   'platforms',
   'background',
+  'sounds',
+  'music',
   'seo',
 ] as const
 
@@ -66,6 +69,8 @@ const SEO_FIELDS = [
 const SEO_ORGANIZATION_FIELDS = ['name', 'logo'] as const
 const SEO_COLLECTION_FIELDS = ['release', 'news'] as const
 const SEO_COLLECTION_COPY_FIELDS = ['title', 'description'] as const
+const SOUND_FIELDS = ['enabled', 'keys'] as const
+const SOUND_KEYS_FIELDS = SOUND_KEYS as readonly string[]
 
 function isPlainObject(value: unknown): value is PlainObject {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -532,6 +537,34 @@ function validateBackground(value: unknown): void {
   }
 }
 
+function assertSoundUrl(value: unknown, field: string): void {
+  if (
+    typeof value !== 'string' ||
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    /[\s\\\u0000-\u001f\u007f-\u009f]/.test(value)
+  ) {
+    throw new Error(
+      `Invalid ${field}: expected a public URL path starting with a single "/"`,
+    )
+  }
+}
+
+function validateSounds(value: unknown): void {
+  if (value === undefined) return
+  assertPlainObject(value, 'options.sounds')
+  assertKnownFields(value, SOUND_FIELDS, 'options.sounds')
+  assertOptionalBoolean(value.enabled, 'options.sounds.enabled')
+
+  if (value.keys === undefined) return
+  assertPlainObject(value.keys, 'options.sounds.keys')
+  assertKnownFields(value.keys, SOUND_KEYS_FIELDS, 'options.sounds.keys')
+  for (const [key, url] of Object.entries(value.keys)) {
+    if (url === undefined) continue
+    assertSoundUrl(url, `options.sounds.keys.${key}`)
+  }
+}
+
 function validateSeoCollectionCopy(
   value: unknown,
   collection: string,
@@ -610,5 +643,9 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
   validateNews(input.news)
   validatePlatforms(input.platforms)
   validateBackground(input.background)
+  validateSounds(input.sounds)
+  if (input.music !== undefined) {
+    assertSoundUrl(input.music, 'options.music')
+  }
   validateSeo(input.seo, input.mainLocale)
 }

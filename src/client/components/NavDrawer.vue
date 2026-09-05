@@ -3,6 +3,8 @@ import { inject, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
 import { createFocusTrap, type FocusTrap } from '../a11y/focus-trap.js'
 import { SYNCTROL_DRAWER_OPEN_KEY } from '../composables/keys.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
+import { playSound } from '../sounds/runtime.js'
+import { SYNCTROL_DRAWER_REQUEST_CLOSE } from './drawer-events.js'
 import Navigation from './Navigation.vue'
 
 const drawerOpen = inject(SYNCTROL_DRAWER_OPEN_KEY) as Ref<boolean>
@@ -22,7 +24,13 @@ function cancelActivateRaf(): void {
 }
 
 function close(): void {
+  if (!drawerOpen.value) return
   drawerOpen.value = false
+  playSound('menuClose')
+}
+
+function onDrawerRequestClose(): void {
+  close()
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -83,6 +91,10 @@ function syncDrawerBounds(): void {
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  drawerRef.value?.addEventListener(
+    SYNCTROL_DRAWER_REQUEST_CLOSE,
+    onDrawerRequestClose,
+  )
   mobileMedia = window.matchMedia('(max-width: 768px)')
   mobileMedia.addEventListener('change', onViewportChange)
 
@@ -99,6 +111,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  drawerRef.value?.removeEventListener(
+    SYNCTROL_DRAWER_REQUEST_CLOSE,
+    onDrawerRequestClose,
+  )
   mobileMedia?.removeEventListener('change', onViewportChange)
   window.removeEventListener('resize', syncDrawerBounds)
   resizeObserver?.disconnect()

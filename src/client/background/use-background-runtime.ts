@@ -8,6 +8,7 @@ import {
 } from './reduced-motion.js'
 import { BackgroundRuntime } from './runtime.js'
 import { resolveBackgroundContentType } from './resolve-type.js'
+import { getBackgroundSpectrumChannel } from '../music/spectrum-channel.js'
 import type { SynctrolClientPageData } from './types.js'
 import type {
   BackgroundRequest,
@@ -64,6 +65,7 @@ export function useBackgroundRuntime(): {
       colorMode,
       reducedMotion,
     },
+    getSpectrum: getBackgroundSpectrumChannel,
   })
 
   const requestInput = ref<BackgroundRequest | null>(null)

@@ -1,6 +1,14 @@
 import type { Router } from 'vue-router'
+import type { SoundKey } from '../../shared/options.js'
+import { SYNCTROL_DRAWER_REQUEST_CLOSE } from '../components/drawer-events.js'
 
 const INTERNAL_ORIGIN = 'http://internal.local'
+
+/** Optional cue hooks wired to the interaction sound runtime. */
+export interface LinkClickSoundHooks {
+  play(key: SoundKey): void
+  suppressNextNavigation(): void
+}
 
 /**
  * Resolve an `<a href>` value to a vue-router path (base-stripped), or return
@@ -55,10 +63,20 @@ export function shouldInterceptClick(
 /**
  * Install a document-level click listener that turns internal `<a href>`
  * clicks into SPA navigations. Returns a cleanup function.
+ *
+ * When `sounds` hooks are provided, clicks are classified so each intent
+ * keeps its own cue:
+ * - a link inside the open mobile drawer asks the drawer to close (its
+ *   `menuClose` cue plays once through the drawer, and its navigation cue is
+ *   suppressed);
+ * - a pagination link (marked `data-syn-sound-kind="paginate"`) plays
+ *   `paginate` and suppresses its navigation cue;
+ * - any other internal click keeps the route-change `navigate` cue.
  */
 export function installInternalLinkInterception(
   router: Router,
   base: string,
+  sounds?: LinkClickSoundHooks,
 ): () => void {
   const onClick = (event: MouseEvent) => {
     const anchor = (event.target as Element | null)?.closest?.('a[href]')
@@ -69,6 +87,22 @@ export function installInternalLinkInterception(
     const routePath = resolveRoutePathFromHref(href, base)
     if (routePath === null) return
     event.preventDefault()
+    if (sounds) {
+      const drawer = anchor.closest('.syn-nav-drawer')
+      const drawerOpen =
+        drawer !== null && drawer.getAttribute('aria-hidden') === 'false'
+      const paginate =
+        anchor.closest('[data-syn-sound-kind="paginate"]') !== null
+      if (drawerOpen) {
+        sounds.suppressNextNavigation()
+        drawer.dispatchEvent(
+          new CustomEvent(SYNCTROL_DRAWER_REQUEST_CLOSE, { bubbles: true }),
+        )
+      } else if (paginate) {
+        sounds.play('paginate')
+        sounds.suppressNextNavigation()
+      }
+    }
     void router.push(routePath).catch(() => {})
   }
   document.addEventListener('click', onClick)

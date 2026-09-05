@@ -2,6 +2,20 @@ export const CONTENT_TYPES = ['home', 'release', 'news', 'page'] as const
 export type ContentType = (typeof CONTENT_TYPES)[number]
 export type LocaleKey = string
 
+export const SOUND_KEYS = [
+  'navigate',
+  'menuOpen',
+  'menuClose',
+  'themeCycle',
+  'localeChange',
+  'paginate',
+  'tabSelect',
+  'accordionToggle',
+  'embedActivate',
+] as const
+
+export type SoundKey = (typeof SOUND_KEYS)[number]
+
 export type Multilanguage =
   | string
   | Record<LocaleKey, string>
@@ -34,6 +48,10 @@ export interface LocaleMessages {
   home: string
   language: string
   themeModeAnnouncement: string
+  soundOn: string
+  soundOff: string
+  musicOn: string
+  musicOff: string
   published: string
   previousPage: string
   nextPage: string

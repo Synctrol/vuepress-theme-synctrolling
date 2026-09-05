@@ -2,6 +2,13 @@ import { defineClientConfig, useRouter, useSiteData } from 'vuepress/client'
 import Layout from './layouts/Layout.vue'
 import Root from './layouts/Root.vue'
 import { installInternalLinkInterception } from './navigation/intercept-internal-links.js'
+import {
+  playSound,
+  startSoundsRuntime,
+  suppressNextNavigationSound,
+} from './sounds/runtime.js'
+import { startMusicRuntime } from './music/runtime.js'
+import { startMusicSpectrumAnalysis } from './music/spectrum-channel.js'
 import Button from './components/Button.vue'
 import ButtonGroup from './components/ButtonGroup.vue'
 import Box from './components/Box.vue'
@@ -23,6 +30,11 @@ import './styles/index.js'
 
 declare const __SYNCTROL_THEME_OPTIONS__: {
   featureFont?: string
+  sounds?: {
+    enabled?: boolean
+    keys?: Record<string, string>
+  }
+  music?: string
 }
 
 export default defineClientConfig({
@@ -55,7 +67,8 @@ export default defineClientConfig({
     app.component('TabView', TabView)
   },
   setup() {
-    const featureFont = __SYNCTROL_THEME_OPTIONS__.featureFont
+    const themeOptions = __SYNCTROL_THEME_OPTIONS__
+    const featureFont = themeOptions.featureFont
     if (featureFont !== undefined && typeof document !== 'undefined') {
       document.documentElement.style.setProperty(
         '--syn-font-display',
@@ -68,7 +81,36 @@ export default defineClientConfig({
     if (typeof document !== 'undefined') {
       const router = useRouter()
       const siteData = useSiteData()
-      installInternalLinkInterception(router, siteData.value.base)
+      const sounds = themeOptions.sounds
+      const soundKeys = sounds?.keys ?? {}
+      if (Object.keys(soundKeys).length > 0) {
+        startSoundsRuntime({
+          keys: soundKeys,
+          base: siteData.value.base,
+          enabledFallback: sounds?.enabled ?? true,
+          storage: window.localStorage,
+          router,
+          log: console,
+        })
+      }
+      if (themeOptions.music !== undefined) {
+        startMusicRuntime({
+          url: themeOptions.music,
+          base: siteData.value.base,
+          log: console,
+        })
+        // Live spectrum channel for background providers (no-op while music
+        // is off; unused when the site has no background provider).
+        startMusicSpectrumAnalysis()
+      }
+      installInternalLinkInterception(
+        router,
+        siteData.value.base,
+        {
+          play: playSound,
+          suppressNextNavigation: suppressNextNavigationSound,
+        },
+      )
     }
   },
 })

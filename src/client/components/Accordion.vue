@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { playSound } from '../sounds/runtime.js'
 
 const props = withDefaults(
   defineProps<{
@@ -15,6 +16,7 @@ const isOpen = ref(props.open)
 
 function toggle(): void {
   isOpen.value = !isOpen.value
+  playSound('accordionToggle')
 }
 </script>
 

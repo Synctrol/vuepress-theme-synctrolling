@@ -20,6 +20,7 @@ defineProps<{
       v-if="prevHref"
       class="syn-pagination__link"
       data-testid="pagination-prev"
+      data-syn-sound-kind="paginate"
       :href="prevHref"
     >
       <span class="syn-pagination__arrow" aria-hidden="true">←</span>
@@ -35,6 +36,7 @@ defineProps<{
       v-if="nextHref"
       class="syn-pagination__link"
       data-testid="pagination-next"
+      data-syn-sound-kind="paginate"
       :href="nextHref"
     >
       <span>{{ nextLabel }}</span>

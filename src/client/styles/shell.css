@@ -147,6 +147,20 @@ body {
   text-decoration: underline;
 }
 
+.syn-sound-toggle__button,
+.syn-music-toggle__button {
+  font-size: 12px;
+  padding-inline: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.syn-sound-toggle__button:hover,
+.syn-sound-toggle__button:focus-visible,
+.syn-music-toggle__button:hover,
+.syn-music-toggle__button:focus-visible {
+  text-decoration: underline;
+}
+
 .syn-main {
   grid-area: main;
   min-width: 0;

@@ -26,10 +26,12 @@
 4. **作品系统**：方图索引网格（无边框密排，按容器空间自动 4/3/2 列；悬浮时封面变暗并在左上角显示专辑名）、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / AlbumPlatform / GiftItem / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
 5. **新闻系统**：按日期倒序的索引、标签归档、分页。
 6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
-7. **全局背景提供者**：单一常驻 `IBackgroundHost`，主题在每次导航时推送「页面申请」，提供者自行编排背景切换（动画 / 交叉淡化 / 硬切），背景可以是图片 / SVG / Canvas / WebGL / WebGPU。
+7. **全局背景提供者**：单一常驻 `IBackgroundHost`，主题在每次导航时推送「页面申请」，提供者自行编排背景切换（动画 / 交叉淡化 / 硬切），背景可以是图片 / SVG / Canvas / WebGL / WebGPU。上下文可选携带 `spectrum` 音乐频谱通道（见 #12）。
 8. **资源管线**：内容包、全局与主题资源输出带内容哈希的 URL，并应用 VuePress `base`。
 9. **SEO 与订阅**：canonical、Open Graph、仅真实译文的 `hreflang`、JSON-LD、各语言 `/{locale}/rss.xml`、站点 `sitemap.xml`。
 10. **平台 CSP 审计产物**：构建写出 `synctrol-csp.json`（`frame-src` / `media-src` / `connect-src`），不注入 CSP meta。
+11. **符号化交互音效**：9 个固定键位（`navigate`、`menuOpen`、`menuClose`、`themeCycle`、`localeChange`、`paginate`、`tabSelect`、`accordionToggle`、`embedActivate`）各映射一个可选音频 URL；未配置或加载失败的键运行时静默（dev/浏览器 console 警告一次）。顶栏 chip 总开关（默认开、localStorage 记忆，键 `synctrol:sounds`），`prefers-reduced-motion: reduce` 时静默并挂起 AudioContext；仅在用户手势后创建/恢复上下文；同键 80ms 防重、异键可重叠；`navigate` 在路由 `afterEach` 成功后播放，分页与打开抽屉内的链接选择播放各自语义键并抑制随后的 navigate。音频按固定名放在消费站 `.vuepress/public/sounds/`，值以 `/` 开头、无 base。
+12. **背景音乐**：可选单曲（`music` 选项，`/` 开头公开 URL，文件放 `.vuepress/public/music/`）。顶栏独立 chip「背景乐开/关」：默认关、不持久化、必须访客手势触发（自动播放策略），循环播放、约 0.7s 淡入/淡出、切页不中断、与交互音效并存不干预；文件缺失/播放失败 console 警告一次。**频谱通道**：当 `music` 与 `background` 同时配置时，媒体元素经 `createMediaElementSource → AnalyserNode` 回传；背景提供者上下文可获得 `spectrum`（`active`/`frame` refs + FFT-1024 的 512 个归一化频点 `data` + `binHz` 频率标尺 + 整体 `rmsDb` 响度（dBFS RMS，静默约 -90），每动画帧原地刷新）。只在播放中且非 `prefers-reduced-motion` 时活跃，停止后数据清零；手势门控：无用户激活时不排队音频 cue。
 
 ## 主题重要概念
 
@@ -184,6 +186,9 @@ export default defineUserConfig({
 | `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
 | `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 embed（如 `GiftItem`）；`TabView` 活动面板内的 embed 在激活时自动加载 |
 | `background` | 未设置 | 背景提供者模块路径（相对 VuePress 配置目录），形如 `'./backgrounds/host'`；模块默认导出工厂 `(context) => IBackgroundHost`。未设置则纯色背景 |
+| `sounds.enabled` | `true` | 访客未存偏好时的初始开关值 |
+| `sounds.keys` | `{}` | `SoundKey` 子集 → 站点公开 URL 路径（`'/'` 开头、相对站点根）；键未知或值非法是构建错误；未配键的触发静默。任意键存在时顶栏才渲染音效 chip |
+| `music` | 未设置 | 背景音乐单曲的站点公开 URL 路径（`'/'` 开头、相对站点根）；文件按固定名放消费站 `.vuepress/public/music/`；配置后顶栏渲染「背景乐」chip |
 
 `zh` / `en` 的 `messages` 可部分覆盖主题内置文案；其他 locale key 必须提供完整 `LocaleMessages`。未知选项字段是构建错误。
 
@@ -340,7 +345,7 @@ import 'vuepress-theme-synctrolling/styles.css'
 - `date` / `updated` 必须是 `YYYY-MM-DD`；`updated` 不得早于 `date`。
 - 平台 embed 只在交互或进入视口后加载；不能配置为立即加载。例外：`TabView` 的活动面板（含初始挂载的默认面板）在激活时自动加载其 embed。
 - 展示字体默认使用 `'Archivo Black', 'Arial Black', Arial, ...`。可用 `featureFont` 覆盖展示字体栈。npm 包不附带 Archivo Black 的 WOFF2 文件，仓库里也没有可分发的授权字体。消费站点如需该字体，应自行托管或通过页面头部引入。
-- `.vuepress/public` 只放固定文件名资源（如 `CNAME`、`robots.txt`）。社交默认图与组织 logo 走全局哈希资源管线。
+- `.vuepress/public` 只放固定文件名资源（如 `CNAME`、`robots.txt`、`sounds/` 下的九个交互音效固定名、`music/` 下的一首背景乐固定名）。社交默认图与组织 logo 走全局哈希资源管线。
 
 ## 开发
 

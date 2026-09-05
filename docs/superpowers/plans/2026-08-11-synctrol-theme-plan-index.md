@@ -20,6 +20,7 @@ This index sequences independent, testable plans for `vuepress-theme-synctrollin
 | 09 | `2026-08-11-09-news-and-page.md` | News indexes/tags/pagination, Page layout, list fallback behavior |
 | 10 | `2026-08-11-10-seo-and-feeds.md` | Canonical, Open Graph, JSON-LD, hreflang, RSS, Sitemap |
 | 11 | `2026-08-11-11-npm-package-publish.md` | Publish `vuepress-theme-synctrolling` as an npm package |
+| 12 | `2026-09-05-interaction-sound-effects.md` | Symbolic interaction sounds: 9 fixed cue keys, WebAudio engine, topbar toggle, reduced-motion degrade; optional background music track (`music`) with manual topbar toggle |
 
 ## Execution Rules
 

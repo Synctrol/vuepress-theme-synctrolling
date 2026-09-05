@@ -5,9 +5,15 @@ import type { ColorModePreference } from '../color-mode/types.js'
 import { formatMessage } from '../../shared/format-message.js'
 import { useColorMode } from '../composables/useColorMode.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
+import { playSound } from '../sounds/runtime.js'
 
 const { preference, cycle } = useColorMode()
 const { messages } = useLocaleShell()
+
+function cycleMode(): void {
+  cycle()
+  playSound('themeCycle')
+}
 
 const labelMap = computed<Record<ColorModePreference, string>>(() => ({
   auto: messages.value.auto,
@@ -27,7 +33,7 @@ const announcement = computed(() =>
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
-    cycle()
+    cycleMode()
   }
 }
 </script>
@@ -38,7 +44,7 @@ function onKeydown(event: KeyboardEvent): void {
       type="button"
       class="syn-theme-mode__button syn-bar-chip"
       :aria-label="announcement"
-      @click="cycle"
+      @click="cycleMode"
       @keydown="onKeydown"
     >
       {{ visibleLabel }}

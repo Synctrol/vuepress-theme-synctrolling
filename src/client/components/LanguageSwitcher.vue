@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useId } from 'vue'
 import { persistLocalePreference } from '../i18n/locale-alternates.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
+import { playSound } from '../sounds/runtime.js'
 
 const { messages, localeLabel, shell, locale } = useLocaleShell()
 const open = ref(false)
@@ -50,6 +51,7 @@ function toggle(): void {
 
 function select(href: string, targetLocale: string, event: Event): void {
   event.preventDefault()
+  playSound('localeChange')
   persistLocalePreference(window.localStorage, targetLocale)
   open.value = false
   window.location.assign(href)

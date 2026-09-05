@@ -3,6 +3,7 @@ import { computed, provide, reactive, ref, useSlots } from 'vue'
 import type { VNode } from 'vue'
 import { SYNCTROL_TABS_CONTEXT_KEY } from './tabs-context.js'
 import type { SynctrolTabPanelRegistration } from './tabs-context.js'
+import { playSound } from '../../sounds/runtime.js'
 
 const slots = useSlots()
 const panels = reactive<SynctrolTabPanelRegistration[]>([])
@@ -24,7 +25,9 @@ function unregister(id: number): void {
 }
 
 function select(id: number): void {
+  if (activeId.value === id) return
   activeId.value = id
+  playSound('tabSelect')
 }
 
 provide(SYNCTROL_TABS_CONTEXT_KEY, {

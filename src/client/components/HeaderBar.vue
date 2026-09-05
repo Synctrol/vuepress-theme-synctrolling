@@ -4,6 +4,9 @@ import { SYNCTROL_DRAWER_OPEN_KEY } from '../composables/keys.js'
 import { useLocaleShell } from '../composables/useLocaleShell.js'
 import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
 import { encodePathSegment } from '../../compiler/path-suffix.js'
+import { playSound } from '../sounds/runtime.js'
+import MusicToggle from './MusicToggle.vue'
+import SoundToggle from './SoundToggle.vue'
 import ThemeMode from './ThemeMode.vue'
 
 const drawerOpen = inject(SYNCTROL_DRAWER_OPEN_KEY) as Ref<boolean>
@@ -17,7 +20,9 @@ const homeHref = computed(() =>
 )
 
 function toggleMenu(): void {
-  drawerOpen.value = !drawerOpen.value
+  const next = !drawerOpen.value
+  drawerOpen.value = next
+  playSound(next ? 'menuOpen' : 'menuClose')
 }
 </script>
 
@@ -57,6 +62,8 @@ function toggleMenu(): void {
     </div>
     <div class="syn-header__controls">
       <ThemeMode />
+      <SoundToggle />
+      <MusicToggle />
       <button
         type="button"
         class="syn-header__menu"

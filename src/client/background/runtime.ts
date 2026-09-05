@@ -4,6 +4,7 @@ import type {
   BackgroundModule,
   BackgroundReactiveContext,
   BackgroundRequest,
+  BackgroundSpectrumChannel,
   IBackgroundHost,
   PageContentType,
 } from '../../shared/background.js'
@@ -20,11 +21,14 @@ export interface BackgroundRuntimeContextRefs {
 export interface BackgroundRuntimeOptions {
   loader?: BackgroundLoader
   context: BackgroundRuntimeContextRefs
+  /** Lazily resolves the optional music spectrum channel handed to providers. */
+  getSpectrum?: () => BackgroundSpectrumChannel | null
 }
 
 export class BackgroundRuntime {
   private readonly loader?: BackgroundLoader
   private readonly context: BackgroundRuntimeContextRefs
+  private readonly getSpectrum?: () => BackgroundSpectrumChannel | null
   private host: HTMLElement | null = null
   private provider: IBackgroundHost | null = null
   private loadGeneration = 0
@@ -33,6 +37,7 @@ export class BackgroundRuntime {
   constructor(options: BackgroundRuntimeOptions) {
     this.loader = options.loader
     this.context = options.context
+    this.getSpectrum = options.getSpectrum
   }
 
   mount(element: HTMLElement): void {
@@ -98,6 +103,7 @@ export class BackgroundRuntime {
 
   private buildContext(): BackgroundReactiveContext {
     if (!this.host) throw new Error('BackgroundRuntime host is not set')
+    const spectrum = this.getSpectrum?.() ?? null
     return {
       element: this.host,
       route: this.context.route,
@@ -105,6 +111,7 @@ export class BackgroundRuntime {
       locale: this.context.locale,
       colorMode: this.context.colorMode,
       reducedMotion: this.context.reducedMotion,
+      ...(spectrum === null ? {} : { spectrum }),
     }
   }
 

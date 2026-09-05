@@ -14,6 +14,8 @@
 - 给新闻加标签和分页
 - 在顶栏、底栏放文案，在侧栏放导航、社交图标和常用链接
 - 让打开网站根地址时，自动进入合适的语言首页
+- 给交互配一套符号化音效（顶栏开关、跟随系统减弱动态偏好，见下文）
+- 配一段可选背景音乐（顶栏手动开关，见下文）
 
 主题不会提供换色、改圆角、改版面这类能力。
 
@@ -138,6 +140,8 @@ export default defineUserConfig({
 | 默认明暗模式 | `defaultColorMode: 'auto'` / `'light'` / `'dark'` |
 | 展示字体 | `featureFont`（字体文件请自己在站点里引入） |
 | 自定义背景 | `background: './backgrounds/host'`（见下） |
+| 交互音效 | `sounds: { keys: { ... } }`（见下） |
+| 背景音乐 | `music: '/music/Beater.mp3'`（见下） |
 | 关掉订阅源或站点地图 | `feeds: { rss: false, sitemap: false }` |
 
 要自绘背景（图片 / Canvas / WebGL 都行），写一个背景提供者模块并在 `synctrolTheme` 里注册：
@@ -163,6 +167,84 @@ export default module.default
 ```
 
 配置里写 `background: './backgrounds/host'`（相对 `.vuepress` 目录的模块路径）。页面切换时主题只会「通知」提供者，具体动画怎么切由提供者自己决定；不配置 `background` 就是纯色背景。
+
+#### 可选：交互音效
+
+想让站点的操作有声音反馈时，按下面两步做。
+
+先把音频文件放进 `.vuepress/public/sounds/`（固定文件名，文件名与下面的键对应）：
+
+```text
+.vuepress/public/sounds/
+├── navigate.webm
+├── menuOpen.webm
+├── menuClose.webm
+├── themeCycle.webm
+├── localeChange.webm
+├── paginate.webm
+├── tabSelect.webm
+├── accordionToggle.webm
+└── embedActivate.webm
+```
+
+再在 `synctrolTheme` 里声明哪些键配了文件：
+
+```ts
+sounds: {
+  enabled: true, // 默认 true；作为访客未手动切换时的初始值
+  keys: {
+    navigate: '/sounds/navigate.webm',
+    menuOpen: '/sounds/menuOpen.webm',
+    menuClose: '/sounds/menuClose.webm',
+    themeCycle: '/sounds/themeCycle.webm',
+    localeChange: '/sounds/localeChange.webm',
+    paginate: '/sounds/paginate.webm',
+    tabSelect: '/sounds/tabSelect.webm',
+    accordionToggle: '/sounds/accordionToggle.webm',
+    embedActivate: '/sounds/embedActivate.webm',
+  },
+},
+```
+
+各键的含义：
+
+| 键 | 什么时候响 |
+| --- | --- |
+| `navigate` | 站内链接跳转成功（SPA 路由切换后） |
+| `menuOpen` / `menuClose` | 汉堡菜单开合；在打开的抽屉里选链接只响 `menuClose` |
+| `themeCycle` | 切换主题模式 |
+| `localeChange` | 切换语言（整页跳转前） |
+| `paginate` | 翻页（此时不再另响 `navigate`） |
+| `tabSelect` | 切换标签页 |
+| `accordionToggle` | 展开或折叠手风琴 |
+| `embedActivate` | 播放器 embed 被激活（试听面板首次加载、独立激活按钮） |
+
+行为约定：未声明或文件缺失的键静默（构建不报错，浏览器控制台只警告一次）；
+`prefers-reduced-motion: reduce` 与顶栏「音效开 / 音效关」chip 关闭时全部静默
+（顶栏开关只在声明了至少一个键后出现，访客的选择存入浏览器本地记忆）；
+音频只在访客手势后才开始加载与播放（受浏览器自动播放策略约束）；同一键
+80ms 内重复触发会合并，不同键可以重叠。音效请用短小的符号化提示音并控制好
+响度——主题不提供音量调节，混合电平由素材本身决定。
+
+#### 可选：背景音乐
+
+把曲目放进 `.vuepress/public/music/`（固定文件名），再在配置里声明：
+
+```ts
+music: '/music/Beater.mp3',
+```
+
+顶栏会出现「背景乐开 / 背景乐关」chip：默认关、不记忆偏好，每次访问都由访客
+手动开启（浏览器策略不允许无声手势自动出声）；点击后循环播放、约 0.7 秒淡入
+淡出，切换页面不中断；与交互音效互不干预地并存，曲目音量请自行控制在「背景」
+电平。文件缺失或播放失败只会在浏览器控制台警告一次，不报构建错。
+
+若同时配置了 `background`，主题会把背景乐的实时音频分析交给背景提供者：上下文里的
+`context.spectrum` 提供 `active` / `frame` 两个响应式值、每帧刷新的归一化频谱
+`data`（FFT 1024 共 512 个频点）、`binHz`（每频点对应 Hz，随设备采样率自动校准，
+可据此精确切 400Hz/800Hz/3000Hz 这类频段）与整体响度 `rmsDb`（dBFS RMS）——只
+在播放中且未开启「减弱动态效果」时更新，停止后数据清零。怎么把频谱与响度映射成
+视觉（频段着色、位移扰动、消散速度、响度驱动的深浅/alpha……）由你的背景模块决定。
 
 ### 4. 建好内容目录
 

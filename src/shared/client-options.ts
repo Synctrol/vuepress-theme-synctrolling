@@ -7,11 +7,17 @@ import type {
   ResolvedLocaleOptions,
   ResolvedSynctrolThemeOptions,
   SocialLinksOptions,
+  SoundKey,
 } from './options.js'
 import type { LocaleKey, Multilanguage } from './types.js'
 
 export interface ClientPlatformsOptions {
   loadStrategy: PlatformsOptions['loadStrategy']
+}
+
+export interface ClientSoundsOptions {
+  enabled: boolean
+  keys: Partial<Record<SoundKey, string>>
 }
 
 export interface ClientSynctrolThemeOptions {
@@ -29,6 +35,8 @@ export interface ClientSynctrolThemeOptions {
   release: ReleaseOptions
   news: NewsOptions
   platforms: ClientPlatformsOptions
+  sounds: ClientSoundsOptions
+  music?: string
 }
 
 function copyMultilanguage(value: Multilanguage): Multilanguage {
@@ -193,6 +201,11 @@ export function toClientThemeOptions(
     platforms: {
       loadStrategy: resolved.platforms.loadStrategy,
     },
+    sounds: {
+      enabled: resolved.sounds.enabled,
+      keys: { ...resolved.sounds.keys },
+    },
+    ...(resolved.music === undefined ? {} : { music: resolved.music }),
   }
 
   assertJsonSafe(clientOptions, 'clientOptions', new Set())
