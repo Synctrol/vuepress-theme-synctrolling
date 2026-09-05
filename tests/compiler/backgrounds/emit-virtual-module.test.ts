@@ -25,4 +25,30 @@ describe('emitBackgroundsVirtualModule', () => {
     )
     expect(source).toBe('export default () => import("/abs/backgrounds/host")\n')
   })
+
+  it('emits forward slashes for a Windows-style config dir', () => {
+    const source = emitBackgroundsVirtualModule(
+      './backgrounds/host',
+      'C:\\site\\.vuepress',
+    )
+    expect(source).toBe(
+      'export default () => import("C:/site/.vuepress/backgrounds/host")\n',
+    )
+  })
+
+  it('emits forward slashes for an absolute Windows background path', () => {
+    const source = emitBackgroundsVirtualModule(
+      'C:\\abs\\backgrounds\\host',
+      'C:\\site\\.vuepress',
+    )
+    expect(source).toBe('export default () => import("C:/abs/backgrounds/host")\n')
+  })
+
+  it('never embeds a backslash in the emitted source', () => {
+    const source = emitBackgroundsVirtualModule(
+      './backgrounds/host',
+      'C:\\Users\\demo\\site\\.vuepress',
+    )
+    expect(source).not.toMatch(/\\/u)
+  })
 })

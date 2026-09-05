@@ -1,4 +1,5 @@
 import { isAbsolute, resolve } from 'node:path'
+import { toForwardSlashPath } from '../path.js'
 
 export function emitBackgroundsVirtualModule(
   background: string | undefined,
@@ -8,5 +9,5 @@ export function emitBackgroundsVirtualModule(
   const id = isAbsolute(background)
     ? background
     : resolve(configDir, background)
-  return `export default () => import(${JSON.stringify(id)})\n`
+  return `export default () => import(${JSON.stringify(toForwardSlashPath(id))})\n`
 }

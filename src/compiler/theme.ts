@@ -22,6 +22,7 @@ import { collectVisiblePlatformEntries } from './platforms/collect-visible-platf
 import { writeSynctrolCspJson } from './platforms/write-csp-artifact.js'
 import { buildHomeFrontmatterForPage } from './home/build-home-frontmatter.js'
 import { registerHomeFormatters } from './markdown/home-formatters.js'
+import { toForwardSlashPath } from './path.js'
 import { buildNewsFrontmatterForPage } from './news/attach-news-page-data.js'
 import { buildPageFrontmatterForPage } from './page/attach-page-page-data.js'
 import { buildReleaseFrontmatterForPage } from './release/inject-release-frontmatter.js'
@@ -100,7 +101,9 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
 
   return {
     name: 'vuepress-theme-synctrolling',
-    clientConfigFile: resolve(__dirname, '../client/config.js'),
+    clientConfigFile: toForwardSlashPath(
+      resolve(__dirname, '../client/config.js'),
+    ),
     define: {
       __SYNCTROL_THEME_OPTIONS__: clientOptions,
     },
