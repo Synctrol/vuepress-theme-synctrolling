@@ -10,23 +10,12 @@ import { FlowController } from './flow'
  * Base opacity of the wave. The per-pixel alpha is `intensity * WAVE_ALPHA`,
  * so the wave is semi-transparent and the solid `var(--syn-bg)` underneath
  * (painted by the theme shell) stays visible through the transparent canvas.
- * Kept low so the wave reads as a subtle decoration rather than a gray wash
- * that fights the theme's near-black background in dark mode.
  */
 const WAVE_ALPHA = 1
 
-/**
- * Shifts the wave pattern in screen space (in normalized-by-height units).
- * Positive X moves it left, positive Y moves it down, so this default biases
- * the pattern toward the bottom-left corner.
- */
+/** Camera is fully static: these are the original baseline values. */
 const WAVE_SHIFT_X = 0.2
 const WAVE_SHIFT_Y = 0.2
-
-/**
- * Scales the wave pattern size. 1 = reference size, > 1 zooms in,
- * < 1 zooms out.
- */
 const WAVE_SCALE = 0.8
 
 /**
@@ -35,6 +24,73 @@ const WAVE_SCALE = 0.8
  * upscaled by CSS — a large GPU savings with no visible quality loss.
  */
 const RENDER_SCALE = 0.5
+
+/* ------------------------------------------------------------------ *
+ * Music-driven visual mapping (all identity at zero: silent == the    *
+ * original shader output, byte for byte).                            *
+ *                                                                     *
+ *  Low    < 400 Hz   -> uDepth:   color depth (contrast + ink)       *
+ *  Mid   800-3000 Hz -> uJitter:  displacement deviation along        *
+ *                                diffusion                            *
+ *  High  > 3000 Hz   -> uDissip:  dissipation speed (faster spatial   *
+ *                                falloff)                             *
+ *  Loudness (RMS dBFS, three anchors -19 / -12 / -6, smooth-stepped) *
+ *    -> uLoudness: drives overall ink (color depth) and the veil      *
+ *       alpha inversely (see shader + host uniforms).                 *
+ * ------------------------------------------------------------------ */
+
+const LOW_MAX_HZ = 400
+const MID_MIN_HZ = 800
+const MID_MAX_HZ = 3000
+const HIGH_MIN_HZ = 3000
+
+const LOUDNESS_QUIET_DB = -19
+const LOUDNESS_MID_DB = -12
+const LOUDNESS_LOUD_DB = -6
+const RMS_FLOOR_DB = -90
+
+/* ------------------------------------------------------------------ *
+ * Envelope & anti-flicker policy.                                     *
+ *                                                                     *
+ * Luminance axes (color depth + veil alpha) move at phrase level:     *
+ * a short attack but a long release (~1s) so drum hits melt into      *
+ * gentle breathing instead of per-note strobing. Spatial axes         *
+ * (displacement deviation, dissipation) may track faster but still    *
+ * use frame-rate-independent time constants.                          *
+ *                                                                     *
+ * Overall loudness is also soft-knee compressed and capped at 60% of  *
+ * its nominal range: small signals follow closely, large signals are  *
+ * pulled back so the brightest passages never strobe.                 *
+ * ------------------------------------------------------------------ */
+
+/** Frame-rate independent one-pole step toward `target`. */
+function approach(
+  current: number,
+  target: number,
+  dt: number,
+  attackSeconds: number,
+  releaseSeconds: number,
+): number {
+  const tau = target > current ? attackSeconds : releaseSeconds
+  const alpha = 1 - Math.exp(-dt / Math.max(0.001, tau))
+  return current + (target - current) * alpha
+}
+
+const ENV_ATTACK_SPATIAL = 0.08
+const ENV_RELEASE_SPATIAL = 0.45
+const ENV_ATTACK_LOW_DEPTH = 0.18
+const ENV_RELEASE_LOW_DEPTH = 1.0
+const ENV_ATTACK_LOUD = 0.15
+const ENV_RELEASE_LOUD = 1.2
+
+/** Soft knee: near-linear below, increasingly pulled back above. */
+function softKnee(gain: number): number {
+  return gain * (1 - 0.25 * Math.min(1, gain))
+}
+
+/** Luminance axes are capped at 60% of their nominal modulation range. */
+const LUMINANCE_AMPLITUDE = 0.6
+const LOW_DEPTH_AMPLITUDE = 0.8
 
 const VERTEX_SOURCE = `#version 300 es
 void main() {
@@ -50,6 +106,8 @@ void main() {
 
 // Adapted from https://www.shadertoy.com/view/ffdXW8 (remix of a remix).
 // The `iTime` uniform drives the flow; freezing it stops the wave.
+// Music uniforms are identity multipliers: at 0.0 the output equals the
+// original silent wave exactly.
 const FRAGMENT_SOURCE = `#version 300 es
 precision highp float;
 out vec4 fragColor;
@@ -60,11 +118,13 @@ uniform vec3 uColor;
 uniform float uAlpha;
 uniform vec2 uShift;
 uniform float uScale;
+uniform float uLoudness; // 0..1 overall loudness gain
+uniform float uDepth;    // low band < 400 Hz
+uniform float uJitter;   // mid band 800..3000 Hz
+uniform float uDissip;   // high band > 3000 Hz
 
 void main() {
   float i, f, r, a, h;
-  // Normalize both axes by the height so the pattern keeps its aspect ratio
-  // on any viewport (no stretching). uScale zooms it, uShift repositions it.
   vec2 uv = gl_FragCoord.xy / iResolution.y * uScale - 1.45 + uShift;
   vec2 p = (uv + vec2(0.6, -0.1)) * 16.0;
   uv *= vec2(sin(log(length(uv.y)) + 2.0));
@@ -73,22 +133,27 @@ void main() {
   h = sin(atan(uv.y, uv.x) * 1.0);
 
   vec4 o = vec4(0.0);
+  float displace = 1.0 + 0.5 * uJitter;
+  float falloff = 5.0 * (1.0 + 0.9 * uDissip);
   for (i = 1.0; i <= 12.0; i += 1.0) {
     vec2 v = p;
     for (f = 1.0; f <= 50.0; f *= 1.5) {
-      v += mod(tan(cos(v.yx * f + f + i - iTime)), 5.0) / f;
-      v += sin(vec2(h, a));
+      v += (mod(tan(cos(v.yx * f + f + i - iTime)), 5.0) / f
+          + sin(vec2(h, a))) * displace;
     }
-    o += (2.0 * cos(i + vec4(5.0, 1.0, 2.0, 3.0)) + 1.0) / (5.0 * length(v));
+    o += (2.0 * cos(i + vec4(5.0, 1.0, 2.0, 3.0)) + 1.0) / (falloff * length(v));
   }
-  o = tanh(o * 0.3) * 2.0;
+  float contrast = 1.0 + 0.5 * uDepth + 0.4 * uLoudness;
+  o = tanh(o * 0.3 * contrast) * 2.0;
 
   float lum = dot(o.rgb, vec3(0.2126, 0.7152, 0.0722));
   float intensity = clamp((lum + 2.0) * 0.25, 0.0, 1.0);
   // Premultiplied output: the context uses premultipliedAlpha and
   // blendFunc(ONE, ONE_MINUS_SRC_ALPHA), so the color must be pre-scaled.
+  // uLoudness/uDepth deepen the ink (color depth) beyond the plain color.
+  float ink = 1.0 + 0.75 * uLoudness + 0.5 * uDepth;
   float alpha = intensity * uAlpha;
-  fragColor = vec4(((uColor * uColor * uColor * uColor) - 0.5) * alpha, alpha);
+  fragColor = vec4(((uColor * uColor * uColor * uColor) - 0.5) * ink * alpha, alpha);
 }
 `
 
@@ -127,6 +192,28 @@ function createProgram(gl: WebGL2RenderingContext): WebGLProgram {
   return program
 }
 
+function smoothstep01(value: number): number {
+  const t = Math.max(0, Math.min(1, value))
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * Maps overall loudness (dBFS RMS) onto a continuous 0..1 gain:
+ * quiet <= -19 dB -> 0, halfway at -12 dB, full at >= -6 dB.
+ */
+function loudnessGain(rmsDb: number): number {
+  if (rmsDb <= LOUDNESS_QUIET_DB) return 0
+  if (rmsDb >= LOUDNESS_LOUD_DB) return 1
+  if (rmsDb <= LOUDNESS_MID_DB) {
+    return 0.5 * smoothstep01((rmsDb - LOUDNESS_QUIET_DB) / 7)
+  }
+  return (
+    0.5 +
+    0.5 *
+      smoothstep01((rmsDb - LOUDNESS_MID_DB) / (LOUDNESS_LOUD_DB - LOUDNESS_MID_DB))
+  )
+}
+
 class WaveHost implements IBackgroundHost {
   private readonly context: BackgroundReactiveContext
   private readonly flow = new FlowController()
@@ -140,6 +227,10 @@ class WaveHost implements IBackgroundHost {
   private uAlpha: WebGLUniformLocation | null = null
   private uShift: WebGLUniformLocation | null = null
   private uScale: WebGLUniformLocation | null = null
+  private uLoudness: WebGLUniformLocation | null = null
+  private uDepth: WebGLUniformLocation | null = null
+  private uJitter: WebGLUniformLocation | null = null
+  private uDissip: WebGLUniformLocation | null = null
 
   private rafId = 0
   private time = 0
@@ -147,6 +238,15 @@ class WaveHost implements IBackgroundHost {
   private lastWidth = 0
   private lastHeight = 0
   private lastColor = ''
+  private lastLow = 0
+  private lastMid = 0
+  private lastHigh = 0
+  private lastLoud = 0
+  private low = 0
+  private mid = 0
+  private high = 0
+  private loudDb = RMS_FLOOR_DB
+  private loud = 0
   private disposed = false
   private readonly stopMotionWatch: () => void
 
@@ -211,7 +311,8 @@ class WaveHost implements IBackgroundHost {
     let program: WebGLProgram
     try {
       program = createProgram(gl)
-    } catch {
+    } catch (error) {
+      console.warn('[synctrol-demo] wave shader failed:', error)
       canvas.remove()
       this.canvas = null
       this.gl = null
@@ -224,6 +325,10 @@ class WaveHost implements IBackgroundHost {
     this.uAlpha = gl.getUniformLocation(program, 'uAlpha')
     this.uShift = gl.getUniformLocation(program, 'uShift')
     this.uScale = gl.getUniformLocation(program, 'uScale')
+    this.uLoudness = gl.getUniformLocation(program, 'uLoudness')
+    this.uDepth = gl.getUniformLocation(program, 'uDepth')
+    this.uJitter = gl.getUniformLocation(program, 'uJitter')
+    this.uDissip = gl.getUniformLocation(program, 'uDissip')
 
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
@@ -238,22 +343,32 @@ class WaveHost implements IBackgroundHost {
       const dt = Math.min((now - this.lastFrame) / 1000, 0.1)
       this.lastFrame = now
       const flow = this.flow.step(dt)
+      this.updateEnvelopes(dt)
       this.time += dt * flow
 
       // Skip the GPU draw when the wave is frozen (flow 0) and neither the
-      // canvas size nor the color mode changed since the last frame.
+      // canvas size, the color mode, nor the music envelopes changed since
+      // the last frame.
       const size = this.currentSize()
       const color = this.context.colorMode.value
       const changed =
         flow > 0 ||
         size.width !== this.lastWidth ||
         size.height !== this.lastHeight ||
-        color !== this.lastColor
+        color !== this.lastColor ||
+        Math.abs(this.low - this.lastLow) > 0.004 ||
+        Math.abs(this.mid - this.lastMid) > 0.004 ||
+        Math.abs(this.high - this.lastHigh) > 0.004 ||
+        Math.abs(this.loud - this.lastLoud) > 0.004
       if (changed) {
         this.renderFrame(size)
         this.lastWidth = size.width
         this.lastHeight = size.height
         this.lastColor = color
+        this.lastLow = this.low
+        this.lastMid = this.mid
+        this.lastHigh = this.high
+        this.lastLoud = this.loud
       }
 
       this.rafId = requestAnimationFrame(tick)
@@ -277,6 +392,57 @@ class WaveHost implements IBackgroundHost {
     }
   }
 
+  private bandAverage(fromHz: number, toHz: number | null): number {
+    const channel = this.context.spectrum
+    if (!channel || channel.binHz <= 0) return 0
+    const data = channel.data
+    const from = Math.max(1, Math.floor(fromHz / channel.binHz))
+    const endRaw = toHz === null ? data.length : Math.floor(toHz / channel.binHz)
+    const end = Math.min(endRaw, data.length)
+    if (from >= end) return 0
+    let sum = 0
+    for (let i = from; i < end; i += 1) sum += data[i]!
+    return sum / (end - from)
+  }
+
+  private updateEnvelopes(dt: number): void {
+    const channel = this.context.spectrum
+    const active = channel?.active.value === true
+    const lowTarget = active ? this.bandAverage(0, LOW_MAX_HZ) : 0
+    const midTarget = active ? this.bandAverage(MID_MIN_HZ, MID_MAX_HZ) : 0
+    const highTarget = active ? this.bandAverage(HIGH_MIN_HZ, null) : 0
+    const rmsTarget = active ? channel!.rmsDb : RMS_FLOOR_DB
+
+    // Spatial axes track faster; the luminance (depth) axis breathes at
+    this.mid = approach(this.mid, midTarget, dt, ENV_ATTACK_SPATIAL, ENV_RELEASE_SPATIAL)
+    this.high = approach(
+      this.high,
+      highTarget,
+      dt,
+      ENV_ATTACK_SPATIAL,
+      ENV_RELEASE_SPATIAL,
+    )
+    this.low = approach(
+      this.low,
+      lowTarget * LOW_DEPTH_AMPLITUDE,
+      dt,
+      ENV_ATTACK_LOW_DEPTH,
+      ENV_RELEASE_LOW_DEPTH,
+    )
+
+    // Loudness: envelope the dB first (slow falloff), then curve, soft-knee
+    // and cap the amplitude before it touches any luminance parameter.
+    this.loudDb = approach(
+      this.loudDb,
+      rmsTarget,
+      dt,
+      ENV_ATTACK_LOUD,
+      ENV_RELEASE_LOUD,
+    )
+    this.loud =
+      LUMINANCE_AMPLITUDE * softKnee(loudnessGain(this.loudDb))
+  }
+
   private renderFrame(size = this.currentSize()): void {
     if (!this.gl || !this.canvas || !this.program) return
     const gl = this.gl
@@ -297,9 +463,18 @@ class WaveHost implements IBackgroundHost {
       const light = this.context.colorMode.value === 'dark' ? 1 : 0
       gl.uniform3f(this.uColor, light, light, light)
     }
-    if (this.uAlpha) gl.uniform1f(this.uAlpha, WAVE_ALPHA)
-    if (this.uShift) gl.uniform2f(this.uShift, WAVE_SHIFT_X, WAVE_SHIFT_Y)
+    if (this.uAlpha) {
+      // Louder music deepens the ink while slightly lowering the veil alpha.
+      gl.uniform1f(this.uAlpha, WAVE_ALPHA * (1 - 0.3 * this.loud))
+    }
+    if (this.uShift) {
+      gl.uniform2f(this.uShift, WAVE_SHIFT_X, WAVE_SHIFT_Y)
+    }
     if (this.uScale) gl.uniform1f(this.uScale, WAVE_SCALE)
+    if (this.uLoudness) gl.uniform1f(this.uLoudness, this.loud)
+    if (this.uDepth) gl.uniform1f(this.uDepth, this.low)
+    if (this.uJitter) gl.uniform1f(this.uJitter, this.mid)
+    if (this.uDissip) gl.uniform1f(this.uDissip, this.high)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
   }
 }

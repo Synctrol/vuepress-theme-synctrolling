@@ -37,6 +37,20 @@ export default defineUserConfig({
     topbarText: 'SYNCTROL © 2026',
     footbarText: '敬请期待 · STAY TUNED',
     background: './backgrounds/host',
+    music: '/music/Beater.mp3',
+    sounds: {
+      keys: {
+        navigate: '/sounds/navigate.wav',
+        menuOpen: '/sounds/menuOpen.wav',
+        menuClose: '/sounds/menuClose.wav',
+        themeCycle: '/sounds/themeCycle.wav',
+        localeChange: '/sounds/localeChange.wav',
+        paginate: '/sounds/paginate.wav',
+        tabSelect: '/sounds/tabSelect.wav',
+        accordionToggle: '/sounds/accordionToggle.wav',
+        embedActivate: '/sounds/embedActivate.wav',
+      },
+    },
     featureFont: "'Archivo Black', 'Arial Black', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
     navigation: {
       items: [
