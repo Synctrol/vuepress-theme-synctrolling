@@ -117,6 +117,20 @@ describe('album components', () => {
 })
 
 describe('Player', () => {
+  it('coerces kebab-case, integer, and boolean attributes before validation', () => {
+    const wrapper = mount(Player, {
+      props: {
+        type: 'youtube_player',
+        'video-id': 'abcdefghijk',
+        start: '30',
+        autoplay: 'true',
+      },
+      ...mountWithContext(),
+    })
+
+    expect(wrapper.find('.syn-platform-embed').exists()).toBe(true)
+  })
+
   it.each([
     ['audio_player', { src: 'https://cdn.example.com/preview.mp3' }],
     ['netease_player', { url: 'https://music.163.com/#/album?id=123' }],

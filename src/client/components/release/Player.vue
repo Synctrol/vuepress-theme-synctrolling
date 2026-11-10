@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, useAttrs } from 'vue'
 import type { PlatformTypeRegistration } from '../../../shared/options.js'
+import { coercePlayerAttributes } from '../../../shared/player-entry.js'
 import { builtInPlatformTypes } from '../../../platforms/builtins/index.js'
 import { PlatformEmbed } from '../platforms/PlatformEmbed.js'
 import { SYNCTROL_TAB_PANEL_ACTIVE_KEY } from './tabs-context.js'
@@ -26,7 +27,7 @@ const entry = computed(() => {
   try {
     return registration.value.validate({
       platform: props.type,
-      ...attrs,
+      ...coercePlayerAttributes(attrs),
     })
   } catch {
     console.warn(`Player: invalid attributes for type "${props.type}"`)

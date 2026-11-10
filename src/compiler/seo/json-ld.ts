@@ -1,8 +1,9 @@
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
 import type { ResolvedSynctrolThemeOptions } from '../../shared/options.js'
+import type { CompiledAlbumMetadata } from '../../shared/release/types.js'
 import type { CompiledPage } from '../../shared/route-types.js'
 import type { JsonLdNode, SeoContentContext } from '../../shared/seo/types.js'
-import type { AlbumBook, LocaleKey } from '../../shared/types.js'
+import type { LocaleKey } from '../../shared/types.js'
 
 export function secondsToIsoDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600)
@@ -37,12 +38,12 @@ export function buildArticleJsonLd(input: { headline: string; description: strin
   }
 }
 
-export function buildAlbumJsonLd(input: { book: AlbumBook; locale: LocaleKey; mainLocale: LocaleKey; pageUrl: string }): JsonLdNode[] {
-  const name = resolveMultilanguage(input.book.title, input.locale, input.mainLocale).text
+export function buildAlbumJsonLd(input: { album: CompiledAlbumMetadata; locale: LocaleKey; mainLocale: LocaleKey; pageUrl: string }): JsonLdNode[] {
+  const name = resolveMultilanguage(input.album.title, input.locale, input.mainLocale).text
   const recordings: JsonLdNode[] = []
   const tracks: JsonLdNode[] = []
   let position = 0
-  for (const [discIndex, disc] of (input.book.album.discs ?? []).entries()) {
+  for (const [discIndex, disc] of input.album.discs.entries()) {
     for (const [trackIndex, track] of disc.tracks.entries()) {
       position += 1
       const trackName = resolveMultilanguage(track.title, input.locale, input.mainLocale).text
@@ -94,8 +95,8 @@ export function buildPageJsonLd(
     return [buildArticleJsonLd({ headline: meta.title, description: meta.description, canonicalUrl: meta.canonicalUrl, image: meta.image, datePublished, dateModified: content.updatedByPackagePath.get(page.packagePath), organizationName: options.seo.organization.name })]
   }
   if (page.contentType === 'release' && page.packagePath) {
-    const book = content.bookByPackagePath.get(page.packagePath)
-    return book?.type === 'album' ? buildAlbumJsonLd({ book, locale: page.locale, mainLocale: options.mainLocale, pageUrl: meta.canonicalUrl }) : []
+    const album = content.albumByPackagePath.get(page.packagePath)
+    return album ? buildAlbumJsonLd({ album, locale: page.locale, mainLocale: options.mainLocale, pageUrl: meta.canonicalUrl }) : []
   }
   return []
 }

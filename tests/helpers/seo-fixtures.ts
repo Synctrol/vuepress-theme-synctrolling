@@ -99,7 +99,7 @@ export function seoContentContext(
       ...overrides.assets,
     },
     definitions: definitions(overrides.definitions),
-    bookByPackagePath: overrides.bookByPackagePath ?? new Map(),
+    albumByPackagePath: overrides.albumByPackagePath ?? new Map(),
     dateByPackagePath: overrides.dateByPackagePath ?? new Map(),
     updatedByPackagePath: overrides.updatedByPackagePath ?? new Map(),
   }

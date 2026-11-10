@@ -1,4 +1,5 @@
-import type { Book, ContentDefinitions } from '../types.js'
+import type { CompiledAlbumMetadata } from '../release/types.js'
+import type { ContentDefinitions } from '../types.js'
 
 export interface SeoAssetContext {
   defaultImageAbsoluteUrl: string
@@ -9,7 +10,7 @@ export interface SeoAssetContext {
 export interface SeoContentContext {
   assets: SeoAssetContext
   definitions: ContentDefinitions
-  bookByPackagePath: ReadonlyMap<string, Book>
+  albumByPackagePath: ReadonlyMap<string, CompiledAlbumMetadata>
   dateByPackagePath: ReadonlyMap<string, string>
   updatedByPackagePath: ReadonlyMap<string, string>
 }

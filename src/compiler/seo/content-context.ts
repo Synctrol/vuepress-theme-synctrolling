@@ -45,7 +45,12 @@ export function buildSeoContentContext(input: {
   const coverAbsoluteUrlByPackagePath = new Map<string, string>()
   const dateByPackagePath = new Map<string, string>()
   const updatedByPackagePath = new Map<string, string>()
-  const bookByPackagePath = new Map(input.compiledPackages.flatMap((pkg) => (pkg.book ? [[pkg.dir, pkg.book] as const] : [])))
+  const albumByPackagePath = new Map(
+    input.compiledPackages.flatMap((pkg) => {
+      const album = Object.values(pkg.albumBySrc ?? {})[0]
+      return album === undefined ? [] : [[pkg.dir, album] as const]
+    }),
+  )
 
   for (const pkg of input.packages) {
     if (pkg.date) dateByPackagePath.set(pkg.dir, pkg.date)
@@ -65,7 +70,7 @@ export function buildSeoContentContext(input: {
       coverAbsoluteUrlByPackagePath,
     },
     definitions: input.definitions,
-    bookByPackagePath,
+    albumByPackagePath,
     dateByPackagePath,
     updatedByPackagePath,
   }

@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { buildSeoContentContext } from '../../../src/compiler/seo/content-context.js'
 import type { AssetManifest } from '../../../src/shared/asset-types.js'
-import type { AlbumBook, CompiledContentPackage, RouteContentPackage } from '../../../src/shared/types.js'
+import type { CompiledAlbumMetadata } from '../../../src/shared/release/types.js'
+import type { CompiledContentPackage, RouteContentPackage } from '../../../src/shared/types.js'
 import { definitions, resolvedOptions } from '../../helpers/seo-fixtures.js'
 
-const album: AlbumBook = { type: 'album', title: 'Album', album: { discs: [] } }
+const album: CompiledAlbumMetadata = {
+  title: 'Album',
+  covers: [],
+  discs: [],
+}
 
 const assetManifest: AssetManifest = {
   assets: [
@@ -30,17 +35,22 @@ const packages: RouteContentPackage[] = [
 ]
 
 const compiledPackages: CompiledContentPackage[] = [
-  { dir: '/site/content/releases/first', identity: 'release:first', manifest: { type: 'release', draft: false, slug: 'first', date: '2026-08-05', cover: './assets/cover.webp' }, book: album },
+  {
+    dir: '/site/content/releases/first',
+    identity: 'release:first',
+    manifest: { type: 'release', draft: false, slug: 'first', date: '2026-08-05', cover: './assets/cover.webp' },
+    albumBySrc: { './album.yml': album },
+  },
 ]
 
 describe('buildSeoContentContext', () => {
-  it('maps packages, books, dates, updated dates, covers, default image, and org logo', () => {
+  it('maps packages, album metadata, dates, updated dates, covers, default image, and org logo', () => {
     const context = buildSeoContentContext({ assetManifest, packages, compiledPackages, definitions: definitions(), options: resolvedOptions() })
     expect(context.assets.defaultImageAbsoluteUrl).toBe('https://synctrol.com/assets/global/social.11111111.webp')
     expect(context.assets.organizationLogoAbsoluteUrl).toBe('https://synctrol.com/assets/global/logo.22222222.svg')
     expect(context.assets.coverAbsoluteUrlByPackagePath.get('/site/content/releases/first')).toBe('https://synctrol.com/assets/content/release/first/cover.33333333.webp')
     expect(context.assets.coverAbsoluteUrlByPackagePath.get('/site/content/news/launch')).toBe('https://cdn.synctrol.com/news.webp')
-    expect(context.bookByPackagePath.get('/site/content/releases/first')).toBe(album)
+    expect(context.albumByPackagePath.get('/site/content/releases/first')).toBe(album)
     expect(context.dateByPackagePath.get('/site/content/news/launch')).toBe('2026-08-11')
     expect(context.updatedByPackagePath.get('/site/content/news/launch')).toBe('2026-08-12')
     expect(context.definitions.tags).toEqual({})

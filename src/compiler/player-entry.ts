@@ -1,26 +1,8 @@
 import type { PlatformTypeRegistration } from '../shared/options.js'
+import { coercePlayerAttributes } from '../shared/player-entry.js'
 import type { NormalizedPlatformEntry } from '../shared/types.js'
 import { fail, isDiagnosticError } from './diagnostics.js'
 import type { ScannedPlayerUsage } from './scan-release-markdown.js'
-
-const BOOLEAN_ATTRIBUTES = new Set(['autoplay'])
-const INTEGER_ATTRIBUTES = new Set(['page', 'start'])
-
-function attributeName(name: string): string {
-  return name.replace(/-([a-z])/g, (_match, letter: string) =>
-    letter.toUpperCase(),
-  )
-}
-
-function attributeValue(name: string, value: string): unknown {
-  if (BOOLEAN_ATTRIBUTES.has(name) && (value === 'true' || value === 'false')) {
-    return value === 'true'
-  }
-  if (INTEGER_ATTRIBUTES.has(name) && /^\d+$/.test(value)) {
-    return Number(value)
-  }
-  return value
-}
 
 function usagePath(usage: ScannedPlayerUsage): string {
   return usage.line === undefined
@@ -42,10 +24,9 @@ export function validatePlayerUsage(
     })
   }
 
-  const entry: Record<string, unknown> = { platform: usage.type }
-  for (const [rawName, rawValue] of Object.entries(usage.attrs)) {
-    const name = attributeName(rawName)
-    entry[name] = attributeValue(name, rawValue)
+  const entry = {
+    platform: usage.type,
+    ...coercePlayerAttributes(usage.attrs),
   }
 
   try {
