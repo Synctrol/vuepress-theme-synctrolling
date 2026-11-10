@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { resolveMultilanguage } from '../../../shared/multilanguage.js'
-import { formatMessage } from '../../../shared/release/numbering.js'
-import { useReleasePage } from './release-context.js'
+import {
+  formatMessage,
+  numberDiscs,
+} from '../../../shared/release/numbering.js'
+import {
+  normalizeAlbumSrc,
+  useReleasePage,
+} from './release-context.js'
 import type { NumberedTrack } from '../../../shared/release/numbering.js'
 import type { Multilanguage } from '../../../shared/types.js'
 
 const props = withDefaults(
   defineProps<{
+    src: string
     showArtist?: boolean
     showDesc?: boolean
   }>(),
@@ -19,8 +26,13 @@ const props = withDefaults(
 
 const context = useReleasePage()
 const album = computed(() =>
-  context && context.model.book?.type === 'album' ? context.model.book : undefined,
+  context?.albumBySrc[normalizeAlbumSrc(props.src)],
 )
+const discs = computed(() => numberDiscs(album.value?.discs ?? []))
+
+if (context && !album.value) {
+  console.warn(`AlbumTracklist: no album metadata for src "${props.src}"`)
+}
 
 function resolved(value: Multilanguage) {
   const r = resolveMultilanguage(value, context!.locale, context!.mainLocale)
@@ -34,17 +46,17 @@ function trackTitle(track: NumberedTrack) {
 
 <template>
   <section
-    v-if="album && album.discs.length"
+    v-if="album && discs.length"
     class="syn-album-section syn-album-tracklist"
     data-testid="album-tracklist"
   >
     <article
-      v-for="disc in album.discs"
+      v-for="disc in discs"
       :id="disc.anchor"
       :key="disc.anchor"
       class="syn-album-disc"
     >
-      <h3 v-if="album.discs.length > 1">
+      <h3 v-if="discs.length > 1">
         {{ formatMessage(context!.messages.disc, { number: disc.number }) }}
       </h3>
       <ol class="syn-album-tracks">

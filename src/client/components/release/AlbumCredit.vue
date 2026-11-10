@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useReleasePage } from './release-context.js'
+import {
+  normalizeAlbumSrc,
+  useReleasePage,
+} from './release-context.js'
 import type { BookCreditKey } from '../../../shared/types.js'
 
 const CREDIT_ORDER: Array<
@@ -16,16 +19,23 @@ const CREDIT_ORDER: Array<
   ['specialThanks', 'creditSpecialThanks'],
 ]
 
+const props = defineProps<{ src: string }>()
 const context = useReleasePage()
-const book = computed(() => context?.model.book)
-const credit = computed(() => book.value?.credit)
-const copyright = computed(() => book.value?.copyright)
-const releaseDate = computed(() => context?.model.date)
+const album = computed(() =>
+  context?.albumBySrc[normalizeAlbumSrc(props.src)],
+)
+const credit = computed(() => album.value?.credit)
+const copyright = computed(() => album.value?.copyright)
+const releaseDate = computed(() => context?.date)
 const rows = computed(() =>
   credit.value
     ? CREDIT_ORDER.filter(([key]) => credit.value![key] !== undefined)
     : [],
 )
+
+if (context && !album.value) {
+  console.warn(`AlbumCredit: no album metadata for src "${props.src}"`)
+}
 
 function values(key: BookCreditKey): string[] {
   const entry = credit.value?.[key]

@@ -4,7 +4,7 @@ import ReleaseArtwork from './ReleaseArtwork.vue'
 import { useReleasePage } from './release-context.js'
 
 const context = useReleasePage()
-const artwork = computed(() => context?.model.artwork)
+const artwork = computed(() => context?.artwork)
 </script>
 
 <template>

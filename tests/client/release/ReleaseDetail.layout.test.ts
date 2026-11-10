@@ -4,9 +4,7 @@ import { defineComponent, h, inject } from 'vue'
 import ReleaseDetail from '../../../src/client/layouts/ReleaseDetail.vue'
 import type { ReleaseDetailModel } from '../../../src/shared/release/types'
 import { asset, zhMessages } from '../../helpers/release-fixtures'
-import { builtInPlatformTypes } from '../../../src/platforms/builtins/index'
 import { SYNCTROL_RELEASE_CONTEXT_KEY } from '../../../src/client/components/release/release-context'
-import type { ContentDefinitions } from '../../../src/shared/types'
 
 vi.mock('vuepress/client', () => ({
   Content: defineComponent({
@@ -20,11 +18,9 @@ const Probe = defineComponent({
   setup() {
     const ctx = inject(SYNCTROL_RELEASE_CONTEXT_KEY)
     return () =>
-      h('span', { 'data-testid': 'probe' }, ctx ? ctx.model.artwork.alt : 'none')
+      h('span', { 'data-testid': 'probe' }, ctx ? ctx.artwork.alt : 'none')
   },
 })
-
-const definitions: ContentDefinitions['platforms'] = {}
 
 const model: ReleaseDetailModel = {
   includedInIndex: true,
@@ -32,6 +28,11 @@ const model: ReleaseDetailModel = {
   draftLabel: '草稿',
   date: '2026-08-11',
   artwork: { kind: 'artwork', artwork: asset('/entry.webp'), alt: '第一张专辑' },
+  locale: 'zh',
+  mainLocale: 'zh',
+  messages: zhMessages,
+  loadStrategy: 'interaction',
+  albumBySrc: {},
 }
 
 describe('ReleaseDetail layout', () => {
@@ -39,12 +40,6 @@ describe('ReleaseDetail layout', () => {
     const wrapper = mount(ReleaseDetail, {
       props: {
         model,
-        locale: 'zh',
-        mainLocale: 'zh',
-        definitions,
-        types: builtInPlatformTypes,
-        loadStrategy: 'interaction' as const,
-        messages: zhMessages,
       },
       global: {
         stubs: { Content: Probe },
@@ -60,12 +55,6 @@ describe('ReleaseDetail layout', () => {
     const wrapper = mount(ReleaseDetail, {
       props: {
         model: { ...model, showDraftBadge: false },
-        locale: 'zh',
-        mainLocale: 'zh',
-        definitions,
-        types: builtInPlatformTypes,
-        loadStrategy: 'interaction' as const,
-        messages: zhMessages,
       },
       global: { stubs: { Content: true } },
     })

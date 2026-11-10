@@ -18,14 +18,12 @@ import { buildLocaleAlternates } from '../i18n/locale-alternates.js'
 import { encodePathSegment } from '../../shared/encode-path-segment.js'
 import { formatCalendarDate } from '../../shared/format-calendar-date.js'
 import { joinPublicPath, normalizeBase } from '../../shared/route-path.js'
-import { resolvePlatformTypes } from '../../platforms/registry.js'
 import type { SynctrolReleaseFrontmatter } from '../../shared/release/types.js'
 import type {
   SynctrolHomeFrontmatter,
   SynctrolNewsFrontmatter,
   SynctrolPageFrontmatter,
 } from '../../shared/types/news.js'
-import type { LegacyPlatformDefinitions } from '../../shared/release/link-roles.js'
 import NewsDetailLayout from './NewsDetailLayout.vue'
 import NewsIndexLayout from './NewsIndexLayout.vue'
 import NewsTagArchiveLayout from './NewsTagArchiveLayout.vue'
@@ -41,7 +39,6 @@ interface SynctrolFrontmatter {
   contentType?: string
   contentAssets?: Record<string, string>
   alternates?: Array<{ locale: string; publicPath: string }>
-  platformDefinitions?: LegacyPlatformDefinitions
   release?: SynctrolReleaseFrontmatter
   news?: SynctrolNewsFrontmatter
   page?: SynctrolPageFrontmatter
@@ -141,10 +138,6 @@ const home = computed(() => synctrol.value.home)
 const isNotFound = computed(
   () => page.value.frontmatter.layout === 'NotFound',
 )
-const platformDefinitions = computed(
-  () => synctrol.value.platformDefinitions ?? {},
-)
-const platformTypes = resolvePlatformTypes()
 const localeMessages = computed(
   () =>
     theme.locales[locale.value]?.messages ??
@@ -171,12 +164,6 @@ const formatDate = (date: string) =>
     <ReleaseDetail
       v-else-if="release?.kind === 'detail'"
       :model="release.model"
-      :locale="locale"
-      :main-locale="theme.mainLocale"
-      :definitions="platformDefinitions"
-      :types="platformTypes"
-      :load-strategy="theme.platforms.loadStrategy"
-      :messages="localeMessages"
     />
     <NewsIndexLayout
       v-else-if="news?.kind === 'index'"

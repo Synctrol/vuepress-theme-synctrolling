@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useReleasePage } from './release-context.js'
+import {
+  normalizeAlbumSrc,
+  useReleasePage,
+} from './release-context.js'
 
+const props = defineProps<{ src: string }>()
 const context = useReleasePage()
-const covers = computed(() =>
-  context && context.model.book?.type === 'album'
-    ? context.model.book.covers
-    : [],
+const album = computed(() =>
+  context?.albumBySrc[normalizeAlbumSrc(props.src)],
 )
+const covers = computed(() => album.value?.covers ?? [])
+
+if (context && !album.value) {
+  console.warn(`AlbumCovers: no album metadata for src "${props.src}"`)
+}
 </script>
 
 <template>
@@ -18,10 +25,10 @@ const covers = computed(() =>
   >
     <h2>{{ context.messages.covers }}</h2>
     <ul>
-      <li v-for="(cover, i) in covers" :key="cover.publicPath">
+      <li v-for="(cover, i) in covers" :key="cover">
         <img
           data-testid="album-cover"
-          :src="cover.publicPath"
+          :src="cover"
           :alt="`${context.messages.covers} ${i + 1}`"
           loading="lazy"
         />

@@ -22,8 +22,7 @@ import AlbumIdentity from './components/release/AlbumIdentity.vue'
 import AlbumTracklist from './components/release/AlbumTracklist.vue'
 import AlbumCredit from './components/release/AlbumCredit.vue'
 import AlbumCovers from './components/release/AlbumCovers.vue'
-import AlbumPlatform from './components/release/AlbumPlatform.vue'
-import GiftItem from './components/release/GiftItem.vue'
+import Player from './components/release/Player.vue'
 import TabPanel from './components/release/TabPanel.vue'
 import TabView from './components/release/TabView.vue'
 import './styles/index.js'
@@ -61,8 +60,7 @@ export default defineClientConfig({
     app.component('AlbumTracklist', AlbumTracklist)
     app.component('AlbumCredit', AlbumCredit)
     app.component('AlbumCovers', AlbumCovers)
-    app.component('AlbumPlatform', AlbumPlatform)
-    app.component('GiftItem', GiftItem)
+    app.component('Player', Player)
     app.component('TabPanel', TabPanel)
     app.component('TabView', TabView)
   },

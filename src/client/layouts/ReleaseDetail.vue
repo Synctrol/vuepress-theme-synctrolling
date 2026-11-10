@@ -6,31 +6,19 @@ import {
   SYNCTROL_RELEASE_CONTEXT_KEY,
 } from '../components/release/release-context.js'
 import type { ReleaseDetailModel } from '../../shared/release/types.js'
-import type { LegacyPlatformDefinitions } from '../../shared/release/link-roles.js'
-import type {
-  LocaleKey,
-  LocaleMessages,
-} from '../../shared/types.js'
-import type { PlatformTypeRegistration } from '../../shared/options.js'
 
 const props = defineProps<{
   model: ReleaseDetailModel
-  locale: LocaleKey
-  mainLocale: LocaleKey
-  definitions: LegacyPlatformDefinitions
-  types: Record<string, PlatformTypeRegistration>
-  loadStrategy: 'interaction' | 'viewport'
-  messages: LocaleMessages
 }>()
 
 provide(SYNCTROL_RELEASE_CONTEXT_KEY, {
-  locale: props.locale,
-  mainLocale: props.mainLocale,
-  model: props.model,
-  definitions: props.definitions,
-  types: props.types,
-  loadStrategy: props.loadStrategy,
-  messages: props.messages,
+  locale: props.model.locale,
+  mainLocale: props.model.mainLocale,
+  date: props.model.date,
+  artwork: props.model.artwork,
+  albumBySrc: props.model.albumBySrc,
+  loadStrategy: props.model.loadStrategy,
+  messages: props.model.messages,
 })
 </script>
 
