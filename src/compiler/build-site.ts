@@ -6,7 +6,6 @@ import type {
   LocaleKey,
   RouteContentPackage,
 } from '../shared/types.js'
-import { resolvePlatformTypes } from '../platforms/registry.js'
 import { compileContent } from './compile-content.js'
 import { compileSiteRoutes, type CompiledSite } from './compile-site-routes.js'
 import type { SynctrolDiagnostic } from './diagnostics.js'
@@ -40,14 +39,12 @@ export function mergeSiteDiagnostics(
 
 export function buildSite(input: BuildSiteInput): BuiltSite {
   const localeKeys = Object.keys(input.options.locales) as LocaleKey[]
-  const platformTypes = resolvePlatformTypes()
 
   const compiled = compileContent({
     contentRoot: join(input.sourceDir, SYNCTROL_CONTENT_DIR),
     sourceDir: input.sourceDir,
     configDir: input.configDir,
     mainLocale: input.options.mainLocale,
-    platformTypes,
     ...(input.definitionsPath === undefined
       ? {}
       : { definitionsPath: input.definitionsPath }),

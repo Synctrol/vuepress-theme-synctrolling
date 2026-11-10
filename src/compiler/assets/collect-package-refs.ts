@@ -51,5 +51,14 @@ export function collectPackageDeclaredPaths(
   if (pkg.book) {
     collectFromBook(pkg.book, paths)
   }
+  for (const album of Object.values(pkg.albumBySrc ?? {})) {
+    for (const cover of album.covers) {
+      if (isRelativeCoverRef(cover)) pushUnique(paths, cover)
+    }
+  }
+  for (const player of pkg.players ?? []) {
+    const src = (player as { src?: unknown }).src
+    if (isPackageRelativeSrc(src)) pushUnique(paths, src)
+  }
   return paths
 }

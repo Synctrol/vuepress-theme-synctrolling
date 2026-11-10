@@ -210,8 +210,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           mainLocale: resolved.mainLocale,
           messages: localeMessages,
           collectionTitle,
-          definitions: platformDefinitions,
-          platformTypes: resolvePlatformTypes(),
+          loadStrategy: resolved.platforms.loadStrategy,
         })
 
         const resolveCoverPublicPath = (

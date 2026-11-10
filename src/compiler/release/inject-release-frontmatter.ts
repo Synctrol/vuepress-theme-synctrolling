@@ -1,5 +1,5 @@
 import type { AssetManifest } from '../../shared/asset-types.js'
-import type { ReleaseOptions, PlatformTypeRegistration } from '../../shared/options.js'
+import type { ReleaseOptions } from '../../shared/options.js'
 import type { CompiledPage } from '../../shared/route-types.js'
 import type {
   CompiledContentPackage,
@@ -8,7 +8,6 @@ import type {
   RouteContentPackage,
 } from '../../shared/types.js'
 import type { SynctrolReleaseFrontmatter } from '../../shared/release/types.js'
-import type { LegacyPlatformDefinitions } from '../../shared/release/link-roles.js'
 import { buildReleaseIndexModel } from './list-model.js'
 import { buildReleaseDetailModel } from './detail-model.js'
 import {
@@ -28,18 +27,17 @@ export interface BuildReleaseFrontmatterInput {
   mainLocale: LocaleKey
   messages: LocaleMessages
   collectionTitle: string
-  definitions: LegacyPlatformDefinitions
-  platformTypes: Record<string, PlatformTypeRegistration>
+  loadStrategy: 'interaction' | 'viewport'
 }
 
-function findBook(
+function findCompiledPackage(
   compiledPackages: CompiledContentPackage[],
   pkg: RouteContentPackage,
 ) {
-  const match =
+  return (
     compiledPackages.find((c) => c.identity === pkg.identity) ??
     compiledPackages.find((c) => c.dir === pkg.dir)
-  return match?.book
+  )
 }
 
 function paginationHrefs(
@@ -103,19 +101,16 @@ export function buildReleaseFrontmatterForPage(
   if (compiled.contentType === 'release') {
     const pkg = input.packages.find((p) => p.identity === compiled.identity)
     if (!pkg) return null
-    const book = findBook(input.compiledPackages, pkg)
+    const compiledPackage = findCompiledPackage(input.compiledPackages, pkg)
     const model = buildReleaseDetailModel({
       page: compiled,
       pkg,
-      book,
+      albumBySrc: compiledPackage?.albumBySrc ?? {},
       messages: input.messages,
       mainLocale: input.mainLocale,
-      definitions: input.definitions,
-      platformTypes: input.platformTypes,
+      loadStrategy: input.loadStrategy,
       resolveArtwork: (p) => resolvePackageArtwork(input.assetManifest, p),
       resolveAlbumCover: (ref) =>
-        resolvePackageAssetRef(input.assetManifest, pkg.identity, ref),
-      resolveGiftItemCover: (ref) =>
         resolvePackageAssetRef(input.assetManifest, pkg.identity, ref),
       resolvePlaceholder: () =>
         resolveArtworkPlaceholder(

@@ -7,6 +7,42 @@ import type {
 import type { ResolvedAsset } from '../asset-types.js'
 import type { NumberedDisc } from './numbering.js'
 
+export type CreditMap = Partial<
+  Record<
+    | 'catalogNumber'
+    | 'illustrator'
+    | 'designer'
+    | 'mastering'
+    | 'mix'
+    | 'webDesign'
+    | 'producer'
+    | 'specialThanks',
+    string | string[]
+  >
+>
+
+export interface CompiledTrack {
+  title: import('../types.js').Multilanguage
+  artists: string[]
+  duration: number
+  desc?: import('../types.js').Multilanguage
+  copyright?: string
+}
+
+export interface CompiledDisc {
+  title: import('../types.js').Multilanguage
+  desc?: import('../types.js').Multilanguage
+  tracks: CompiledTrack[]
+}
+
+export interface CompiledAlbumMetadata {
+  title: import('../types.js').Multilanguage
+  copyright?: string
+  credit?: CreditMap
+  covers: string[]
+  discs: CompiledDisc[]
+}
+
 export interface ReleaseManifestImages {
   cover?: AssetPath
   artwork?: AssetPath
@@ -103,7 +139,11 @@ export interface ReleaseDetailModel {
     artwork?: ResolvedAsset
     alt: string
   }
-  book?: ReleaseAlbumBookData | ReleaseGiftBookData
+  locale: import('../types.js').LocaleKey
+  mainLocale: import('../types.js').LocaleKey
+  messages: import('../types.js').LocaleMessages
+  loadStrategy: 'interaction' | 'viewport'
+  albumBySrc: Record<string, CompiledAlbumMetadata>
 }
 
 /** Injected into frontmatter.synctrol.release */

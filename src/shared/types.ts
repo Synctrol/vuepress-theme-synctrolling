@@ -1,3 +1,5 @@
+import type { CompiledAlbumMetadata } from './release/types.js'
+
 export const CONTENT_TYPES = ['home', 'release', 'news', 'page'] as const
 export type ContentType = (typeof CONTENT_TYPES)[number]
 export type LocaleKey = string
@@ -289,6 +291,8 @@ export interface CompiledContentPackage {
   identity: string
   manifest: ContentManifest
   book?: Book
+  albumBySrc?: Record<string, CompiledAlbumMetadata>
+  players?: PlatformEntryBase[]
 }
 
 export interface LocaleMarkdown {

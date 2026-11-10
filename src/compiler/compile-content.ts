@@ -1,13 +1,20 @@
-import { resolve } from 'node:path'
+import { readFileSync, readdirSync } from 'node:fs'
+import {
+  isAbsolute,
+  posix,
+  relative,
+  resolve,
+} from 'node:path'
 import type {
-  Book,
   CompiledContentPackage,
   ContentDefinitions,
   ContentManifest,
   LocaleKey,
 } from '../shared/types.js'
 import type { PlatformTypeRegistration } from '../shared/options.js'
-import { parseBook } from './book.js'
+import { resolvePlatformTypes } from '../platforms/registry.js'
+import type { CompiledAlbumMetadata } from '../shared/release/types.js'
+import { parseAlbumMetadata } from './album-metadata.js'
 import { fail, type SynctrolDiagnostic } from './diagnostics.js'
 import {
   loadContentDefinitions,
@@ -15,6 +22,9 @@ import {
 } from './definitions.js'
 import { discoverContentPackages } from './discovery.js'
 import { parseContentManifest } from './manifest.js'
+import { validatePlayerUsage } from './player-entry.js'
+import { scanReleaseMarkdown } from './scan-release-markdown.js'
+import { loadYamlFile } from './yaml.js'
 
 export interface CompileContentOptions {
   contentRoot: string
@@ -22,8 +32,6 @@ export interface CompileContentOptions {
   configDir: string
   mainLocale: LocaleKey
   definitionsPath?: string
-  /** Resolved built-in + custom platform type registry from theme options. */
-  platformTypes?: Record<string, PlatformTypeRegistration>
 }
 
 export interface CompileContentResult {
@@ -72,33 +80,72 @@ function validateOptions(
     invalidOptions('definitionsPath must be a non-empty string when provided')
   }
 
-  const platformTypes = raw.platformTypes
-  if (
-    platformTypes !== undefined &&
-    (typeof platformTypes !== 'object' ||
-      platformTypes === null ||
-      Array.isArray(platformTypes))
-  ) {
-    invalidOptions('platformTypes must be an object when provided')
-  }
-
   return {
     contentRoot: requiredString(raw, 'contentRoot'),
     sourceDir: requiredString(raw, 'sourceDir'),
     configDir: requiredString(raw, 'configDir'),
     mainLocale: requiredString(raw, 'mainLocale'),
     ...(definitionsPath === undefined ? {} : { definitionsPath }),
-    ...(platformTypes === undefined
-      ? {}
-      : {
-          platformTypes:
-            platformTypes as Record<string, PlatformTypeRegistration>,
-        }),
   }
 }
 
 function identityFor(manifest: Exclude<ContentManifest, { type: 'home' }>) {
   return `${manifest.type}:${manifest.slug}`
+}
+
+function normalizedAlbumSrc(src: string): string {
+  const normalized = posix.normalize(src.replace(/\\/g, '/'))
+  return normalized.startsWith('./') ? normalized : `./${normalized}`
+}
+
+function compileReleaseMarkdown(
+  packageDir: string,
+  mainLocale: LocaleKey,
+  platformTypes: Record<string, PlatformTypeRegistration>,
+): Pick<CompiledContentPackage, 'albumBySrc' | 'players'> {
+  const albumBySrc: Record<string, CompiledAlbumMetadata> = Object.create(null)
+  const players: CompiledContentPackage['players'] = []
+  const markdownPaths = readdirSync(packageDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .map((entry) => resolve(packageDir, entry.name))
+    .sort()
+
+  for (const markdownPath of markdownPaths) {
+    const source = readFileSync(markdownPath, 'utf8')
+    const scanned = scanReleaseMarkdown(source, markdownPath)
+    for (const rawSrc of scanned.albumSrcPaths) {
+      const src = normalizedAlbumSrc(rawSrc)
+      if (Object.hasOwn(albumBySrc, src)) continue
+      const absolutePath = resolve(packageDir, rawSrc)
+      const packageRelative = relative(packageDir, absolutePath)
+      if (
+        packageRelative === '' ||
+        packageRelative === '..' ||
+        packageRelative.startsWith('..\\') ||
+        packageRelative.startsWith('../') ||
+        isAbsolute(packageRelative)
+      ) {
+        fail({
+          severity: 'error',
+          code: 'INVALID_ALBUM_SRC',
+          message: `Album src "${rawSrc}" resolves outside the content package`,
+          path: markdownPath,
+        })
+      }
+      albumBySrc[src] = parseAlbumMetadata(
+        loadYamlFile(absolutePath),
+        absolutePath,
+        mainLocale,
+      )
+    }
+    players.push(
+      ...scanned.players.map((usage) =>
+        validatePlayerUsage(usage, platformTypes),
+      ),
+    )
+  }
+
+  return { albumBySrc, players }
 }
 
 export function compileContent(
@@ -118,6 +165,7 @@ export function compileContent(
   const packages: CompiledContentPackage[] = []
   const seenIdentities = new Map<string, string>()
   let homeDir: string | undefined
+  const platformTypes = resolvePlatformTypes()
 
   for (const item of discovered) {
     const manifest = parseContentManifest(item.contentYmlPath, item.dir)
@@ -163,31 +211,30 @@ export function compileContent(
       }
     }
 
-    if (item.bookYmlPath !== undefined && manifest.type !== 'release') {
+    if (item.bookYmlPath !== undefined) {
       fail({
         severity: 'error',
-        code: 'BOOK_NOT_ALLOWED',
-        message: 'book.yml is allowed only in a release package',
+        code: 'BOOK_NOT_SUPPORTED',
+        message: 'book.yml is no longer supported',
         path: item.bookYmlPath,
         relatedPath: item.contentYmlPath,
       })
     }
 
-    let book: Book | undefined
-    if (item.bookYmlPath !== undefined) {
-      book = parseBook(
-        item.bookYmlPath,
-        { platforms: Object.create(null) },
-        validated.mainLocale,
-        validated.platformTypes,
-      )
-    }
+    const releaseData =
+      manifest.type === 'release'
+        ? compileReleaseMarkdown(
+          item.dir,
+          validated.mainLocale,
+          platformTypes,
+        )
+        : undefined
 
     packages.push({
       dir: item.dir,
       identity,
       manifest,
-      ...(book === undefined ? {} : { book }),
+      ...(releaseData === undefined ? {} : releaseData),
     })
   }
 

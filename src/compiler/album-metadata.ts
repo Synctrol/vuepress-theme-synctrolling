@@ -1,6 +1,19 @@
 import type { LocaleKey, Multilanguage } from '../shared/types.js'
+import type {
+  CompiledAlbumMetadata,
+  CompiledDisc,
+  CompiledTrack,
+  CreditMap,
+} from '../shared/release/types.js'
 import { fail } from './diagnostics.js'
 import { assertMultilanguage } from './multilanguage.js'
+
+export type {
+  CompiledAlbumMetadata,
+  CompiledDisc,
+  CompiledTrack,
+  CreditMap,
+} from '../shared/release/types.js'
 
 type PlainRecord = Record<string, unknown>
 
@@ -14,32 +27,6 @@ const CREDIT_KEYS = [
   'producer',
   'specialThanks',
 ] as const
-
-type CreditKey = (typeof CREDIT_KEYS)[number]
-
-export type CreditMap = Partial<Record<CreditKey, string | string[]>>
-
-export interface CompiledTrack {
-  title: Multilanguage
-  artists: string[]
-  duration: number
-  desc?: Multilanguage
-  copyright?: string
-}
-
-export interface CompiledDisc {
-  title: Multilanguage
-  desc?: Multilanguage
-  tracks: CompiledTrack[]
-}
-
-export interface CompiledAlbumMetadata {
-  title: Multilanguage
-  copyright?: string
-  credit?: CreditMap
-  covers: string[]
-  discs: CompiledDisc[]
-}
 
 const ALBUM_FIELDS = [
   'title',
