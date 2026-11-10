@@ -59,7 +59,9 @@ describe('compileAssets', () => {
     })
 
     const releaseCover = manifest.assets.find((asset) =>
-      asset.sourcePath.endsWith('first-release/assets/cover.webp'),
+      asset.sourcePath
+        .replaceAll('\\', '/')
+        .endsWith('first-release/assets/cover.webp'),
     )
     expect(releaseCover?.kind).toBe('content')
     expect(releaseCover?.assetPath).toMatch(
@@ -83,7 +85,7 @@ describe('compileAssets', () => {
     )
 
     const themeGrid = manifest.assets.find((asset) =>
-      asset.sourcePath.endsWith('theme-assets/grid.svg'),
+      asset.sourcePath.replaceAll('\\', '/').endsWith('theme-assets/grid.svg'),
     )
     expect(themeGrid?.assetPath).toMatch(/^\/assets\/theme\/grid\.[0-9a-f]{8}\.svg$/)
 

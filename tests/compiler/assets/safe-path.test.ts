@@ -54,7 +54,9 @@ describe('resolveSafePath', () => {
     }
   })
 
-  it('rejects a symlink inside the root that points outside', () => {
+  it.skipIf(process.platform === 'win32')(
+    'rejects a symlink inside the root that points outside',
+    () => {
     const outsideDir = mkdtempSync(join(tmpdir(), 'safe-path-outside-'))
     const outsideFile = join(outsideDir, 'secret.webp')
     const linkPath = join(packageRoot, 'assets', 'escape-link.webp')
@@ -74,7 +76,8 @@ describe('resolveSafePath', () => {
       rmSync(linkPath, { force: true })
       rmSync(outsideDir, { recursive: true, force: true })
     }
-  })
+    },
+  )
 
   it('fails when the file is missing', () => {
     try {

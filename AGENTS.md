@@ -23,7 +23,7 @@
 1. **四种内容类型**：`home`（语言首页）、`release`（作品）、`news`（新闻）、`page`（团队、成员与普通页）。
 2. **多语言发布**：所有内容路由带 locale 前缀；缺失译文时生成回退页；可用 `showDrafts` 预览草稿。
 3. **根语言路由器**：在站点根 `/index.html` 按「已保存语言 → 浏览器语言 → `mainLocale`」选择语言首页，并以 `location.replace()` 跳转。
-4. **作品系统**：方图索引网格（无边框密排，按容器空间自动 4/3/2 列；悬浮时封面变暗并在左上角显示专辑名）、详情页、可选 Album / Gift `book.yml`、平台播放器与外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / AlbumPlatform / GiftItem / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
+4. **作品系统**：方图索引网格（无边框密排，按容器空间自动 4/3/2 列；悬浮时封面变暗并在左上角显示专辑名）、详情页、可选 `album.yml` 元数据、内置 Player 与 Button 外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / Player / Button / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
 5. **新闻系统**：按日期倒序的索引、标签归档、分页。
 6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
 7. **全局背景提供者**：单一常驻 `IBackgroundHost`，主题在每次导航时推送「页面申请」，提供者自行编排背景切换（动画 / 交叉淡化 / 硬切），背景可以是图片 / SVG / Canvas / WebGL / WebGPU。上下文可选携带 `spectrum` 音乐频谱通道（见 #12）。
@@ -37,15 +37,15 @@
 
 ### 内容包
 
-含 `content.yml` 的目录就是一个内容包。同目录下的 `{localeKey}.md` 是该语言正文；`book.yml` 仅允许出现在 `release` 包中。扫描递归普通目录，但内容包不能嵌套。源目录层级不决定类型或 URL。
+含 `content.yml` 的目录就是一个内容包。同目录下的 `{localeKey}.md` 是该语言正文；release 可放 `album.yml`，由 Markdown 里的专辑组件通过 `src` 引用。扫描递归普通目录，但内容包不能嵌套。源目录层级不决定类型或 URL。
 
-### book.yml 契约
+### album.yml 与 Player 契约
 
-顶层字段：`type`（`album` / `gift`）、`title`、`copyright`、`credit`、`album`（或 `gift`）。顶层 `desc` 与 `authors` 已退役，写出它们会得到 UNKNOWN_FIELD 构建错误；子层的 `disc.desc`、`track.desc`、`gift.items[].desc` 仍然有效。
+`album.yml` 顶层字段：`title`、`copyright`、`credit`、`covers`、`discs`。不得写 `type`、`links`、`players`、`album`、`gift` 或其他未知字段；`disc.desc`、`track.desc` 仍然有效。专辑组件的 `src` 相对内容包目录解析，禁止逃逸到包外；缺失、路径逃逸或数据非法都会导致构建失败。`book.yml` 与 `type: gift` 已删除，出现即构建失败。
 
 `credit` 是固定键集合：`catalogNumber`、`illustrator`、`designer`、`mastering`、`mix`、`webDesign`、`producer`、`specialThanks`，值可以是字符串或非空字符串数组（数组每个值独占一行渲染）；未知键是构建错误。顶层 `copyright` 由 `AlbumCredit` 渲染为该区块的最后一行（标签「版权」/「Copyright」）。
 
-试听分类：注册类型带 `preview: true` 的平台条目进入 `previewLinks`；内置音频类型 `soundcloud_player`、`audio_player`、`netease_player` 已标记 preview；自定义类型可在注册时声明 `preview: true`。其余数字平台链接进入 `platformLinks`。页面用 `<AlbumPlatform platform="...">` 按平台 key 选取单条渲染（先在 `previewLinks` 中找，再到 `platformLinks`；未找到条目时 warn 且不渲染，key 对应 definitions.yml），常与通用标签页组合：`<TabView>` 内嵌 `<TabPanel label="...">`，默认选中第一个面板，活动面板内的 embed 在激活（含初始默认面板）时自动加载，切走时已加载的 embed 保留状态。`loadStrategy` 只作用于标签页之外的 embed（`GiftItem` 或独立放置的 `AlbumPlatform`）。
+播放器直接在 Markdown 中写 `<Player type="...">`。内置类型固定为 `audio_player`、`youtube_player`、`bilibili_player`、`apple_music_player`、`spotify_player`、`soundcloud_player`、`netease_player`，消费站不能注册自定义类型；非法 type 或属性在构建期失败。外部链接统一使用 `<Button href="...">`。`<TabView>` 内嵌 `<TabPanel label="...">` 时默认选中第一个面板，活动面板内的 Player 在激活（含初始默认面板）时自动加载，切走后保留状态；`platforms.loadStrategy` 只作用于标签页之外的 Player。
 
 ### 语言键与 `lang`
 
@@ -82,13 +82,13 @@ Home 的身份固定为 `home`。其他包的身份是 `{type}:{slug}`；省略 
 
 - `cover`：文章式引用与社交分享图；不进入作品索引方图。
 - `artwork`：作品索引与详情主图。
-- `book.yml → album.covers`：专辑封面组。
+- `album.yml → covers`：专辑封面组。
 
 三者互不回退。News / Page 使用 `cover` 作为列表或页头图以及 Open Graph。Home 禁止 `cover`，社交图使用 `seo.defaultImage`。
 
-### 背景与平台
+### 背景与播放器
 
-背景由主题配置里的单一背景提供者（`background`）决定，内容包不能选择或覆盖。平台条目只允许写在 `book.yml` 的 `album.links`（数字平台）和 `gift.items[].links`（实体平台）；`content.yml` 没有顶层 `links`。
+背景由主题配置里的单一背景提供者（`background`）决定，内容包不能选择或覆盖。播放器写在 release Markdown 的 `<Player>` 中；外链写成 `<Button>`。`content.yml` 与 `album.yml` 都没有 `links` 字段。
 
 ### 壳层文案
 
@@ -169,7 +169,7 @@ export default defineUserConfig({
 
 | 选项 | 默认 | 说明 |
 | --- | --- | --- |
-| `definitionsPath` | `<sourceDir>/content/definitions.yml` | 标签与平台定义文件；相对 VuePress 配置文件解析 |
+| `definitionsPath` | `<sourceDir>/content/definitions.yml` | 标签定义文件；相对 VuePress 配置文件解析 |
 | `showDrafts` | `false` | 为 `true` 时生成草稿页并在列表中显示草稿标记 |
 | `defaultColorMode` | `'auto'` | `'auto' \| 'light' \| 'dark'`；仅在用户尚未保存选择时生效 |
 | `footbarText` | 未设置 | 底栏文案；未设置则底栏左侧为空 |
@@ -184,7 +184,7 @@ export default defineUserConfig({
 | `news.urlSegment` | `'news'` | 所有语言共用的新闻 URL 段（新闻索引与标签页） |
 | `news.articleUrlSegment` | `'article'` | 所有语言共用的新闻文章详情 URL 段 |
 | `news.tags.urlSegment` | `'tags'` | 标签 URL 段 |
-| `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 embed（如 `GiftItem`）；`TabView` 活动面板内的 embed 在激活时自动加载 |
+| `platforms.loadStrategy` | `'interaction'` | `'interaction' \| 'viewport'`；作用于 `TabView` 之外的 Player；`TabView` 活动面板内的 Player 在激活时自动加载 |
 | `background` | 未设置 | 背景提供者模块路径（相对 VuePress 配置目录），形如 `'./backgrounds/host'`；模块默认导出工厂 `(context) => IBackgroundHost`。未设置则纯色背景 |
 | `sounds.enabled` | `true` | 访客未存偏好时的初始开关值 |
 | `sounds.keys` | `{}` | `SoundKey` 子集 → 站点公开 URL 路径（`'/'` 开头、相对站点根）；键未知或值非法是构建错误；未配键的触发静默。任意键存在时顶栏才渲染音效 chip |
@@ -206,7 +206,7 @@ content/
 ├── releases/
 │   └── my-release/
 │       ├── content.yml
-│       ├── book.yml
+│       ├── album.yml
 │       ├── zh.md
 │       ├── en.md
 │       └── assets/
@@ -222,7 +222,7 @@ content/
         └── en.md
 ```
 
-`definitions.yml` 声明新闻标签与平台：
+`definitions.yml` 只声明新闻标签：
 
 ```yaml
 tags:
@@ -230,17 +230,6 @@ tags:
     title:
       zh: 作品发布
       en: Releases
-platforms:
-  youtube:
-    category: digital
-    type: youtube_player
-    name: YouTube
-  taobao:
-    category: physical
-    type: link
-    name:
-      zh: 淘宝
-      en: Taobao
 ```
 
 内容包清单示例：
@@ -261,8 +250,7 @@ cover: ./assets/article-cover.webp
 ```
 
 ```yaml
-# releases/my-release/book.yml
-type: album
+# releases/my-release/album.yml
 title:
   zh: 我的专辑
   en: My Album
@@ -270,20 +258,18 @@ copyright: © 2026 Synctrol
 credit:
   catalogNumber: SYN-001
   illustrator: 插画师
-album:
-  links:
-    - platform: soundcloud
-      url: https://soundcloud.com/synctrol/demo
-  discs:
-    - title:
-        zh: 第一碟
-        en: Disc One
-      tracks:
-        - title:
-            zh: 第一曲
-            en: Track One
-          artists: [Synctrol]
-          duration: 272
+covers:
+  - ./assets/cover.webp
+discs:
+  - title:
+      zh: 第一碟
+      en: Disc One
+    tracks:
+      - title:
+          zh: 第一曲
+          en: Track One
+        artists: [Synctrol]
+        duration: 272
 ```
 
 ```yaml
@@ -311,7 +297,7 @@ AND DESCRIBE SOUND
 :::
 ```
 
-内置平台类型：`link`、`audio_player`、`youtube_player`、`bilibili_player`、`apple_music_player`、`spotify_player`、`soundcloud_player`、`netease_player`。可在 `platforms.types` 注册自定义类型（`validate` / `component` / `cspOrigins` / 可选 `fallbackUrl`）。YAML 不得提供任意 HTML、脚本或 iframe 模板。
+内置 Player 类型：`audio_player`、`youtube_player`、`bilibili_player`、`apple_music_player`、`spotify_player`、`soundcloud_player`、`netease_player`。消费站不能注册自定义类型；扩展播放器必须修改主题源码。YAML 不得提供播放器、外链、任意 HTML、脚本或 iframe 模板。
 
 ### 仅设计令牌的 CSS 导出
 
@@ -341,7 +327,7 @@ import 'vuepress-theme-synctrolling/styles.css'
 
 - 必须恰好有一个可发布的 Home 包；每个语言首页 Markdown 必须包含 `::: home-logo`。
 - 多语言开启时，所有内容页都带 locale 前缀；Home 不能自定义 path。
-- 引用未声明的 tag / platform、未知 YAML 字段、嵌套内容包、同类型重复 slug、最终路由冲突、缺失资源都会导致构建失败。
+- 引用未声明的 tag、非法 Player、未知 YAML 字段、嵌套内容包、同类型重复 slug、最终路由冲突、缺失资源都会导致构建失败。
 - `date` / `updated` 必须是 `YYYY-MM-DD`；`updated` 不得早于 `date`。
 - 平台 embed 只在交互或进入视口后加载；不能配置为立即加载。例外：`TabView` 的活动面板（含初始挂载的默认面板）在激活时自动加载其 embed。
 - 展示字体默认使用 `'Archivo Black', 'Arial Black', Arial, ...`。可用 `featureFont` 覆盖展示字体栈。npm 包不附带 Archivo Black 的 WOFF2 文件，仓库里也没有可分发的授权字体。消费站点如需该字体，应自行托管或通过页面头部引入。

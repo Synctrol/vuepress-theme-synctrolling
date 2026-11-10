@@ -59,8 +59,15 @@ describe('README theme documentation', () => {
 
   it('documents the album page assembly contract', () => {
     expect(readme).toContain('### 专辑页组件')
-    expect(readme).toContain('<AlbumTracklist />')
-    expect(readme).toContain('<GiftItem id="poster" />')
+    expect(readme).toContain('<AlbumTracklist src="./album.yml" />')
+    expect(readme).toContain('<Player type="netease_player"')
+    expect(readme).toContain(
+      '<Button href="https://resolvers.bandcamp.com/album/gemini-fables">Bandcamp</Button>',
+    )
+    expect(readme).not.toContain('<AlbumPlatform')
+    expect(readme).not.toContain('<GiftItem')
+    expect(readme).not.toContain('platforms:')
+    expect(readme).not.toContain('book.yml')
     expect(readme).toContain('credit:')
     expect(readme).toContain('catalogNumber')
     expect(readme).toContain('soundcloud_player')

@@ -13,15 +13,18 @@ import { join, resolve } from 'node:path'
 
 const root = process.cwd()
 const fixture = resolve(root, 'tests/fixtures/sites/consumer-smoke')
+const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 
 assert.ok(
   existsSync(resolve(root, 'dist/index.js')),
   'dist/index.js missing; run npm run build before npm run test:consumer-smoke',
 )
 
-const packOut = execFileSync('npm', ['pack', '--json'], {
+const packOut = execFileSync(npm, ['pack', '--json'], {
   cwd: root,
   encoding: 'utf8',
+  shell: process.platform === 'win32',
 })
 const tarballName = JSON.parse(packOut)[0].filename
 const tarballPath = resolve(root, tarballName)
@@ -38,9 +41,14 @@ try {
   pkg.devDependencies['vuepress-theme-synctrolling'] = `file:${tarballPath}`
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 
-  execFileSync('npm', ['install'], { cwd: work, stdio: 'inherit' })
-  execFileSync('npx', ['vuepress', 'build', '.'], {
+  execFileSync(npm, ['install'], {
     cwd: work,
+    shell: process.platform === 'win32',
+    stdio: 'inherit',
+  })
+  execFileSync(npx, ['vuepress', 'build', '.'], {
+    cwd: work,
+    shell: process.platform === 'win32',
     stdio: 'inherit',
   })
 
@@ -74,15 +82,20 @@ try {
   assert.match(enRelease, /canonical|og:title/)
   assert.match(enRelease, /data-testid="album-tracklist"/)
   assert.match(enRelease, /data-testid="tabview"/)
+  assert.match(enRelease, /data-testid="player"/)
   assert.match(enRelease, /role="tab"/)
   assert.match(enRelease, /Listen &amp; Get/)
-  assert.match(enRelease, /w\.soundcloud\.com\/player/)
-  assert.doesNotMatch(enRelease, /music\.163\.com/)
+  assert.match(enRelease, /music\.163\.com/)
+  assert.match(enRelease, /Bandcamp/)
+  assert.match(enRelease, /resolvers\.bandcamp\.com\/album\/gemini-fables/)
+  assert.doesNotMatch(enRelease, /w\.soundcloud\.com\/player/)
 
   const zhRelease = readFileSync(join(dest, 'zh/releases/demo/index.html'), 'utf8')
   assert.match(zhRelease, /data-testid="tabview"/)
+  assert.match(zhRelease, /data-testid="player"/)
   assert.match(zhRelease, /试听/)
   assert.match(zhRelease, /music\.163\.com/)
+  assert.match(zhRelease, /Bandcamp/)
   assert.doesNotMatch(zhRelease, /w\.soundcloud\.com\/player/)
 
   const zhFormats = readFileSync(join(dest, 'zh/article/formats/index.html'), 'utf8')

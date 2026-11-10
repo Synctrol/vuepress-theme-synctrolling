@@ -21,6 +21,7 @@ export default defineConfig({
           name: 'client',
           environment: 'happy-dom',
           include: ['tests/client/**/*.test.ts'],
+          setupFiles: ['./tests/client/setup.ts'],
           // Required so BackgroundSurface CSS imports apply under getComputedStyle.
           css: true,
         },

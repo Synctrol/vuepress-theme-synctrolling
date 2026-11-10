@@ -27,7 +27,7 @@ function withTemporaryDirectory(run: (root: string) => void): void {
 }
 
 describe('discoverContentPackages', () => {
-  it('finds packages in deterministic order and records a real book.yml', () => {
+  it('finds packages in deterministic order', () => {
     const root = join(fixtureRoot, 'ok')
 
     expect(discoverContentPackages(root)).toEqual([
@@ -38,7 +38,6 @@ describe('discoverContentPackages', () => {
       {
         dir: join(root, 'releases/first-release'),
         contentYmlPath: join(root, 'releases/first-release/content.yml'),
-        bookYmlPath: join(root, 'releases/first-release/book.yml'),
       },
     ])
   })
@@ -77,7 +76,9 @@ describe('discoverContentPackages', () => {
     })
   })
 
-  it('ignores config.yml, ordinary files, and non-file content.yml entries', () => {
+  it.skipIf(process.platform === 'win32')(
+    'ignores config.yml, ordinary files, and non-file content.yml entries',
+    () => {
     withTemporaryDirectory((root) => {
       const symlinkPackage = join(root, 'symlink-package')
       const directoryPackage = join(root, 'directory-package')
@@ -94,9 +95,12 @@ describe('discoverContentPackages', () => {
 
       expect(discoverContentPackages(root)).toEqual([])
     })
-  })
+    },
+  )
 
-  it('does not recurse into directory symlinks', () => {
+  it.skipIf(process.platform === 'win32')(
+    'does not recurse into directory symlinks',
+    () => {
     withTemporaryDirectory((temporaryRoot) => {
       const root = join(temporaryRoot, 'root')
       const outside = join(temporaryRoot, 'outside')
@@ -108,9 +112,12 @@ describe('discoverContentPackages', () => {
 
       expect(discoverContentPackages(root)).toEqual([])
     })
-  })
+    },
+  )
 
-  it('records book.yml only when it is a real ordinary file', () => {
+  it.skipIf(process.platform === 'win32')(
+    'records book.yml only when it is a real ordinary file',
+    () => {
     withTemporaryDirectory((root) => {
       const packageDir = join(root, 'package')
       mkdirSync(packageDir)
@@ -129,7 +136,8 @@ describe('discoverContentPackages', () => {
         },
       ])
     })
-  })
+    },
+  )
 
   it('errors on nested packages with exact parent and child paths', () => {
     const parent = join(fixtureRoot, 'nested/releases/parent')

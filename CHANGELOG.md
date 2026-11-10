@@ -4,6 +4,18 @@ All notable changes to `vuepress-theme-synctrolling` are documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- 新增作品旁路元数据文件 `album.yml`；`AlbumIdentity`、`AlbumTracklist`、`AlbumCredit`、`AlbumCovers` 通过 `src` 引用。
+- 新增 Markdown `<Player>` 组件，直接使用主题内置播放器类型；外部收听与购买链接使用 `<Button>`。
+
+### Changed
+
+- **Breaking:** 删除 `book.yml`、Gift 内容线、`definitions.yml` 的 `platforms`、`platforms.types` 自定义播放器注册、`AlbumPlatform` 与 `GiftItem`。旧内容必须迁移到 `album.yml`、`<Player>` 和 `<Button>`。
+- `synctrol-csp.json` 改为按页面实际使用的 Player 汇总来源。
+
 ## [0.2.0] - 2026-08-15
 
 ### Added

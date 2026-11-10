@@ -22,7 +22,7 @@ const registration = computed(
     ],
 )
 const entry = computed(() => {
-  if (!registration.value || props.type === 'link') return undefined
+  if (!registration.value) return undefined
   try {
     return registration.value.validate({
       platform: props.type,
@@ -39,7 +39,7 @@ const messages = computed(() => ({
   openExternal: context?.messages.openExternal ?? '',
 }))
 
-if (!registration.value || props.type === 'link') {
+if (!registration.value) {
   console.warn(`Player: unknown player type "${props.type}"`)
 }
 </script>

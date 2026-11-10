@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process'
 
+const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+
 const required = [
   'package.json',
   'LICENSE',
@@ -24,8 +26,9 @@ const forbiddenPrefixes = [
 const forbiddenNames = ['vitest.config.ts', 'tsconfig.json', 'tsconfig.test.json']
 
 function listPackFiles() {
-  const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+  const out = execFileSync(npm, ['pack', '--dry-run', '--json'], {
     encoding: 'utf8',
+    shell: process.platform === 'win32',
   })
   const parsed = JSON.parse(out)
   if (!Array.isArray(parsed) || !parsed[0]?.files) {

@@ -10,7 +10,7 @@
 
 - 做中英（或更多语言）站点，网址按语言分开，例如 `/zh/`、`/en/`
 - 发布首页、作品、新闻和普通介绍页
-- 给作品附上专辑或周边信息，以及收听、购买链接
+- 给作品附上专辑信息，以及播放器和外部链接
 - 给新闻加标签和分页
 - 在顶栏、底栏放文案，在侧栏放导航、社交图标和常用链接
 - 让打开网站根地址时，自动进入合适的语言首页
@@ -23,7 +23,7 @@
 
 先记住这几件事，后面配置会轻松很多。
 
-**一份内容就是一个文件夹。** 文件夹里有 `content.yml`，再加上 `zh.md`、`en.md` 这类语言正文。作品还可以多放一份 `book.yml`。
+**一份内容就是一个文件夹。** 文件夹里有 `content.yml`，再加上 `zh.md`、`en.md` 这类语言正文。作品可以另放 `album.yml`，由正文里的专辑组件通过 `src` 读取。
 
 **语言名要前后一致。** 配置里写 `zh`，正文就叫 `zh.md`，网址就是 `/zh/`。界面上显示「中文」还是「English」，用配置里的 `label`。
 
@@ -260,7 +260,7 @@ content/
 ├── releases/
 │   └── my-release/
 │       ├── content.yml
-│       ├── book.yml
+│       ├── album.yml
 │       ├── zh.md
 │       ├── en.md
 │       └── assets/
@@ -276,7 +276,7 @@ content/
         └── en.md
 ```
 
-先写 `content/definitions.yml`，声明新闻标签（以及作品里要用到的平台）：
+先写 `content/definitions.yml`，声明新闻标签：
 
 ```yaml
 tags:
@@ -284,17 +284,6 @@ tags:
     title:
       zh: 作品发布
       en: Releases
-platforms:
-  soundcloud:
-    category: digital
-    type: soundcloud_player
-    name: SoundCloud
-  taobao:
-    category: physical
-    type: link
-    name:
-      zh: 淘宝
-      en: Taobao
 ```
 
 ### 5. 写首页
@@ -353,11 +342,10 @@ type: page
 slug: about
 ```
 
-各语言正文用 Markdown 写即可。作品若要附专辑或周边，再在该作品文件夹里加 `book.yml`：
+各语言正文用 Markdown 写即可。作品若要附专辑元数据，再在该作品文件夹里加 `album.yml`：
 
 ```yaml
-# releases/my-release/book.yml
-type: album
+# releases/my-release/album.yml
 title:
   zh: 我的专辑
   en: My Album
@@ -365,49 +353,54 @@ copyright: © 2026 Synctrol
 credit:
   catalogNumber: SYN-001
   illustrator: 插画师
-album:
-  links:
-    - platform: soundcloud
-      url: https://soundcloud.com/synctrol/demo
-  discs:
-    - title:
-        zh: 第一碟
-        en: Disc One
-      tracks:
-        - title:
-            zh: 第一曲
-            en: Track One
-          artists: [Synctrol]
-          duration: 272
+covers:
+  - ./assets/cover.webp
+discs:
+  - title:
+      zh: 第一碟
+      en: Disc One
+    tracks:
+      - title:
+          zh: 第一曲
+          en: Track One
+        artists: [Synctrol]
+        duration: 272
 ```
 
 ### 专辑页组件
 
-专辑详情页由 Markdown 中的组件手动组装，组件自动读取该作品包的 book.yml 数据：
+专辑详情页由 Markdown 中的组件手动组装。专辑数据组件通过 `src` 读取作品包内的 `album.yml`；播放器和外链直接写在 Markdown 中：
 
 ```md
 <AlbumArtwork />
-<AlbumIdentity />
-<AlbumTracklist />
-<TabView><TabPanel label="试听"><AlbumPlatform platform="soundcloud" /></TabPanel><TabPanel label="收听与获取"><AlbumPlatform platform="spotify" /></TabPanel></TabView>
-<AlbumCredit />
-<AlbumCovers />
-<GiftItem id="poster" />
+<AlbumIdentity src="./album.yml" />
+<AlbumTracklist src="./album.yml" />
+<TabView>
+  <TabPanel label="试听">
+    <Player type="netease_player" url="https://music.163.com/#/album?id=368479005" />
+  </TabPanel>
+  <TabPanel label="收听与获取">
+    <Player type="spotify_player" uri="https://open.spotify.com/album/6sTGvo4ElkLW573RbrH5Yk" />
+    <Button href="https://resolvers.bandcamp.com/album/gemini-fables">Bandcamp</Button>
+  </TabPanel>
+</TabView>
+<AlbumCredit src="./album.yml" />
+<Box><AlbumCovers src="./album.yml" /></Box>
 ```
 
 - `<AlbumArtwork />` 渲染 content.yml 的 artwork（含占位图回退）。
-- `<AlbumIdentity />` 渲染专辑标题。
-- `<AlbumTracklist />` 渲染曲目表（不带区块标题与边框）；`<AlbumCovers />` 渲染封面组。
+- `<AlbumIdentity src="...">` 渲染专辑标题。
+- `<AlbumTracklist src="...">` 渲染曲目表（不带区块标题与边框）；`<AlbumCovers src="...">` 渲染封面组。`src` 必须指向当前内容包内存在的元数据文件。
 - `<TabView>` 与 `<TabPanel label="...">` 组成通用标签页：默认选中第一个面板，切换到哪个面板就自动加载该面板内的 embed。
-- `<AlbumPlatform platform="...">` 渲染 book.yml 中该平台的条目（试听条目或数字平台链接条目都由此组件选取）。`platform` 对应 definitions.yml 中的平台 key，未找到条目时不渲染。借助它，不同语言版本可以选不同的平台：例如中文页放 `<AlbumPlatform platform="netease" />`，英文页放 `<AlbumPlatform platform="soundcloud" />`。
-- `<AlbumCredit />` 按固定顺序渲染 credit：catalogNumber、illustrator、designer、mastering、mix、webDesign、producer、specialThanks；credit 的值可以是字符串或字符串数组（数组每个值独占一行）。book.yml 的顶层 copyright 渲染为该区块的最后一行。
-- `<GiftItem id="..." />` 渲染指定 id 的周边条目（gift 类型 book）。
+- `<Player type="...">` 渲染内置播放器。支持 `audio_player`、`youtube_player`、`bilibili_player`、`apple_music_player`、`spotify_player`、`soundcloud_player`、`netease_player`；属性按播放器类型使用 `url`、`uri` 等。播放器类型固定在主题源码中，消费站点不能注册自定义类型。
+- 外部收听或购买链接使用 `<Button href="...">名称</Button>`，不写入 `album.yml`。
+- `<AlbumCredit src="...">` 按固定顺序渲染 credit：catalogNumber、illustrator、designer、mastering、mix、webDesign、producer、specialThanks；credit 的值可以是字符串或字符串数组（数组每个值独占一行）。`album.yml` 的顶层 copyright 渲染为该区块的最后一行。
 
 ### 通用组件
 
 - `<Button href="...">文字</Button>` 渲染工业风格描边按钮（有 `href` 时为链接，否则为普通按钮）。
 - `<ButtonGroup align="center">` 把多个 `<Button>` 组合成紧贴的按钮组，`align` 支持 `left` / `center` / `right` / `stretch`（默认 `stretch`，撑满容器等分）。
-- `<Box>` 是带 3px 边框的包装盒，可包裹任意组件或正文；`<AlbumCovers />` 默认无边框，需要边框时写成 `<Box><AlbumCovers /></Box>`。
+- `<Box>` 是带 3px 边框的包装盒，可包裹任意组件或正文；`<AlbumCovers src="./album.yml" />` 默认无边框，需要边框时写成 `<Box><AlbumCovers src="./album.yml" /></Box>`。
 - `<Notice type="info" title="标题">正文</Notice>` 渲染左侧 3px 竖线提示块；`type` 支持 `info` / `warning` / `success`，`title` 可选。
 - `<Accordion label="标题">内容</Accordion>` 渲染可折叠面板，默认折叠，`open` 可设为初始展开。
 - `<Divider>文字</Divider>` 渲染带可选居中文字的分隔线。
@@ -433,4 +426,4 @@ npx vuepress build .
 - `siteUrl` 写成 `https://你的域名`，不要带路径，也不要末尾斜杠。
 - VuePress 的 `locales` 必须覆盖主题里配置的每一种语言。
 - 内容放在 `content/`。全站只能有一个首页，每个语言的首页都要有 `home-logo`。
-- 日期写成 `YYYY-MM-DD`。新闻用到的标签必须先在 `definitions.yml` 里声明。
+- 日期写成 `YYYY-MM-DD`。新闻用到的标签必须先在 `definitions.yml` 里声明；`definitions.yml` 只声明标签，不声明播放器。

@@ -63,7 +63,9 @@ describe('resolveThemeAsset', () => {
     )
   })
 
-  it('computes relative keys from realpath of a symlink themeAssetsRoot', () => {
+  it.skipIf(process.platform === 'win32')(
+    'computes relative keys from realpath of a symlink themeAssetsRoot',
+    () => {
     const tmp = mkdtempSync(join(tmpdir(), 'theme-assets-symlink-'))
     const linkRoot = join(tmp, 'link-root')
     symlinkSync(realpathSync(themeAssetsRoot), linkRoot)
@@ -85,5 +87,6 @@ describe('resolveThemeAsset', () => {
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
-  })
+    },
+  )
 })
