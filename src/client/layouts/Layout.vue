@@ -25,7 +25,7 @@ import type {
   SynctrolNewsFrontmatter,
   SynctrolPageFrontmatter,
 } from '../../shared/types/news.js'
-import type { ContentDefinitions } from '../../shared/types.js'
+import type { LegacyPlatformDefinitions } from '../../shared/release/link-roles.js'
 import NewsDetailLayout from './NewsDetailLayout.vue'
 import NewsIndexLayout from './NewsIndexLayout.vue'
 import NewsTagArchiveLayout from './NewsTagArchiveLayout.vue'
@@ -41,7 +41,7 @@ interface SynctrolFrontmatter {
   contentType?: string
   contentAssets?: Record<string, string>
   alternates?: Array<{ locale: string; publicPath: string }>
-  platformDefinitions?: ContentDefinitions['platforms']
+  platformDefinitions?: LegacyPlatformDefinitions
   release?: SynctrolReleaseFrontmatter
   news?: SynctrolNewsFrontmatter
   page?: SynctrolPageFrontmatter
@@ -144,7 +144,7 @@ const isNotFound = computed(
 const platformDefinitions = computed(
   () => synctrol.value.platformDefinitions ?? {},
 )
-const platformTypes = resolvePlatformTypes({})
+const platformTypes = resolvePlatformTypes()
 const localeMessages = computed(
   () =>
     theme.locales[locale.value]?.messages ??

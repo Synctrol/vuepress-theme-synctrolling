@@ -1,10 +1,23 @@
-import { writeFileSync, mkdtempSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { loadContentDefinitions } from '../../src/compiler/definitions.js'
 
 describe('definitions without platforms', () => {
+  it('keeps client layouts off the removed platforms contract', () => {
+    const layout = readFileSync('src/client/layouts/Layout.vue', 'utf8')
+    const releaseDetail = readFileSync(
+      'src/client/layouts/ReleaseDetail.vue',
+      'utf8',
+    )
+
+    expect(layout).not.toContain("ContentDefinitions['platforms']")
+    expect(releaseDetail).not.toContain("ContentDefinitions['platforms']")
+    expect(layout).toContain('resolvePlatformTypes()')
+    expect(layout).not.toContain('resolvePlatformTypes({})')
+  })
+
   it('loads tags-only definitions', () => {
     const dir = mkdtempSync(join(tmpdir(), 'defs-'))
     const path = join(dir, 'definitions.yml')

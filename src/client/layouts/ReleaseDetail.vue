@@ -6,8 +6,8 @@ import {
   SYNCTROL_RELEASE_CONTEXT_KEY,
 } from '../components/release/release-context.js'
 import type { ReleaseDetailModel } from '../../shared/release/types.js'
+import type { LegacyPlatformDefinitions } from '../../shared/release/link-roles.js'
 import type {
-  ContentDefinitions,
   LocaleKey,
   LocaleMessages,
 } from '../../shared/types.js'
@@ -17,7 +17,7 @@ const props = defineProps<{
   model: ReleaseDetailModel
   locale: LocaleKey
   mainLocale: LocaleKey
-  definitions: ContentDefinitions['platforms']
+  definitions: LegacyPlatformDefinitions
   types: Record<string, PlatformTypeRegistration>
   loadStrategy: 'interaction' | 'viewport'
   messages: LocaleMessages
