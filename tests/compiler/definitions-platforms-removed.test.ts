@@ -14,8 +14,7 @@ describe('definitions without platforms', () => {
 
     expect(layout).not.toContain("ContentDefinitions['platforms']")
     expect(releaseDetail).not.toContain("ContentDefinitions['platforms']")
-    expect(layout).toContain('resolvePlatformTypes()')
-    expect(layout).not.toContain('resolvePlatformTypes({})')
+    expect(layout).not.toContain('resolvePlatformTypes')
   })
 
   it('loads tags-only definitions', () => {

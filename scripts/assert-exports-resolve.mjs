@@ -37,7 +37,7 @@ const clientMod = await import(pathToFileURL(resolve(root, 'dist/client/index.js
 assert.equal(typeof clientMod.resolveContentAsset, 'function')
 assert.equal(typeof clientMod.createResolveContentAsset, 'function')
 assert.ok(clientMod.PlatformEmbed)
-assert.ok(clientMod.PlatformLinks)
+assert.equal(clientMod.PlatformLinks, undefined)
 assert.equal(Object.hasOwn(clientMod, 'Layout'), false)
 assert.equal(Object.hasOwn(clientMod, 'BackgroundSurface'), false)
 

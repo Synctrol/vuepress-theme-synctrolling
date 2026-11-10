@@ -3,7 +3,6 @@ import type {
   AudioPlayerEntry,
   BilibiliPlayerEntry,
   BuiltInPlatformType,
-  LinkEntry,
   NeteasePlayerEntry,
   SoundCloudPlayerEntry,
   SpotifyPlayerEntry,
@@ -27,8 +26,6 @@ export function buildEmbedUrl(
   entry: Record<string, unknown>,
 ): string | undefined {
   switch (type) {
-    case 'link':
-      return undefined
     case 'audio_player':
       return undefined
     case 'youtube_player': {
@@ -74,8 +71,6 @@ export function buildFallbackUrl(
   entry: Record<string, unknown>,
 ): string | undefined {
   switch (type) {
-    case 'link':
-      return (entry as unknown as LinkEntry).url
     case 'audio_player': {
       const src = (entry as unknown as AudioPlayerEntry).src
       return /^https:\/\//.test(src) ? src : undefined

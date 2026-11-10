@@ -63,8 +63,6 @@ export interface LocaleMessages {
   track: string
   covers: string
   platformLinks: string
-  gifts: string
-  giftItems: string
   readMore: string
   activateEmbed: string
   embedFailed: string
@@ -98,7 +96,6 @@ export interface LocaleOptions {
 }
 
 export type BuiltInPlatformType =
-  | 'link'
   | 'audio_player'
   | 'youtube_player'
   | 'bilibili_player'
@@ -175,10 +172,6 @@ export interface PlatformEntryBase {
 export type NormalizedPlatformEntry = PlatformEntryBase &
   Record<string, unknown>
 
-export type LinkEntry = PlatformEntryBase & {
-  url: string
-}
-
 export type AudioPlayerEntry = PlatformEntryBase & {
   src: string
   mime?: string
@@ -215,7 +208,6 @@ export type NeteasePlayerEntry = PlatformEntryBase & {
 }
 
 export type BuiltInPlatformEntry =
-  | LinkEntry
   | AudioPlayerEntry
   | YouTubePlayerEntry
   | BilibiliPlayerEntry
@@ -292,7 +284,7 @@ export interface CompiledContentPackage {
   manifest: ContentManifest
   book?: Book
   albumBySrc?: Record<string, CompiledAlbumMetadata>
-  players?: PlatformEntryBase[]
+  players?: NormalizedPlatformEntry[]
 }
 
 export interface LocaleMarkdown {

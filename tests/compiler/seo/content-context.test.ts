@@ -43,7 +43,7 @@ describe('buildSeoContentContext', () => {
     expect(context.bookByPackagePath.get('/site/content/releases/first')).toBe(album)
     expect(context.dateByPackagePath.get('/site/content/news/launch')).toBe('2026-08-11')
     expect(context.updatedByPackagePath.get('/site/content/news/launch')).toBe('2026-08-12')
-    expect(context.definitions.platforms).toEqual({})
+    expect(context.definitions.tags).toEqual({})
   })
 
   it('converts root-absolute default assets using siteUrl', () => {

@@ -34,20 +34,14 @@ const base = {
   },
 }
 
-const registration = {
-  validate: (entry: unknown) => entry as { platform: string },
-  component: () => 'custom-platform-component',
-  cspOrigins: () => ['https://platform.example'],
-}
 const background = './backgrounds/host'
 
 describe('client theme options', () => {
-  it('projects a complete JSON-safe payload without Node-only registrations', () => {
+  it('projects a complete JSON-safe payload', () => {
     const resolved = resolveThemeOptions({
       ...base,
       platforms: {
         loadStrategy: 'viewport',
-        types: { custom: registration },
       },
       background,
     })
@@ -55,7 +49,6 @@ describe('client theme options', () => {
     const clientOptions: ClientSynctrolThemeOptions =
       toClientThemeOptions(resolved)
 
-    expect(resolved.platforms.types.custom).toBe(registration)
     expect(resolved.background).toBe(background)
     expect(clientOptions).not.toHaveProperty('background')
     expect(clientOptions).not.toHaveProperty('definitionsPath')
@@ -71,7 +64,6 @@ describe('client theme options', () => {
       ...base,
       platforms: {
         loadStrategy: 'interaction',
-        types: { custom: registration },
       },
       background,
     })

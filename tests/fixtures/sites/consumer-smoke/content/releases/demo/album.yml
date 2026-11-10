@@ -1,0 +1,34 @@
+title: Museum No.9 OST
+copyright: © 2024 Chengdu Yaoyi Technology LTD, CO
+credit:
+  designer: Ca2didi
+  mastering: LelouchSound
+covers:
+  - ./assets/artwork-ost.png
+discs:
+  - title:
+      zh: 第一碟
+      en: Disc One
+    tracks:
+      - title:
+          zh: 第一曲
+          en: Track One
+        artists: [LelouchSound, Synctrol]
+        duration: 272
+        desc:
+          zh: 这是曲目描述
+          en: This is intro
+  - title:
+      zh: 第二碟
+      en: Disc Two
+    tracks:
+      - title:
+          zh: 第三曲
+          en: Track Three
+        artists: [Synctrol]
+        duration: 198
+      - title:
+          zh: 第四曲
+          en: Track Four
+        artists: [Synctrol]
+        duration: 240

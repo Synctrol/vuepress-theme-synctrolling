@@ -5,13 +5,3 @@ tags:
       en: Releases
   unused:
     title: Unused
-
-platforms:
-  bilibili:
-    category: digital
-    type: bilibili_player
-    name: Bilibili
-  unused-shop:
-    category: physical
-    type: link
-    name: Unused shop

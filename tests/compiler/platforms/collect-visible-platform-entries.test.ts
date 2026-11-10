@@ -1,44 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { collectVisiblePlatformEntries } from '../../../src/compiler/platforms/collect-visible-platform-entries'
-import type {
-  AlbumBook,
-  CompiledContentPackage,
-  GiftBook,
-  RouteContentPackage,
-} from '../../../src/shared/types'
+import type { CompiledContentPackage } from '../../../src/shared/types'
 import type { CompiledPage } from '../../../src/shared/route-types'
-
-const platformTypes = {
-  youtube: 'youtube_player',
-  taobao: 'link',
-}
-
-const album: AlbumBook = {
-  type: 'album',
-  title: 'A',
-  album: {
-    links: [{ platform: 'youtube', videoId: 'dQw4w9WgXcQ', autoplay: false }],
-  },
-}
-
-const gift: GiftBook = {
-  type: 'gift',
-  title: 'G',
-  gift: {
-    items: [
-      {
-        id: 'poster',
-        title: 'Poster',
-        links: [{ platform: 'taobao', url: 'https://item.taobao.com/x' }],
-      },
-    ],
-  },
-}
 
 function compiled(
   identity: string,
   dir: string,
-  book: AlbumBook | GiftBook,
+  players: CompiledContentPackage['players'],
 ): CompiledContentPackage {
   return {
     dir,
@@ -49,19 +17,7 @@ function compiled(
       date: '2024-01-01',
       draft: false,
     },
-    book,
-  }
-}
-
-function routed(identity: string, dir: string, slug: string): RouteContentPackage {
-  return {
-    identity,
-    dir,
-    type: 'release',
-    slug,
-    draft: false,
-    tags: [],
-    locales: {},
+    players,
   }
 }
 
@@ -88,38 +44,39 @@ function page(identity: `release:${string}`, packagePath: string): CompiledPage 
 }
 
 describe('collectVisiblePlatformEntries', () => {
-  it('collects album.links and gift item links only for packages with published pages', () => {
-    const published = compiled('release:live', '/pkg/live', album)
-    const draft = compiled('release:draft', '/pkg/draft', gift)
+  it('collects scanned players only for packages with published pages', () => {
+    const published = compiled('release:live', '/pkg/live', [
+      { platform: 'youtube_player', videoId: 'dQw4w9WgXcQ', autoplay: false },
+    ])
+    const draft = compiled('release:draft', '/pkg/draft', [
+      { platform: 'audio_player', src: './draft.mp3', autoplay: false },
+    ])
     const pages: CompiledPage[] = [page('release:live', '/pkg/live')]
-    const packages: RouteContentPackage[] = [
-      routed('release:live', '/pkg/live', 'live'),
-      routed('release:draft', '/pkg/draft', 'draft'),
-    ]
 
     const items = collectVisiblePlatformEntries({
       compiledPackages: [published, draft],
-      packages,
       pages,
-      platformTypes,
     })
     expect(items).toEqual([
       {
         type: 'youtube_player',
-        entry: { platform: 'youtube', videoId: 'dQw4w9WgXcQ', autoplay: false },
+        entry: {
+          platform: 'youtube_player',
+          videoId: 'dQw4w9WgXcQ',
+          autoplay: false,
+        },
       },
     ])
-    expect(items.some((i) => i.type === 'link')).toBe(false)
   })
 
   it('returns empty when no pages publish any package', () => {
-    const onlyDraft = compiled('release:draft', '/pkg/draft', album)
+    const onlyDraft = compiled('release:draft', '/pkg/draft', [
+      { platform: 'youtube_player', videoId: 'dQw4w9WgXcQ' },
+    ])
     expect(
       collectVisiblePlatformEntries({
         compiledPackages: [onlyDraft],
-        packages: [routed('release:draft', '/pkg/draft', 'draft')],
         pages: [],
-        platformTypes,
       }),
     ).toEqual([])
   })

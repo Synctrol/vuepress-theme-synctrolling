@@ -1,24 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { LinkPlatform } from '../../../src/client/components/platforms/renderers/LinkPlatform'
 import { AudioPlayerPlatform } from '../../../src/client/components/platforms/renderers/AudioPlayerPlatform'
 
-describe('link and audio renderers', () => {
-  it('renders an external link with safe rel and accessible name', () => {
-    const wrapper = mount(LinkPlatform, {
-      props: {
-        entry: { platform: 'taobao', url: 'https://item.taobao.com/x' },
-        title: '淘宝',
-      },
-    })
-    const a = wrapper.get('a')
-    expect(a.attributes('href')).toBe('https://item.taobao.com/x')
-    expect(a.attributes('target')).toBe('_blank')
-    expect(a.attributes('rel')).toBe('noopener noreferrer')
-    expect(a.attributes('aria-label')).toBe('淘宝')
-    expect(a.text()).toBe('淘宝')
-  })
-
+describe('audio renderer', () => {
   it('renders audio with title and optional mime type source', () => {
     const wrapper = mount(AudioPlayerPlatform, {
       props: {

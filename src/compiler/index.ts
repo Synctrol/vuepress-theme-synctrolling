@@ -12,8 +12,6 @@ export {
   resolveDefinitionsPath,
 } from './definitions.js'
 export { parseContentManifest } from './manifest.js'
-export { parseBook } from './book.js'
-export { validatePlatformEntry } from './platform-entry.js'
 export {
   compileContent,
   type CompileContentOptions,

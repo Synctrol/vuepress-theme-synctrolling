@@ -1,5 +1,5 @@
 import type { PlatformTypeRegistration } from '../shared/options.js'
-import type { PlatformEntryBase } from '../shared/types.js'
+import type { NormalizedPlatformEntry } from '../shared/types.js'
 import { fail, isDiagnosticError } from './diagnostics.js'
 import type { ScannedPlayerUsage } from './scan-release-markdown.js'
 
@@ -31,7 +31,7 @@ function usagePath(usage: ScannedPlayerUsage): string {
 export function validatePlayerUsage(
   usage: ScannedPlayerUsage,
   types: Record<string, PlatformTypeRegistration>,
-): PlatformEntryBase {
+): NormalizedPlatformEntry {
   const registration = types[usage.type]
   if (!registration) {
     fail({
@@ -49,7 +49,7 @@ export function validatePlayerUsage(
   }
 
   try {
-    return registration.validate(entry)
+    return registration.validate(entry) as NormalizedPlatformEntry
   } catch (error) {
     if (isDiagnosticError(error) && error.diagnostics[0] !== undefined) {
       fail({

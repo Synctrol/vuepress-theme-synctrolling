@@ -10,7 +10,6 @@ export function definitions(
 ): ContentDefinitions {
   return {
     tags: {},
-    platforms: {},
     ...overrides,
   }
 }
@@ -41,7 +40,7 @@ export function resolvedOptions(
       index: { enabled: true, pagination: 12 },
       tags: { urlSegment: 'tags', index: { enabled: true } },
     },
-    platforms: { loadStrategy: 'interaction', types: {} },
+    platforms: { loadStrategy: 'interaction' },
     sounds: { enabled: true, keys: {} },
     seo: {
       name: { zh: 'Synctrol', en: 'Synctrol' },

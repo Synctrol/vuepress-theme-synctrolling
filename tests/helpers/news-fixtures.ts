@@ -8,7 +8,6 @@ export const newsDefinitions: ContentDefinitions = {
     release: { title: { zh: '作品发布', en: 'Releases' } },
     tour: { title: { zh: '巡演', en: 'Tour' } },
   },
-  platforms: {},
 }
 
 export function newsDetailPage(

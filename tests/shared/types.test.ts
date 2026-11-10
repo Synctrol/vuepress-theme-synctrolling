@@ -32,8 +32,6 @@ const LOCALE_MESSAGE_KEYS = [
   'track',
   'covers',
   'platformLinks',
-  'gifts',
-  'giftItems',
   'readMore',
   'activateEmbed',
   'embedFailed',

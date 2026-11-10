@@ -1,6 +1,5 @@
 import type { BuiltInPlatformType } from '../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../shared/options.js'
-import { linkType } from './link.js'
 import { audioPlayerType } from './audio-player.js'
 import { youtubePlayerType } from './youtube-player.js'
 import { bilibiliPlayerType } from './bilibili-player.js'
@@ -13,7 +12,6 @@ export const builtInPlatformTypes: Record<
   BuiltInPlatformType,
   PlatformTypeRegistration
 > = {
-  link: linkType,
   audio_player: audioPlayerType,
   youtube_player: youtubePlayerType,
   bilibili_player: bilibiliPlayerType,

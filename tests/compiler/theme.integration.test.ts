@@ -497,22 +497,11 @@ describe('synctrolTheme production integration', () => {
     title:
       zh: 作品
       en: Releases
-platforms:
-  youtube:
-    category: digital
-    type: youtube_player
-    name: YouTube
 `,
     )
     write(
-      'content/releases/first-release/book.yml',
-      `type: album
-title: First Album
-album:
-  links:
-    - platform: youtube
-      videoId: dQw4w9WgXcQ
-`,
+      'content/releases/first-release/zh.md',
+      '---\ntitle: 第一张专辑\n---\n<Player type="youtube_player" videoId="dQw4w9WgXcQ" />\n',
     )
 
     const app = await runBuild()
@@ -545,23 +534,23 @@ album:
     title:
       zh: 作品
       en: Releases
-platforms:
-  youtube:
-    category: digital
-    type: youtube_player
-    name: YouTube
 `,
     )
     write(
-      'content/releases/first-release/book.yml',
-      `type: album
+      'content/releases/first-release/album.yml',
+      `title: First Album
+copyright: © Synctrol
+covers:
+  - ./assets/front.webp
+discs: []
+`,
+    )
+    write(
+      'content/releases/first-release/zh.md',
+      `---
 title: First Album
-album:
-  covers:
-    - ./assets/front.webp
-  links:
-    - platform: youtube
-      videoId: dQw4w9WgXcQ
+---
+<AlbumIdentity src="./album.yml" />
 `,
     )
     write('content/releases/first-release/assets/front.webp', 'fake-webp-bytes')
@@ -613,31 +602,18 @@ album:
     )
     expect(detail).toBeDefined()
     const detailSynctrol = detail!.frontmatter.synctrol as {
-      platformDefinitions: Record<string, unknown>
       release: {
         kind: string
         model: {
           includedInIndex: boolean
           artwork: { kind: string }
-          book?: {
-            type: string
-            title: { text: string }
-            platformLinks: Array<{ platform: string }>
-            previewLinks: Array<{ platform: string }>
-            discs: Array<{ number: number }>
-          }
+          albumBySrc: Record<string, { title: unknown }>
         }
       }
     }
     expect(detailSynctrol.release.kind).toBe('detail')
     expect(detailSynctrol.release.model.artwork.kind).toBe('artwork')
-    expect(detailSynctrol.release.model.book?.type).toBe('album')
-    expect(
-      detailSynctrol.release.model.book?.platformLinks.map((l) => l.platform),
-    ).toContain('youtube')
-    expect(detailSynctrol.platformDefinitions).toMatchObject({
-      youtube: expect.objectContaining({ type: 'youtube_player' }),
-    })
+    expect(detailSynctrol.release.model.albumBySrc['./album.yml']).toBeDefined()
 
     const index = app.pages.find(
       (candidate: Page) => candidate.path === '/zh/releases/',
@@ -684,10 +660,8 @@ album:
     expect(home).toBeDefined()
     const homeSynctrol = home!.frontmatter.synctrol as {
       release?: unknown
-      platformDefinitions: Record<string, unknown>
     }
     expect(homeSynctrol.release).toBeUndefined()
-    expect(homeSynctrol.platformDefinitions).toEqual(expect.any(Object))
   })
 
   it('injects frontmatter.synctrol.news, page, and home for Plan 09 kinds', async () => {

@@ -326,12 +326,9 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       }
 
       const types = resolvePlatformTypes()
-      const platformTypes: Record<string, string> = Object.create(null)
       const entries = collectVisiblePlatformEntries({
         compiledPackages: built.compiledPackages,
-        packages: built.packages,
         pages: built.site.pages,
-        platformTypes,
       })
       const csp = collectCspFromEntries(entries, types)
       writeSynctrolCspJson(app.dir.dest(), csp)

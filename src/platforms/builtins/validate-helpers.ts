@@ -127,7 +127,7 @@ export function requirePlatformKey(
 }
 
 /**
- * Optional entry `label` handling matching `validatePlatformEntry`:
+ * Optional player `label` handling:
  * - absent → undefined
  * - with `mainLocale` → assertMultilanguage (main locale required; locale maps cloned)
  * - without `mainLocale` (pre-validated upstream) → still clone maps for isolation

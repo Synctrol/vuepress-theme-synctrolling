@@ -4,12 +4,11 @@ import { optionalLabel } from '../../src/platforms/builtins/validate-helpers'
 import { isDiagnosticError } from '../../src/compiler/diagnostics'
 
 describe('builtInPlatformTypes', () => {
-  it('registers all eight built-in types', () => {
+  it('registers the seven player built-in types without link', () => {
     expect(Object.keys(builtInPlatformTypes).sort()).toEqual([
       'apple_music_player',
       'audio_player',
       'bilibili_player',
-      'link',
       'netease_player',
       'soundcloud_player',
       'spotify_player',
@@ -136,19 +135,6 @@ describe('builtInPlatformTypes', () => {
   })
 
   it('optionalLabel validates main locale maps and isolates from input mutation', () => {
-    const inputLabel = { zh: '试听', en: 'Preview' }
-    const entry = builtInPlatformTypes.link.validate({
-      platform: 'store',
-      label: inputLabel,
-      url: 'https://shop.example/item',
-    })
-    expect(entry.label).toEqual({ zh: '试听', en: 'Preview' })
-    expect(entry.label).not.toBe(inputLabel)
-    inputLabel.zh = '已修改'
-    expect(entry.label).toEqual({ zh: '试听', en: 'Preview' })
-
-    // mainLocale validation is enforced via optionalLabel(entry, mainLocale) —
-    // the same helper validatePlatformEntry uses.
     expect(() =>
       optionalLabel({ label: { en: 'Listen' } }, 'zh'),
     ).toThrow(/MISSING_MAIN_LOCALE|mainLocale/)

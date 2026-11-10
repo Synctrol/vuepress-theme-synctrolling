@@ -17,9 +17,6 @@ export function collectCspFromEntries(
     if (type === 'audio_player') {
       return { 'media-src': origins, 'frame-src': [], 'connect-src': [] }
     }
-    if (type === 'link') {
-      return emptyCspJson()
-    }
     // v1: non-audio registration origins (built-in players + custom) → frame-src.
     // connect-src stays empty; custom types cannot contribute media/connect via cspOrigins().
     return {

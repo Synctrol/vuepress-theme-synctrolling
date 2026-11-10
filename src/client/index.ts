@@ -12,4 +12,3 @@ export * from './composables/keys.js'
 // Forbidden: any other .vue SFC re-export
 
 export { PlatformEmbed } from './components/platforms/PlatformEmbed.js'
-export { PlatformLinks } from './components/platforms/PlatformLinks.js'

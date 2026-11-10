@@ -8,8 +8,7 @@ describe('preview platform types', () => {
     expect(builtInPlatformTypes.netease_player.preview).toBe(true)
   })
 
-  it('keeps link/video/store built-ins non-preview', () => {
-    expect(builtInPlatformTypes.link.preview).toBeUndefined()
+  it('keeps video player built-ins non-preview', () => {
     expect(builtInPlatformTypes.youtube_player.preview).toBeUndefined()
     expect(builtInPlatformTypes.bilibili_player.preview).toBeUndefined()
     expect(builtInPlatformTypes.spotify_player.preview).toBeUndefined()

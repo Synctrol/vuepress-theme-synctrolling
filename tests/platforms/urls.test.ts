@@ -75,13 +75,7 @@ describe('buildEmbedUrl / buildFallbackUrl', () => {
     )
   })
 
-  it('returns link url as fallback and no embed; audio uses src when HTTPS', () => {
-    expect(buildEmbedUrl('link', { platform: 'taobao', url: 'https://item.taobao.com/x' })).toBe(
-      undefined,
-    )
-    expect(buildFallbackUrl('link', { platform: 'taobao', url: 'https://item.taobao.com/x' })).toBe(
-      'https://item.taobao.com/x',
-    )
+  it('uses audio src as fallback when HTTPS', () => {
     expect(
       buildFallbackUrl('audio_player', {
         platform: 'local',

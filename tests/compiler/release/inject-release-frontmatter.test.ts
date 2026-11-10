@@ -49,7 +49,7 @@ const assetManifest: AssetManifest = {
 }
 
 function collection(
-  itemIdentities: CompiledPage['identity'][],
+  itemIdentities: NonNullable<CompiledPage['collection']>['itemIdentities'],
   overrides: Partial<CompiledPage> = {},
 ): CompiledPage {
   return {
@@ -158,7 +158,7 @@ describe('buildReleaseFrontmatterForPage', () => {
       },
     })
     const page2 = collection([], {
-      identity: 'release-index:2',
+      identity: 'release-page:2',
       url: {
         routePath: '/zh/releases/page/2/',
         outputPath: 'zh/releases/page/2/index.html',
@@ -168,7 +168,7 @@ describe('buildReleaseFrontmatterForPage', () => {
       collection: { page: 2, pageCount: 2, itemIdentities: [] },
     })
     const enPage2 = collection([], {
-      identity: 'release-index:en:2',
+      identity: 'release-page:2',
       locale: 'en',
       url: {
         routePath: '/en/releases/page/2/',

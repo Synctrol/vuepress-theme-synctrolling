@@ -21,7 +21,6 @@ import {
   formatMessage,
   isDiagnosticError,
   loadContentDefinitions,
-  parseBook,
   parseContentManifest,
   resolveMultilanguage,
   resolveDefinitionsPath,
@@ -29,7 +28,6 @@ import {
   resolveThemeOptions,
   SynctrolDiagnosticError,
   toAssetPackageSource,
-  validatePlatformEntry,
   writeSynctrolCspJson,
   zhMessages,
 } from '../src/index'
@@ -56,11 +54,9 @@ describe('root public exports', () => {
       fail,
       isDiagnosticError,
       loadContentDefinitions,
-      parseBook,
       parseContentManifest,
       resolveDefinitionsPath,
       SynctrolDiagnosticError,
-      validatePlatformEntry,
       compilerApi.buildReleaseIndexModel,
       compilerApi.buildReleaseDetailModel,
       compilerApi.buildReleaseFrontmatterForPage,
@@ -80,15 +76,15 @@ describe('root public exports', () => {
       'fail',
       'isDiagnosticError',
       'loadContentDefinitions',
-      'parseBook',
       'parseContentManifest',
       'resolveDefinitionsPath',
-      'validatePlatformEntry',
     ])
     expect(compilerApi).not.toHaveProperty('assertMultilanguage')
     expect(compilerApi).not.toHaveProperty('loadYamlFile')
     expect(compilerApi).not.toHaveProperty('parseAlbumBook')
+    expect(compilerApi).not.toHaveProperty('parseBook')
     expect(compilerApi).not.toHaveProperty('parseGiftBook')
+    expect(compilerApi).not.toHaveProperty('validatePlatformEntry')
   })
 
   it('exposes the Node asset API from the package root (not the Plan-02 compiler barrel)', () => {
@@ -105,9 +101,10 @@ describe('root public exports', () => {
     expect(typeof formatMessage).toBe('function')
     expect(typeof writeSynctrolCspJson).toBe('function')
     expect(typeof assertNoCspMetaInjection).toBe('function')
-    expect(Object.keys(resolvePlatformTypes({}))).toEqual(
-      expect.arrayContaining(['youtube_player', 'bilibili_player', 'link']),
+    expect(Object.keys(resolvePlatformTypes())).toEqual(
+      expect.arrayContaining(['youtube_player', 'bilibili_player']),
     )
+    expect(resolvePlatformTypes()).not.toHaveProperty('link')
   })
 
   it('exposes SEO emit helpers from the package root', () => {
@@ -116,9 +113,9 @@ describe('root public exports', () => {
     expect(typeof emitSeoAndFeeds).toBe('function')
   })
 
-  it('exposes PlatformEmbed and PlatformLinks from the client entry (no SFC re-exports)', () => {
+  it('exposes PlatformEmbed from the client entry (no dead list or SFC re-exports)', () => {
     expect(clientApi).toHaveProperty('PlatformEmbed')
-    expect(clientApi).toHaveProperty('PlatformLinks')
+    expect(clientApi).not.toHaveProperty('PlatformLinks')
     expect(clientApi).toHaveProperty('resolveContentAsset')
     expect(clientApi).not.toHaveProperty('Layout')
     expect(clientApi).not.toHaveProperty('BackgroundSurface')
@@ -143,7 +140,7 @@ describe('root public exports', () => {
       manifest: { type: 'home', draft: false },
     }
     const result: CompileContentResult = {
-      definitions: { tags: {}, platforms: {} },
+      definitions: { tags: {} },
       packages: [pkg],
       warnings: [diagnostic],
     }
