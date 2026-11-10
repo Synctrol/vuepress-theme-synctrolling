@@ -1,7 +1,8 @@
 import { defineComponent, h } from 'vue'
 import type { PropType } from 'vue'
-import type { ContentDefinitions, LocaleKey, NormalizedPlatformEntry } from '../../../shared/types.js'
+import type { LocaleKey, NormalizedPlatformEntry } from '../../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../../shared/options.js'
+import type { LegacyPlatformDefinitions } from '../../../shared/release/link-roles.js'
 import { PlatformEntry } from './PlatformEntry.js'
 
 export const PlatformLinks = defineComponent({
@@ -12,7 +13,7 @@ export const PlatformLinks = defineComponent({
       required: true,
     },
     definitions: {
-      type: Object as PropType<ContentDefinitions['platforms']>,
+      type: Object as PropType<LegacyPlatformDefinitions>,
       required: true,
     },
     types: {

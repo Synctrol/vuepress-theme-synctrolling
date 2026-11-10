@@ -1,6 +1,5 @@
 import type {
   Book,
-  ContentDefinitions,
   LocaleKey,
   LocaleMessages,
   Multilanguage,
@@ -14,7 +13,10 @@ import {
   selectAlbumCovers,
   selectReleaseArtwork,
 } from '../../shared/release/image-roles.js'
-import { splitPreviewLinks } from '../../shared/release/link-roles.js'
+import {
+  splitPreviewLinks,
+  type LegacyPlatformDefinitions,
+} from '../../shared/release/link-roles.js'
 import { numberDiscs } from '../../shared/release/numbering.js'
 import { resolveMultilanguage } from '../../shared/multilanguage.js'
 
@@ -24,7 +26,7 @@ export interface BuildReleaseDetailModelInput {
   book: Book | undefined
   messages: LocaleMessages
   mainLocale: LocaleKey
-  definitions: ContentDefinitions['platforms']
+  definitions: LegacyPlatformDefinitions
   platformTypes: Record<string, PlatformTypeRegistration>
   resolveArtwork: (pkg: RouteContentPackage) => ResolvedAsset | undefined
   resolveAlbumCover: (relativePath: string) => ResolvedAsset

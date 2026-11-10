@@ -112,7 +112,6 @@ describe('resolveThemeOptions', () => {
     })
     expect(options.platforms).toEqual({
       loadStrategy: 'interaction',
-      types: {},
     })
     expect(options.navigation).toEqual({
       externalTarget: '_blank',
@@ -357,7 +356,7 @@ describe('resolveThemeOptions', () => {
     expect(() =>
       resolveThemeOptions({
         ...base,
-        platforms: { loadStrategy: 'immediate' as 'interaction', types: {} },
+        platforms: { loadStrategy: 'immediate' as 'interaction' },
       }),
     ).toThrow(/loadStrategy/)
   })
@@ -404,7 +403,7 @@ describe('resolveThemeOptions', () => {
     expect(resolved.linkCloud?.items[0]?.href).toBe('/docs/')
   })
 
-  it('requires each platform registration to own its component field', () => {
+  it('rejects custom platform type registrations', () => {
     expect(() =>
       resolveRuntimeOptions({
         ...base,
@@ -417,9 +416,7 @@ describe('resolveThemeOptions', () => {
           },
         },
       }),
-    ).toThrow(
-      'Invalid options.platforms.types.youtube.component: expected an own field',
-    )
+    ).toThrow('Unknown field options.platforms.types')
   })
 
   it.each([
@@ -848,7 +845,7 @@ describe('resolveThemeOptions', () => {
     ).toThrow(/messages/)
   })
 
-  it('isolates resolved containers while preserving registration value identities', () => {
+  it('isolates resolved containers', () => {
     const customMessages = { ...enMessages, draft: 'Draft before mutation' }
     const dateFormat: Intl.DateTimeFormatOptions = { dateStyle: 'short' }
     const topbarText = { zh: '版权', en: 'Copyright' }
@@ -867,15 +864,6 @@ describe('resolveThemeOptions', () => {
     ]
     const seoName = { zh: '同步控制', en: 'Synctrol' }
     const releaseTitle = { zh: '作品', en: 'Releases' }
-    const component = { name: 'YoutubeEmbed' }
-    const validate = () => ({ platform: 'youtube' })
-    const cspOrigins = () => ['https://youtube.com']
-    const registration = {
-      validate,
-      component,
-      cspOrigins,
-    }
-    const platformTypes = { youtube: registration }
     const background = './backgrounds/host'
     const input: SynctrolThemeOptions = {
       ...base,
@@ -896,7 +884,6 @@ describe('resolveThemeOptions', () => {
       socialLinks: { items: socialItems },
       platforms: {
         loadStrategy: 'viewport',
-        types: platformTypes,
       },
       background,
       seo: {
@@ -929,12 +916,6 @@ describe('resolveThemeOptions', () => {
     seoName.zh = '已改变'
     input.seo.organization.name = 'Changed organization'
     releaseTitle.zh = '已改变'
-    platformTypes.youtube = {
-      validate: () => ({ platform: 'replacement' }),
-      component: { name: 'Replacement' },
-      cspOrigins: () => [],
-    }
-
     expect(resolved.locales.ja.messages.draft).toBe('Draft before mutation')
     expect(resolved.locales.ja.dateFormat.dateStyle).toBe('short')
     expect(resolved.topbarText).toEqual({ zh: '版权', en: 'Copyright' })
@@ -957,11 +938,7 @@ describe('resolveThemeOptions', () => {
       zh: '作品',
       en: 'Releases',
     })
-    expect(resolved.platforms.types).not.toBe(platformTypes)
-    expect(resolved.platforms.types.youtube).toBe(registration)
-    expect(resolved.platforms.types.youtube.component).toBe(component)
-    expect(resolved.platforms.types.youtube.validate).toBe(validate)
-    expect(resolved.platforms.types.youtube.cspOrigins).toBe(cspOrigins)
+    expect(resolved.platforms).toEqual({ loadStrategy: 'viewport' })
     expect(resolved.background).toBe(background)
   })
 

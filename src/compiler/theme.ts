@@ -176,7 +176,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
       const allPages = built.site.pages
       const packages = built.packages
       const compiledPackages = built.compiledPackages
-      const platformDefinitions = built.definitions.platforms
+      const platformDefinitions = Object.create(null)
       const emittedSeo = seoAndFeeds
 
       for (const compiled of allPages) {
@@ -211,7 +211,7 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
           messages: localeMessages,
           collectionTitle,
           definitions: platformDefinitions,
-          platformTypes: resolvePlatformTypes(resolved.platforms.types),
+          platformTypes: resolvePlatformTypes(),
         })
 
         const resolveCoverPublicPath = (
@@ -326,13 +326,8 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
         writeFileSync(feedTarget, file.contents, 'utf8')
       }
 
-      const types = resolvePlatformTypes(resolved.platforms.types)
-      const platformTypes = Object.fromEntries(
-        Object.entries(built.definitions.platforms).map(([key, def]) => [
-          key,
-          def.type,
-        ]),
-      )
+      const types = resolvePlatformTypes()
+      const platformTypes: Record<string, string> = Object.create(null)
       const entries = collectVisiblePlatformEntries({
         compiledPackages: built.compiledPackages,
         packages: built.packages,

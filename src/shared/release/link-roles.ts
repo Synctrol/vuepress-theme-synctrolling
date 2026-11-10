@@ -1,12 +1,24 @@
 import type {
-  ContentDefinitions,
+  Multilanguage,
   NormalizedPlatformEntry,
 } from '../types.js'
 import type { PlatformTypeRegistration } from '../options.js'
 
+/** Temporary shape consumed only by the legacy book pipeline. */
+export type LegacyPlatformCategory = 'digital' | 'physical'
+
+export type LegacyPlatformDefinitions = Record<
+  string,
+  {
+    category: LegacyPlatformCategory
+    type: string
+    name: Multilanguage
+  }
+>
+
 export function isPreviewEntry(
   entry: NormalizedPlatformEntry,
-  definitions: ContentDefinitions['platforms'],
+  definitions: LegacyPlatformDefinitions,
   platformTypes: Record<string, PlatformTypeRegistration>,
 ): boolean {
   const definition = definitions[entry.platform]
@@ -17,7 +29,7 @@ export function isPreviewEntry(
 
 export function splitPreviewLinks(
   entries: NormalizedPlatformEntry[],
-  definitions: ContentDefinitions['platforms'],
+  definitions: LegacyPlatformDefinitions,
   platformTypes: Record<string, PlatformTypeRegistration>,
 ): {
   previewLinks: NormalizedPlatformEntry[]

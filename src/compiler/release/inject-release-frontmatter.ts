@@ -3,12 +3,12 @@ import type { ReleaseOptions, PlatformTypeRegistration } from '../../shared/opti
 import type { CompiledPage } from '../../shared/route-types.js'
 import type {
   CompiledContentPackage,
-  ContentDefinitions,
   LocaleKey,
   LocaleMessages,
   RouteContentPackage,
 } from '../../shared/types.js'
 import type { SynctrolReleaseFrontmatter } from '../../shared/release/types.js'
+import type { LegacyPlatformDefinitions } from '../../shared/release/link-roles.js'
 import { buildReleaseIndexModel } from './list-model.js'
 import { buildReleaseDetailModel } from './detail-model.js'
 import {
@@ -28,7 +28,7 @@ export interface BuildReleaseFrontmatterInput {
   mainLocale: LocaleKey
   messages: LocaleMessages
   collectionTitle: string
-  definitions: ContentDefinitions['platforms']
+  definitions: LegacyPlatformDefinitions
   platformTypes: Record<string, PlatformTypeRegistration>
 }
 

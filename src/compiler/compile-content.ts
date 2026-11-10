@@ -177,7 +177,7 @@ export function compileContent(
     if (item.bookYmlPath !== undefined) {
       book = parseBook(
         item.bookYmlPath,
-        definitions,
+        { platforms: Object.create(null) },
         validated.mainLocale,
         validated.platformTypes,
       )

@@ -40,7 +40,7 @@ export function mergeSiteDiagnostics(
 
 export function buildSite(input: BuildSiteInput): BuiltSite {
   const localeKeys = Object.keys(input.options.locales) as LocaleKey[]
-  const platformTypes = resolvePlatformTypes(input.options.platforms.types)
+  const platformTypes = resolvePlatformTypes()
 
   const compiled = compileContent({
     contentRoot: join(input.sourceDir, SYNCTROL_CONTENT_DIR),

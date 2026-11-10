@@ -3,16 +3,18 @@ import type {
   Book,
   BookCredit,
   BookCreditKey,
-  ContentDefinitions,
   Disc,
   GiftBook,
   GiftItem,
   LocaleKey,
   Multilanguage,
   NormalizedPlatformEntry,
-  PlatformCategory,
   Track,
 } from '../shared/types.js'
+import type {
+  LegacyPlatformCategory,
+  LegacyPlatformDefinitions,
+} from '../shared/release/link-roles.js'
 import { BOOK_CREDIT_KEYS } from '../shared/types.js'
 import type { PlatformTypeRegistration } from '../shared/options.js'
 import { resolvePlatformTypes } from '../platforms/registry.js'
@@ -373,11 +375,11 @@ function parseDisc(
 
 function validateBookLink(
   entry: unknown,
-  defs: ContentDefinitions,
+  defs: { platforms: LegacyPlatformDefinitions },
   mainLocale: LocaleKey,
   path: string,
   fieldPath: string,
-  requiredCategory: PlatformCategory,
+  requiredCategory: LegacyPlatformCategory,
   platformTypes?: Record<string, PlatformTypeRegistration>,
 ): NormalizedPlatformEntry {
   try {
@@ -387,7 +389,7 @@ function validateBookLink(
       mainLocale,
       path,
       requiredCategory,
-      platformTypes ?? resolvePlatformTypes({}),
+      platformTypes ?? resolvePlatformTypes(),
     )
   } catch (error) {
     if (isDiagnosticError(error) && error.diagnostics[0] !== undefined) {
@@ -410,11 +412,11 @@ function validateBookLink(
 
 function parseLinks(
   value: unknown,
-  defs: ContentDefinitions,
+  defs: { platforms: LegacyPlatformDefinitions },
   mainLocale: LocaleKey,
   path: string,
   fieldPath: string,
-  requiredCategory: PlatformCategory,
+  requiredCategory: LegacyPlatformCategory,
   platformTypes?: Record<string, PlatformTypeRegistration>,
 ): NormalizedPlatformEntry[] | undefined {
   if (value === undefined) return undefined
@@ -445,7 +447,7 @@ function parseDiscs(
 
 export function parseAlbumBook(
   rawValue: Record<string, unknown>,
-  defs: ContentDefinitions,
+  defs: { platforms: LegacyPlatformDefinitions },
   mainLocale: LocaleKey,
   path: string,
   platformTypes?: Record<string, PlatformTypeRegistration>,
@@ -520,7 +522,7 @@ export function parseAlbumBook(
 
 function parseGiftItem(
   value: unknown,
-  defs: ContentDefinitions,
+  defs: { platforms: LegacyPlatformDefinitions },
   mainLocale: LocaleKey,
   path: string,
   fieldPath: string,
@@ -576,7 +578,7 @@ function parseGiftItem(
 
 export function parseGiftBook(
   rawValue: Record<string, unknown>,
-  defs: ContentDefinitions,
+  defs: { platforms: LegacyPlatformDefinitions },
   mainLocale: LocaleKey,
   path: string,
   platformTypes?: Record<string, PlatformTypeRegistration>,
@@ -655,7 +657,7 @@ export function parseGiftBook(
 
 export function parseBook(
   bookYmlPath: string,
-  defs: ContentDefinitions,
+  defs: { platforms: LegacyPlatformDefinitions },
   mainLocale: LocaleKey,
   platformTypes?: Record<string, PlatformTypeRegistration>,
 ): Book {

@@ -35,7 +35,6 @@ export {
 export type {
   PlatformTypeRegistration,
   PlatformsOptions,
-  PlatformTypesConfig,
 } from './shared/options.js'
 export type {
   NewsCollectionPageData,

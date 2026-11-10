@@ -91,11 +91,8 @@ export interface PlatformTypeRegistration<
   fallbackUrl?(entry: T): string | undefined
 }
 
-export type PlatformTypesConfig = Record<string, PlatformTypeRegistration>
-
 export interface PlatformsOptions {
-  loadStrategy: 'interaction' | 'viewport'
-  types: PlatformTypesConfig
+  loadStrategy?: 'interaction' | 'viewport'
 }
 
 export interface SeoCollectionCopy {
@@ -172,7 +169,9 @@ export interface ResolvedSynctrolThemeOptions {
   linkCloud?: LinkCloudOptions
   release: ReleaseOptions
   news: NewsOptions
-  platforms: PlatformsOptions
+  platforms: {
+    loadStrategy: 'interaction' | 'viewport'
+  }
   background?: string
   sounds: {
     enabled: boolean
@@ -250,12 +249,6 @@ function copySeo(value: SeoOptions): SeoOptions {
       news: copySeoCollection(value.collections.news),
     },
   }
-}
-
-function copyPlatformTypes(
-  types: Record<string, PlatformTypeRegistration> | undefined,
-): Record<string, PlatformTypeRegistration> {
-  return { ...(types ?? {}) }
 }
 
 export function resolveThemeOptions(
@@ -370,7 +363,6 @@ export function resolveThemeOptions(
     news,
     platforms: {
       loadStrategy: input.platforms?.loadStrategy ?? 'interaction',
-      types: copyPlatformTypes(input.platforms?.types),
     },
     background: input.background,
     sounds: {

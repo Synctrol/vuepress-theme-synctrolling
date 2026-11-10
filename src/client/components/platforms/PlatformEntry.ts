@@ -1,11 +1,11 @@
 import { defineComponent, h } from 'vue'
 import type { PropType } from 'vue'
 import type {
-  ContentDefinitions,
   LocaleKey,
   NormalizedPlatformEntry,
 } from '../../../shared/types.js'
 import type { PlatformTypeRegistration } from '../../../shared/options.js'
+import type { LegacyPlatformDefinitions } from '../../../shared/release/link-roles.js'
 import { PlatformEmbed } from './PlatformEmbed.js'
 import { resolvePlatformLabel } from './resolve-platform-label.js'
 
@@ -17,7 +17,7 @@ export const PlatformEntry = defineComponent({
       required: true,
     },
     definitions: {
-      type: Object as PropType<ContentDefinitions['platforms']>,
+      type: Object as PropType<LegacyPlatformDefinitions>,
       required: true,
     },
     types: {

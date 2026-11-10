@@ -1,10 +1,12 @@
 import type {
-  ContentDefinitions,
   LocaleKey,
   NormalizedPlatformEntry,
-  PlatformCategory,
 } from '../shared/types.js'
 import type { PlatformTypeRegistration } from '../shared/options.js'
+import type {
+  LegacyPlatformCategory,
+  LegacyPlatformDefinitions,
+} from '../shared/release/link-roles.js'
 import { resolvePlatformTypes } from '../platforms/registry.js'
 import { optionalLabel } from '../platforms/builtins/validate-helpers.js'
 import { fail, isDiagnosticError } from './diagnostics.js'
@@ -89,11 +91,11 @@ function copyOwnDataFields(value: unknown, path: string): PlainRecord {
 
 export function validatePlatformEntry(
   entry: unknown,
-  defs: ContentDefinitions,
+  defs: { platforms: LegacyPlatformDefinitions },
   mainLocale: LocaleKey,
   path: string,
-  requiredCategory: PlatformCategory,
-  types: Record<string, PlatformTypeRegistration> = resolvePlatformTypes({}),
+  requiredCategory: LegacyPlatformCategory,
+  types: Record<string, PlatformTypeRegistration> = resolvePlatformTypes(),
 ): NormalizedPlatformEntry {
   const raw = copyOwnDataFields(entry, path)
   const platform = raw.platform

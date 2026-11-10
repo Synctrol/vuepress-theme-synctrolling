@@ -3,7 +3,6 @@ import { SOUND_KEYS } from './types.js'
 import type {
   LinkCloudItem,
   NavigationItem,
-  PlatformTypeRegistration,
   SeoCollectionCopy,
   SocialLink,
   SynctrolThemeOptions,
@@ -52,13 +51,7 @@ const NEWS_FIELDS = ['urlSegment', 'articleUrlSegment', 'index', 'tags'] as cons
 const NEWS_INDEX_FIELDS = ['enabled', 'pagination'] as const
 const NEWS_TAG_FIELDS = ['urlSegment', 'index'] as const
 const ENABLED_FIELDS = ['enabled'] as const
-const PLATFORM_FIELDS = ['loadStrategy', 'types'] as const
-const PLATFORM_TYPE_FIELDS = [
-  'validate',
-  'component',
-  'cspOrigins',
-  'fallbackUrl',
-] as const
+const PLATFORM_FIELDS = ['loadStrategy'] as const
 const SEO_FIELDS = [
   'name',
   'description',
@@ -93,13 +86,6 @@ function assertPlainObject(
 function assertSafeKey(key: string, field: string): void {
   if (DANGEROUS_KEYS.has(key)) {
     throw new Error(`Invalid ${field}: unsafe key "${key}"`)
-  }
-}
-
-function assertDynamicKey(key: string, field: string): void {
-  assertSafeKey(key, field)
-  if (!key || key.trim() !== key) {
-    throw new Error(`Invalid ${field}: expected a non-empty key`)
   }
 }
 
@@ -484,30 +470,6 @@ function validateNews(value: unknown): void {
   }
 }
 
-function validatePlatformRegistration(
-  value: unknown,
-  platformType: string,
-): asserts value is PlatformTypeRegistration {
-  const field = `options.platforms.types.${platformType}`
-  assertPlainObject(value, field)
-  assertKnownFields(value, PLATFORM_TYPE_FIELDS, field)
-  if (!Object.hasOwn(value, 'component')) {
-    throw new Error(`Invalid ${field}.component: expected an own field`)
-  }
-  if (typeof value.validate !== 'function') {
-    throw new Error(`Invalid ${field}.validate: expected a function`)
-  }
-  if (typeof value.cspOrigins !== 'function') {
-    throw new Error(`Invalid ${field}.cspOrigins: expected a function`)
-  }
-  if (
-    value.fallbackUrl !== undefined &&
-    typeof value.fallbackUrl !== 'function'
-  ) {
-    throw new Error(`Invalid ${field}.fallbackUrl: expected a function`)
-  }
-}
-
 function validatePlatforms(value: unknown): void {
   if (value === undefined) return
   assertPlainObject(value, 'options.platforms')
@@ -518,16 +480,6 @@ function validatePlatforms(value: unknown): void {
     'options.platforms.loadStrategy',
   )
 
-  if (value.types !== undefined) {
-    assertPlainObject(value.types, 'options.platforms.types')
-    for (const [platformType, registration] of Object.entries(value.types)) {
-      assertDynamicKey(
-        platformType,
-        `options.platforms.types.${platformType}`,
-      )
-      validatePlatformRegistration(registration, platformType)
-    }
-  }
 }
 
 function validateBackground(value: unknown): void {

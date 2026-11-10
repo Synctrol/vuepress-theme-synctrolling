@@ -3,8 +3,6 @@ import { assertRouteSegment } from '../shared/options-validation.js'
 import type {
   ContentDefinitions,
   LocaleKey,
-  PlatformCategory,
-  PlatformDefinition,
   TagDefinition,
 } from '../shared/types.js'
 import { fail } from './diagnostics.js'
@@ -13,15 +11,8 @@ import { loadYamlFile } from './yaml.js'
 
 type PlainObject = Record<string, unknown>
 
-const ROOT_FIELDS = ['tags', 'platforms'] as const
+const ROOT_FIELDS = ['tags'] as const
 const TAG_FIELDS = ['title'] as const
-const PLATFORM_FIELDS = ['category', 'type', 'name'] as const
-const PLATFORM_CATEGORIES = ['digital', 'physical'] as const
-const DANGEROUS_REGISTRY_KEYS = new Set([
-  '__proto__',
-  'prototype',
-  'constructor',
-])
 
 function invalid(code: string, message: string, path: string): never {
   fail({
@@ -78,7 +69,7 @@ function copyOwnDataFields(
 function rejectUnknownFields(
   value: PlainObject,
   allowed: readonly string[],
-  field: 'definitions' | 'tag' | 'platform',
+  field: 'definitions' | 'tag',
   path: string,
 ): void {
   for (const key of Object.keys(value)) {
@@ -94,7 +85,7 @@ function rejectUnknownFields(
 
 function assertDefinitionKey(
   key: string,
-  kind: 'tag' | 'platform',
+  kind: 'tag',
   path: string,
 ): void {
   try {
@@ -106,44 +97,6 @@ function assertDefinitionKey(
       path,
     )
   }
-}
-
-function parseCategory(
-  value: unknown,
-  platformKey: string,
-  path: string,
-): PlatformCategory {
-  if (
-    typeof value !== 'string' ||
-    !(PLATFORM_CATEGORIES as readonly string[]).includes(value)
-  ) {
-    invalid(
-      'INVALID_PLATFORM_CATEGORY',
-      `platform "${platformKey}" category must be digital or physical`,
-      path,
-    )
-  }
-  return value as PlatformCategory
-}
-
-function parsePlatformType(
-  value: unknown,
-  platformKey: string,
-  path: string,
-): string {
-  if (
-    typeof value !== 'string' ||
-    value.length === 0 ||
-    value.trim() !== value ||
-    DANGEROUS_REGISTRY_KEYS.has(value)
-  ) {
-    invalid(
-      'INVALID_PLATFORM_TYPE',
-      `platform "${platformKey}" type must be a non-empty registry key without surrounding whitespace or dangerous prototype names`,
-      path,
-    )
-  }
-  return value
 }
 
 function parseTags(
@@ -176,42 +129,6 @@ function parseTags(
   return tags
 }
 
-function parsePlatforms(
-  value: unknown,
-  mainLocale: LocaleKey,
-  path: string,
-): Record<string, PlatformDefinition> {
-  const rawPlatforms = copyOwnDataFields(value, 'platforms', path)
-  const platforms = Object.create(null) as Record<string, PlatformDefinition>
-
-  for (const key of Object.keys(rawPlatforms)) {
-    assertDefinitionKey(key, 'platform', path)
-    const rawPlatform = copyOwnDataFields(
-      rawPlatforms[key],
-      `platform "${key}"`,
-      path,
-    )
-    rejectUnknownFields(rawPlatform, PLATFORM_FIELDS, 'platform', path)
-
-    Object.defineProperty(platforms, key, {
-      configurable: true,
-      enumerable: true,
-      value: {
-        category: parseCategory(rawPlatform.category, key, path),
-        type: parsePlatformType(rawPlatform.type, key, path),
-        name: assertMultilanguage(
-          rawPlatform.name,
-          mainLocale,
-          path,
-          `platforms.${key}.name`,
-        ),
-      },
-      writable: true,
-    })
-  }
-  return platforms
-}
-
 export function resolveDefinitionsPath(
   sourceDir: string,
   configDir: string,
@@ -237,9 +154,6 @@ export function loadContentDefinitions(
   const tags = Object.hasOwn(raw, 'tags')
     ? parseTags(raw.tags, mainLocale, absolutePath)
     : (Object.create(null) as Record<string, TagDefinition>)
-  const platforms = Object.hasOwn(raw, 'platforms')
-    ? parsePlatforms(raw.platforms, mainLocale, absolutePath)
-    : (Object.create(null) as Record<string, PlatformDefinition>)
 
-  return { tags, platforms }
+  return { tags }
 }
