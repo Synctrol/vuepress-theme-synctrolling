@@ -17,6 +17,7 @@ export interface ScannedReleaseMarkdown {
 const COMPONENT_PATTERN =
   /<(AlbumIdentity|AlbumTracklist|AlbumCredit|AlbumCovers|Player)\b([^>]*)>/g
 const ATTRIBUTE_PATTERN = /([A-Za-z_][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g
+const HTML_COMMENT_PATTERN = /<!--[\s\S]*?(?:-->|$)/g
 
 function invalid(message: string, sourcePath: string): never {
   fail({
@@ -76,12 +77,15 @@ export function scanReleaseMarkdown(
   const tokens = htmlTokens(new MarkdownIt({ html: true }).parse(markdownSource, {}))
 
   for (const token of tokens) {
+    const content = token.content.replace(HTML_COMMENT_PATTERN, (comment) =>
+      comment.replace(/[^\r\n]/g, ' '),
+    )
     COMPONENT_PATTERN.lastIndex = 0
     let match: RegExpExecArray | null
-    while ((match = COMPONENT_PATTERN.exec(token.content)) !== null) {
+    while ((match = COMPONENT_PATTERN.exec(content)) !== null) {
       const component = match[1]
       const attrs = parseAttributes(match[2] ?? '', component, sourcePath)
-      const lineOffset = token.content.slice(0, match.index).split(/\r?\n/).length
+      const lineOffset = content.slice(0, match.index).split(/\r?\n/).length
       const line = (token.map?.[0] ?? 0) + lineOffset
 
       if (component === 'Player') {

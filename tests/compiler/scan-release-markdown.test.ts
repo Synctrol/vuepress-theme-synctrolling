@@ -41,6 +41,30 @@ describe('scanReleaseMarkdown', () => {
     ])
   })
 
+  it('ignores Album and Player components inside HTML comments', () => {
+    const result = scanReleaseMarkdown(
+      [
+        '<!-- <Player type="removed_player" /> -->',
+        '<!--',
+        '<AlbumIdentity src="./removed-album.yml" />',
+        '-->',
+        '<AlbumIdentity src="./album.yml" />',
+        '<Player type="audio_player" src="./preview.mp3" />',
+      ].join('\n'),
+      '/content/releases/demo/zh.md',
+    )
+
+    expect(result.albumSrcPaths).toEqual(['./album.yml'])
+    expect(result.players).toEqual([
+      {
+        type: 'audio_player',
+        attrs: { src: './preview.mp3' },
+        sourcePath: '/content/releases/demo/zh.md',
+        line: 6,
+      },
+    ])
+  })
+
   it('rejects Album components without a static src', () => {
     expect(() =>
       scanReleaseMarkdown(
