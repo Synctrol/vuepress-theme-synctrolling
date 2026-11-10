@@ -4,6 +4,8 @@ coverage/
 *.tgz
 .DS_Store
 .idea/
+.worktrees/
+.superpowers/
 
 # VuePress runtime artifacts (site source + consumer fixture)
 **/.vuepress/.temp/
