@@ -136,29 +136,43 @@ body {
   cursor: pointer;
 }
 
+.syn-bar-chip--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--syn-dock-control-size);
+  min-width: var(--syn-dock-control-size);
+  padding-inline: 0;
+}
+
+.syn-bar-chip__icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.syn-bar-chip__icon--muted {
+  opacity: 0.72;
+}
+
 .syn-theme-mode__button {
-  font-size: 12px;
-  padding-inline: 8px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
 }
 
 .syn-theme-mode__button:hover,
 .syn-theme-mode__button:focus-visible {
-  text-decoration: underline;
+  opacity: 0.85;
 }
 
 .syn-sound-toggle__button,
 .syn-music-toggle__button {
-  font-size: 12px;
-  padding-inline: 8px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
 }
 
 .syn-sound-toggle__button:hover,
 .syn-sound-toggle__button:focus-visible,
 .syn-music-toggle__button:hover,
 .syn-music-toggle__button:focus-visible {
-  text-decoration: underline;
+  opacity: 0.85;
 }
 
 .syn-main {

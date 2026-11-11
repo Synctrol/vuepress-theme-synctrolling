@@ -14,9 +14,9 @@ describe('ThemeMode', () => {
     __resetColorModeStateForTests()
   })
 
-  it('shows the localized AUTO label by default', () => {
+  it('shows the auto icon by default', () => {
     const wrapper = mountShell(ThemeMode, { locale: 'en' })
-    expect(wrapper.get('button').text()).toBe('AUTO')
+    expect(wrapper.get('button').attributes('data-mode')).toBe('auto')
   })
 
   it('cycles AUTO → LIGHT → DARK → AUTO and persists', async () => {
@@ -24,16 +24,16 @@ describe('ThemeMode', () => {
     const button = wrapper.get('button')
 
     await button.trigger('click')
-    expect(button.text()).toBe('LIGHT')
+    expect(button.attributes('data-mode')).toBe('light')
     expect(localStorage.getItem(COLOR_MODE_STORAGE_KEY)).toBe('light')
     expect(document.documentElement.dataset.theme).toBe('light')
 
     await button.trigger('click')
-    expect(button.text()).toBe('DARK')
+    expect(button.attributes('data-mode')).toBe('dark')
     expect(document.documentElement.dataset.theme).toBe('dark')
 
     await button.trigger('click')
-    expect(button.text()).toBe('AUTO')
+    expect(button.attributes('data-mode')).toBe('auto')
   })
 
   it('respects defaultColorMode when storage is empty', () => {
@@ -41,7 +41,7 @@ describe('ThemeMode', () => {
       locale: 'en',
       themeOverrides: { defaultColorMode: 'dark' },
     })
-    expect(wrapper.get('button').text()).toBe('DARK')
+    expect(wrapper.get('button').attributes('data-mode')).toBe('dark')
   })
 
   it('announces current and next mode for assistive tech', () => {
@@ -55,8 +55,8 @@ describe('ThemeMode', () => {
     const wrapper = mountShell(ThemeMode, { locale: 'en' })
     const button = wrapper.get('button')
     await button.trigger('keydown', { key: 'Enter' })
-    expect(button.text()).toBe('LIGHT')
+    expect(button.attributes('data-mode')).toBe('light')
     await button.trigger('keydown', { key: ' ' })
-    expect(button.text()).toBe('DARK')
+    expect(button.attributes('data-mode')).toBe('dark')
   })
 })
