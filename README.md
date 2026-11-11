@@ -86,6 +86,11 @@ export default defineUserConfig({
       zh: { lang: 'zh-CN', label: '中文', messages: zhMessages },
       en: { lang: 'en-US', label: 'English', messages: enMessages },
     },
+    tags: {
+      release: {
+        title: { zh: '作品发布', en: 'Releases' },
+      },
+    },
     topbarText: '版权所有',
     footbarText: '敬请期待',
     navigation: {
@@ -138,6 +143,7 @@ export default defineUserConfig({
 | --- | --- |
 | 预览草稿 | `showDrafts: true` |
 | 默认明暗模式 | `defaultColorMode: 'auto'` / `'light'` / `'dark'` |
+| 声明新闻标签 | `tags: { release: { title: { zh: '作品发布', en: 'Releases' } } }` |
 | 展示字体 | `featureFont`（字体文件请自己在站点里引入） |
 | 自定义背景 | `background: './backgrounds/host'`（见下） |
 | 交互音效 | `sounds: { keys: { ... } }`（见下） |
@@ -252,7 +258,6 @@ music: '/music/Beater.mp3',
 
 ```text
 content/
-├── definitions.yml
 ├── home/
 │   ├── content.yml
 │   ├── zh.md
@@ -276,15 +281,7 @@ content/
         └── en.md
 ```
 
-先写 `content/definitions.yml`，声明新闻标签：
-
-```yaml
-tags:
-  release:
-    title:
-      zh: 作品发布
-      en: Releases
-```
+新闻标签统一在 `synctrolTheme({ tags: { ... } })` 中声明；内容目录不再需要全局定义文件。
 
 ### 5. 写首页
 
@@ -426,4 +423,4 @@ npx vuepress build .
 - `siteUrl` 写成 `https://你的域名`，不要带路径，也不要末尾斜杠。
 - VuePress 的 `locales` 必须覆盖主题里配置的每一种语言。
 - 内容放在 `content/`。全站只能有一个首页，每个语言的首页都要有 `home-logo`。
-- 日期写成 `YYYY-MM-DD`。新闻用到的标签必须先在 `definitions.yml` 里声明；`definitions.yml` 只声明标签，不声明播放器。
+- 日期写成 `YYYY-MM-DD`。新闻用到的标签必须先在 `synctrolTheme()` 的 `tags` 选项里声明。

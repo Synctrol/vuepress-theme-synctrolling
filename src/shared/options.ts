@@ -11,6 +11,7 @@ import type {
   Multilanguage,
   PlatformEntryBase,
   SoundKey,
+  TagDefinition,
 } from './types.js'
 
 export { SOUND_KEYS } from './types.js'
@@ -116,9 +117,10 @@ export interface SeoOptions {
 
 export interface SynctrolThemeOptions {
   siteUrl: string
-  definitionsPath?: string
   mainLocale: LocaleKey
   locales: Record<LocaleKey, LocaleOptions>
+  /** News tag vocabulary keyed by route-safe tag identifiers. */
+  tags?: Record<string, TagDefinition>
   showDrafts?: boolean
   defaultColorMode?: 'auto' | 'light' | 'dark'
   /** Text rendered in the top bar (replaces the old `copyright` option). */
@@ -155,9 +157,9 @@ export interface ResolvedLocaleOptions {
 
 export interface ResolvedSynctrolThemeOptions {
   siteUrl: string
-  definitionsPath?: string
   mainLocale: LocaleKey
   locales: Record<LocaleKey, ResolvedLocaleOptions>
+  tags: Record<string, TagDefinition>
   showDrafts: boolean
   defaultColorMode: 'auto' | 'light' | 'dark'
   topbarText: Multilanguage
@@ -251,6 +253,17 @@ function copySeo(value: SeoOptions): SeoOptions {
   }
 }
 
+function copyTags(
+  tags: Record<string, TagDefinition> | undefined,
+): Record<string, TagDefinition> {
+  return Object.fromEntries(
+    Object.entries(tags ?? {}).map(([key, tag]) => [
+      key,
+      { title: copyMultilanguage(tag.title) },
+    ]),
+  )
+}
+
 export function resolveThemeOptions(
   input: SynctrolThemeOptions,
 ): ResolvedSynctrolThemeOptions {
@@ -319,9 +332,9 @@ export function resolveThemeOptions(
 
   return {
     siteUrl: input.siteUrl.replace(/\/+$/, ''),
-    definitionsPath: input.definitionsPath,
     mainLocale: input.mainLocale,
     locales,
+    tags: copyTags(input.tags),
     showDrafts: input.showDrafts ?? false,
     defaultColorMode: input.defaultColorMode ?? 'auto',
     topbarText: copyMultilanguage(input.topbarText),

@@ -20,10 +20,8 @@ import {
   fail,
   formatMessage,
   isDiagnosticError,
-  loadContentDefinitions,
   parseContentManifest,
   resolveMultilanguage,
-  resolveDefinitionsPath,
   resolvePlatformTypes,
   resolveThemeOptions,
   SynctrolDiagnosticError,
@@ -53,9 +51,7 @@ describe('root public exports', () => {
       discoverContentPackages,
       fail,
       isDiagnosticError,
-      loadContentDefinitions,
       parseContentManifest,
-      resolveDefinitionsPath,
       SynctrolDiagnosticError,
       compilerApi.buildReleaseIndexModel,
       compilerApi.buildReleaseDetailModel,
@@ -75,9 +71,7 @@ describe('root public exports', () => {
       'discoverContentPackages',
       'fail',
       'isDiagnosticError',
-      'loadContentDefinitions',
       'parseContentManifest',
-      'resolveDefinitionsPath',
     ])
     expect(compilerApi).not.toHaveProperty('assertMultilanguage')
     expect(compilerApi).not.toHaveProperty('loadYamlFile')
@@ -133,6 +127,7 @@ describe('root public exports', () => {
       sourceDir: '/site',
       configDir: '/site/.vuepress',
       mainLocale: 'zh',
+      definitions: { tags: {} },
     }
     const pkg: CompiledContentPackage = {
       dir: '/site/content/home',

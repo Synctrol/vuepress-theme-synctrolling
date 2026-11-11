@@ -8,8 +8,8 @@ import { resolveThemeOptions } from '../../src/shared/options'
 
 const base = {
   siteUrl: 'https://synctrol.com',
-  definitionsPath: './content/definitions.yml',
   mainLocale: 'zh',
+  tags: { release: { title: { zh: '作品发布', en: 'Releases' } } },
   topbarText: 'SYNCTROL © 2026',
   locales: {
     zh: { lang: 'zh-CN', label: '中文' },
@@ -51,7 +51,7 @@ describe('client theme options', () => {
 
     expect(resolved.background).toBe(background)
     expect(clientOptions).not.toHaveProperty('background')
-    expect(clientOptions).not.toHaveProperty('definitionsPath')
+    expect(clientOptions).not.toHaveProperty('tags')
     expect(clientOptions).not.toHaveProperty('feeds')
     expect(clientOptions).not.toHaveProperty('seo')
     expect(clientOptions.platforms).toEqual({ loadStrategy: 'viewport' })

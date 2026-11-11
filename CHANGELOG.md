@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **Breaking:** 新闻标签词汇迁移到 `synctrolTheme({ tags })`；删除 `definitionsPath`，构建不再读取 `content/definitions.yml`。
 - **Breaking:** 删除 `book.yml`、Gift 内容线、`definitions.yml` 的 `platforms`、`platforms.types` 自定义播放器注册、`AlbumPlatform` 与 `GiftItem`。旧内容必须迁移到 `album.yml`、`<Player>` 和 `<Button>`。
 - `synctrol-csp.json` 改为按页面实际使用的 Player 汇总来源。
 

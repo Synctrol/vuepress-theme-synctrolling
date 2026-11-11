@@ -89,6 +89,7 @@ describe('resolveThemeOptions', () => {
 
   it('fills collection, feed, color-mode, and platform defaults', () => {
     const options = resolveThemeOptions(base)
+    expect(options.tags).toEqual({})
     expect(options.defaultColorMode).toBe('auto')
     expect(options.feeds).toEqual({ rss: true, sitemap: true })
     expect(options.release).toEqual({
@@ -118,6 +119,60 @@ describe('resolveThemeOptions', () => {
       items: [],
     })
     expect(options.socialLinks).toEqual({ items: [] })
+  })
+
+  it('resolves news tag vocabulary from theme options without aliasing input', () => {
+    const title = { zh: '作品发布', en: 'Releases' }
+    const options = resolveThemeOptions({
+      ...base,
+      tags: {
+        release: { title },
+      },
+    })
+
+    title.zh = '已改变'
+    expect(options.tags).toEqual({
+      release: {
+        title: { zh: '作品发布', en: 'Releases' },
+      },
+    })
+  })
+
+  it.each([
+    ['options.tags.release.extra', { release: { title: 'Release', extra: true } }],
+    ['options.tags.release.title.zh', { release: { title: { en: 'Releases' } } }],
+    ['options.tags.release', { release: [] }],
+  ] as const)('rejects invalid tag configuration at %s', (field, tags) => {
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        tags,
+      }),
+    ).toThrow(new RegExp(field.replaceAll('.', '\\.')))
+  })
+
+  it.each(['__proto__', 'constructor', 'release/archive', '%2e%2e'])(
+    'rejects unsafe tag key %j',
+    (tagKey) => {
+      const tags = Object.create(null) as Record<string, unknown>
+      tags[tagKey] = { title: 'Release' }
+
+      expect(() =>
+        resolveRuntimeOptions({
+          ...base,
+          tags,
+        }),
+      ).toThrow(/options\.tags/)
+    },
+  )
+
+  it('rejects the removed definitionsPath option', () => {
+    expect(() =>
+      resolveRuntimeOptions({
+        ...base,
+        definitionsPath: './content/definitions.yml',
+      }),
+    ).toThrow('Unknown field options.definitionsPath')
   })
 
   it('requires own, safe locale keys and creates a safe locale dictionary', () => {
@@ -227,6 +282,7 @@ describe('resolveThemeOptions', () => {
     ['options', null],
     ['options', []],
     ['options.locales', { ...base, locales: [] }],
+    ['options.tags', { ...base, tags: [] }],
     [
       'options.locales.zh',
       { ...base, locales: { ...base.locales, zh: null } },

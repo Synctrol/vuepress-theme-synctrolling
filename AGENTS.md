@@ -119,6 +119,11 @@ export default defineUserConfig({
       zh: { lang: 'zh-CN', label: '中文', messages: zhMessages },
       en: { lang: 'en-US', label: 'English', messages: enMessages },
     },
+    tags: {
+      release: {
+        title: { zh: '作品发布', en: 'Releases' },
+      },
+    },
     topbarText: 'Copyright Your Team',
     footbarText: '敬请期待 · STAY TUNED',
     featureFont:
@@ -169,7 +174,7 @@ export default defineUserConfig({
 
 | 选项 | 默认 | 说明 |
 | --- | --- | --- |
-| `definitionsPath` | `<sourceDir>/content/definitions.yml` | 标签定义文件；相对 VuePress 配置文件解析 |
+| `tags` | `{}` | 新闻标签词汇；键必须是安全路由段，每项只含 `title: Multilanguage` |
 | `showDrafts` | `false` | 为 `true` 时生成草稿页并在列表中显示草稿标记 |
 | `defaultColorMode` | `'auto'` | `'auto' \| 'light' \| 'dark'`；仅在用户尚未保存选择时生效 |
 | `footbarText` | 未设置 | 底栏文案；未设置则底栏左侧为空 |
@@ -198,7 +203,6 @@ export default defineUserConfig({
 
 ```text
 content/
-├── definitions.yml
 ├── home/
 │   ├── content.yml
 │   ├── zh.md
@@ -222,15 +226,7 @@ content/
         └── en.md
 ```
 
-`definitions.yml` 只声明新闻标签：
-
-```yaml
-tags:
-  release:
-    title:
-      zh: 作品发布
-      en: Releases
-```
+新闻标签在 `synctrolTheme({ tags: { ... } })` 中声明，不再从内容目录加载全局定义文件。
 
 内容包清单示例：
 

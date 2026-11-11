@@ -7,10 +7,6 @@ export {
   type SynctrolDiagnostic,
 } from './diagnostics.js'
 export { discoverContentPackages } from './discovery.js'
-export {
-  loadContentDefinitions,
-  resolveDefinitionsPath,
-} from './definitions.js'
 export { parseContentManifest } from './manifest.js'
 export {
   compileContent,

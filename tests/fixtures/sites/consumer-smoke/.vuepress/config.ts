@@ -34,6 +34,11 @@ export default defineUserConfig({
       zh: { lang: 'zh-CN', label: '中文', messages: zhMessages },
       en: { lang: 'en-US', label: 'English', messages: enMessages },
     },
+    tags: {
+      release: {
+        title: { zh: '作品发布', en: 'Releases' },
+      },
+    },
     topbarText: 'SYNCTROL © 2026',
     footbarText: '敬请期待 · STAY TUNED',
     background: './backgrounds/host',

@@ -16,7 +16,6 @@ function write(relativePath: string, contents: string): void {
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'synctrol-buildsite-'))
-  write('content/definitions.yml', 'tags:\n  release:\n    title:\n      zh: 作品\n      en: Releases\n')
   write('content/home/content.yml', 'type: home\n')
   write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n')
   write('content/news/launch/content.yml', 'type: news\nslug: launch\ndate: 2026-08-10\ntags:\n  - release\n')
@@ -101,9 +100,7 @@ describe('buildSite', () => {
     expect(built.site.diagnostics.every((d) => d.severity === 'warning')).toBe(true)
   })
 
-  it('reads definitions from a configured definitionsPath', () => {
-    write('.vuepress/custom-definitions.yml', 'tags:\n  extra:\n    title: Extra\n')
-    // Align news tags with the custom definitions (same as compile-content tests).
+  it('uses tag definitions from resolved theme options', () => {
     write(
       'content/news/launch/content.yml',
       'type: news\nslug: launch\ndate: 2026-08-10\ntags:\n  - extra\n',
@@ -112,9 +109,11 @@ describe('buildSite', () => {
     const built = buildSite({
       sourceDir: root,
       configDir: join(root, '.vuepress'),
-      options: themeOptions({ news: { index: { pagination: false } } }),
+      options: themeOptions({
+        news: { index: { pagination: false } },
+        tags: { extra: { title: 'Extra' } },
+      }),
       base: '/',
-      definitionsPath: 'custom-definitions.yml',
     })
 
     expect(Object.keys(built.definitions.tags)).toEqual(['extra'])

@@ -54,6 +54,9 @@ async function runBuild(base: '/' | `/${string}/` = '/') {
         zh: { lang: 'zh-CN', label: '中文' },
         en: { lang: 'en-US', label: 'English' },
       },
+      tags: {
+        release: { title: { zh: '作品', en: 'Releases' } },
+      },
       seo: {
         name: 'Synctrol',
         description: 'Synctrol releases and news',
@@ -79,7 +82,6 @@ async function runBuild(base: '/' | `/${string}/` = '/') {
 
 beforeEach(() => {
   root = mkdtempSync(join(realpathSync(tmpdir()), 'synctrol-theme-'))
-  write('content/definitions.yml', 'tags:\n  release:\n    title:\n      zh: 作品\n      en: Releases\n')
   write('content/home/content.yml', 'type: home\n')
   write('content/home/zh.md', '---\ntitle: 首页\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n')
   write('content/home/en.md', '---\ntitle: Home\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\nHome body\n')
@@ -288,10 +290,6 @@ describe('synctrolTheme production integration', () => {
     // encodeURI(sanitizeFileName(...)). Encode locale keys (and slugs);
     // !'()* stay rejected by assertRoutableSegment (path-suffix / collection
     // unit tests) rather than suddenly banning CJK locales Plan 01 allows.
-    write(
-      'content/definitions.yml',
-      'tags:\n  release:\n    title:\n      日本語: 作品\n',
-    )
     write('content/home/日本語.md', '---\ntitle: ホーム\ndescription: SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n本文\n')
     write('content/releases/作品/content.yml', 'type: release\nslug: 作品\ndate: 2026-08-09\n')
     write('content/releases/作品/日本語.md', '---\ntitle: 作品\n---\n本文\n')
@@ -491,15 +489,6 @@ describe('synctrolTheme production integration', () => {
 
   it('writes synctrol-csp.json on generate without CSP meta and keeps root router', async () => {
     write(
-      'content/definitions.yml',
-      `tags:
-  release:
-    title:
-      zh: 作品
-      en: Releases
-`,
-    )
-    write(
       'content/releases/first-release/zh.md',
       '---\ntitle: 第一张专辑\n---\n<Player type="youtube_player" videoId="dQw4w9WgXcQ" />\n',
     )
@@ -527,15 +516,6 @@ describe('synctrolTheme production integration', () => {
   })
 
   it('injects frontmatter.synctrol.release for detail and index pages', async () => {
-    write(
-      'content/definitions.yml',
-      `tags:
-  release:
-    title:
-      zh: 作品
-      en: Releases
-`,
-    )
     write(
       'content/releases/first-release/album.yml',
       `title: First Album

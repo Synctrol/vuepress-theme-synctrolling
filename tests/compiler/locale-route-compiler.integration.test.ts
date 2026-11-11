@@ -17,11 +17,6 @@ function write(relativePath: string, contents: string): void {
 }
 
 function seedSite(): void {
-  write(
-    'content/definitions.yml',
-    'tags:\n  release:\n    title:\n      zh: 作品发布\n      en: Releases\n',
-  )
-
   write('content/home/content.yml', 'type: home\n')
   write('content/home/zh.md', '---\ntitle: 首页\ndescription: 主页 SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\n首页正文\n')
   write('content/home/en.md', '---\ntitle: Home\ndescription: Home SEO\n---\n::: home-logo\n# SYNCTROL\n:::\n\nHome body\n')
@@ -53,6 +48,7 @@ function compileSite(overrides: ThemeOptionOverrides = {}, base = '/') {
     sourceDir: root,
     configDir: join(root, '.vuepress'),
     mainLocale: options.mainLocale,
+    definitions: { tags: options.tags },
   })
 
   return compileSiteRoutes({

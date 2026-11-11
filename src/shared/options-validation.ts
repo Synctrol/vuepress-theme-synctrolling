@@ -15,9 +15,9 @@ const DANGEROUS_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
 
 const TOP_LEVEL_FIELDS = [
   'siteUrl',
-  'definitionsPath',
   'mainLocale',
   'locales',
+  'tags',
   'showDrafts',
   'defaultColorMode',
   'topbarText',
@@ -37,6 +37,7 @@ const TOP_LEVEL_FIELDS = [
 ] as const
 
 const LOCALE_FIELDS = ['lang', 'label', 'dateFormat', 'messages'] as const
+const TAG_FIELDS = ['title'] as const
 const MESSAGE_FIELDS = Object.keys(enMessages)
 const FEED_FIELDS = ['rss', 'sitemap'] as const
 const NAVIGATION_FIELDS = ['items', 'externalTarget'] as const
@@ -252,6 +253,21 @@ function validateLocales(input: SynctrolThemeOptions): void {
 
   if (!Object.hasOwn(input.locales, input.mainLocale)) {
     throw new Error(`mainLocale ${input.mainLocale} is not configured as an own locale`)
+  }
+}
+
+function validateTags(
+  value: unknown,
+  mainLocale: string,
+): void {
+  if (value === undefined) return
+  assertPlainObject(value, 'options.tags')
+  for (const [key, tag] of Object.entries(value)) {
+    assertRouteSegment(key, `options.tags.${key}`)
+    const field = `options.tags.${key}`
+    assertPlainObject(tag, field)
+    assertKnownFields(tag, TAG_FIELDS, field)
+    validateMultilanguage(tag.title, `${field}.title`, mainLocale)
   }
 }
 
@@ -569,10 +585,10 @@ export function validateThemeOptions(input: SynctrolThemeOptions): void {
   assertPlainObject(input, 'options')
   assertKnownFields(input, TOP_LEVEL_FIELDS, 'options')
   assertNonEmptyString(input.siteUrl, 'options.siteUrl')
-  assertOptionalString(input.definitionsPath, 'options.definitionsPath')
   assertNonEmptyString(input.mainLocale, 'options.mainLocale')
   assertRouteSegment(input.mainLocale, 'options.mainLocale')
   validateLocales(input)
+  validateTags(input.tags, input.mainLocale)
   assertOptionalBoolean(input.showDrafts, 'options.showDrafts')
   assertOptionalEnum(
     input.defaultColorMode,

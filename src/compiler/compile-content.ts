@@ -16,10 +16,6 @@ import { resolvePlatformTypes } from '../platforms/registry.js'
 import type { CompiledAlbumMetadata } from '../shared/release/types.js'
 import { parseAlbumMetadata } from './album-metadata.js'
 import { fail, type SynctrolDiagnostic } from './diagnostics.js'
-import {
-  loadContentDefinitions,
-  resolveDefinitionsPath,
-} from './definitions.js'
 import { discoverContentPackages } from './discovery.js'
 import { parseContentManifest } from './manifest.js'
 import { validatePlayerUsage } from './player-entry.js'
@@ -31,7 +27,7 @@ export interface CompileContentOptions {
   sourceDir: string
   configDir: string
   mainLocale: LocaleKey
-  definitionsPath?: string
+  definitions: ContentDefinitions
 }
 
 export interface CompileContentResult {
@@ -59,9 +55,7 @@ function requiredString(
   return value
 }
 
-function validateOptions(
-  options: CompileContentOptions,
-): CompileContentOptions {
+function validateOptions(options: CompileContentOptions): CompileContentOptions {
   if (
     typeof options !== 'object' ||
     options === null ||
@@ -71,13 +65,16 @@ function validateOptions(
   }
 
   const raw = options as unknown as Record<string, unknown>
-  const definitionsPath = raw.definitionsPath
+  const definitions = raw.definitions
   if (
-    definitionsPath !== undefined &&
-    (typeof definitionsPath !== 'string' ||
-      definitionsPath.trim().length === 0)
+    typeof definitions !== 'object' ||
+    definitions === null ||
+    Array.isArray(definitions) ||
+    typeof (definitions as Record<string, unknown>).tags !== 'object' ||
+    (definitions as Record<string, unknown>).tags === null ||
+    Array.isArray((definitions as Record<string, unknown>).tags)
   ) {
-    invalidOptions('definitionsPath must be a non-empty string when provided')
+    invalidOptions('definitions.tags must be an object')
   }
 
   return {
@@ -85,7 +82,7 @@ function validateOptions(
     sourceDir: requiredString(raw, 'sourceDir'),
     configDir: requiredString(raw, 'configDir'),
     mainLocale: requiredString(raw, 'mainLocale'),
-    ...(definitionsPath === undefined ? {} : { definitionsPath }),
+    definitions: definitions as ContentDefinitions,
   }
 }
 
@@ -152,15 +149,7 @@ export function compileContent(
   options: CompileContentOptions,
 ): CompileContentResult {
   const validated = validateOptions(options)
-  const definitionsFile = resolveDefinitionsPath(
-    validated.sourceDir,
-    validated.configDir,
-    validated.definitionsPath,
-  )
-  const definitions = loadContentDefinitions(
-    definitionsFile,
-    validated.mainLocale,
-  )
+  const definitions = validated.definitions
   const discovered = discoverContentPackages(validated.contentRoot)
   const packages: CompiledContentPackage[] = []
   const seenIdentities = new Map<string, string>()

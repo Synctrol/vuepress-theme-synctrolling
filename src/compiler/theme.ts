@@ -118,9 +118,6 @@ export function synctrolTheme(options: SynctrolThemeOptions) {
         configDir: app.dir.source('.vuepress'),
         options: resolved,
         base: app.options.base,
-        ...(resolved.definitionsPath === undefined
-          ? {}
-          : { definitionsPath: resolved.definitionsPath }),
       })
 
       // Only packages that contribute published pages enter asset compilation

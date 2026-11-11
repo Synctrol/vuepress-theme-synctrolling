@@ -19,7 +19,6 @@ export interface BuildSiteInput {
   configDir: string
   options: ResolvedSynctrolThemeOptions
   base: string
-  definitionsPath?: string
 }
 
 export interface BuiltSite {
@@ -45,9 +44,7 @@ export function buildSite(input: BuildSiteInput): BuiltSite {
     sourceDir: input.sourceDir,
     configDir: input.configDir,
     mainLocale: input.options.mainLocale,
-    ...(input.definitionsPath === undefined
-      ? {}
-      : { definitionsPath: input.definitionsPath }),
+    definitions: { tags: input.options.tags },
   })
 
   const packages = buildRoutePackages({

@@ -16,6 +16,7 @@ function compileFixture(overrides = {}, base = '/base/') {
     sourceDir: fixtureRoot,
     configDir: join(fixtureRoot, '.vuepress'),
     mainLocale: options.mainLocale,
+    definitions: { tags: options.tags },
   })
   const packages = buildRoutePackages({
     packages: content.packages,

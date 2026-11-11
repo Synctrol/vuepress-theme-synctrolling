@@ -22,7 +22,6 @@ function createSite(): {
   const releaseDir = join(contentRoot, 'releases', 'demo')
   mkdirSync(join(contentRoot, 'home'), { recursive: true })
   mkdirSync(releaseDir, { recursive: true })
-  writeFileSync(join(contentRoot, 'definitions.yml'), 'tags: {}\n')
   writeFileSync(join(contentRoot, 'home', 'content.yml'), 'type: home\n')
   writeFileSync(
     join(releaseDir, 'content.yml'),
@@ -37,6 +36,7 @@ function compile(root: string, contentRoot: string) {
     sourceDir: root,
     configDir: join(root, '.vuepress'),
     mainLocale: 'zh',
+    definitions: { tags: {} },
   })
 }
 

@@ -20,6 +20,7 @@ export function resolvedOptions(
   const base: ResolvedSynctrolThemeOptions = {
     siteUrl: 'https://synctrol.com',
     mainLocale: 'zh',
+    tags: {},
     locales: {
       zh: { lang: 'zh-CN', label: '中文', dateFormat: { dateStyle: 'long' }, messages: zhMessages },
       en: { lang: 'en-US', label: 'English', dateFormat: { dateStyle: 'long' }, messages: enMessages },

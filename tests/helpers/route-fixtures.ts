@@ -10,6 +10,7 @@ import type {
   LocaleMarkdown,
   LocaleOptions,
   RouteContentPackage,
+  TagDefinition,
 } from '../../src/shared/types'
 
 export interface ThemeOptionOverrides {
@@ -17,6 +18,7 @@ export interface ThemeOptionOverrides {
   mainLocale?: LocaleKey
   locales?: Record<LocaleKey, LocaleOptions>
   showDrafts?: boolean
+  tags?: Record<string, TagDefinition>
   release?: {
     urlSegment?: string
     index?: Partial<ReleaseOptions['index']>
@@ -49,6 +51,9 @@ export function themeOptions(
     locales: overrides.locales ?? baseLocales(),
     showDrafts: overrides.showDrafts ?? false,
     topbarText: '© Synctrol',
+    tags: overrides.tags ?? {
+      release: { title: 'Releases' },
+    },
     seo: {
       name: 'Synctrol',
       description: 'Synctrol releases and news',
