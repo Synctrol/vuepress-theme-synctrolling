@@ -10,6 +10,6 @@
     "@vuepress/bundler-vite": "^2.0.0-rc.24",
     "vue": "^3.5.0",
     "vuepress": "^2.0.0-rc.24",
-    "vuepress-theme-synctrolling": "file:../../../../vuepress-theme-synctrolling-0.2.0.tgz"
+    "vuepress-theme-synctrolling": "file:../../../../vuepress-theme-synctrolling-0.3.0.tgz"
   }
 }

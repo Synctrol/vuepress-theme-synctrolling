@@ -1,4 +1,3 @@
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { emitBackgroundsVirtualModule } from '../../../src/compiler/backgrounds/emit-virtual-module'
 
@@ -15,9 +14,7 @@ describe('emitBackgroundsVirtualModule', () => {
       '/site/.vuepress',
     )
     expect(source).toBe(
-      `export default () => import(${JSON.stringify(
-        resolve('/site/.vuepress', './backgrounds/host').replaceAll('\\', '/'),
-      )})\n`,
+      'export default () => import("/site/.vuepress/backgrounds/host")\n',
     )
   })
 
