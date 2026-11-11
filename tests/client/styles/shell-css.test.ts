@@ -223,8 +223,8 @@ describe('shell.css', () => {
 
   it('styles the theme toggle like the reference theme-option', () => {
     const css = readFileSync(resolve('src/client/styles/shell.css'), 'utf8')
-    expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*background:\s*var\(--syn-bar-fg\)/)
-    expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*color:\s*var\(--syn-bar-bg\)/)
+    expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*background:\s*transparent/)
+    expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*color:\s*inherit/)
     expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*border:\s*0/)
     expect(css).toMatch(/\.syn-bar-chip\s*\{[^}]*padding-block:\s*2px/)
     expect(css).not.toMatch(/\.syn-bar-chip\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)

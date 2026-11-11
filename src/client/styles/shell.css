@@ -120,16 +120,16 @@ body {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-/* Shared chip look for in-bar controls (theme toggle, language toggle):
-   inverted relative to the bar, bordered, fits the bar height. */
+/* Shared chip look for in-bar controls (theme / sound / music / language):
+   transparent over the bar, inherits bar foreground color. */
 .syn-bar-chip {
   min-height: var(--syn-dock-control-size);
   padding-block: 2px;
   box-sizing: border-box;
   border: 0;
   border-radius: var(--syn-radius);
-  background: var(--syn-bar-fg);
-  color: var(--syn-bar-bg);
+  background: transparent;
+  color: inherit;
   font: inherit;
   line-height: 1;
   letter-spacing: 1px;
