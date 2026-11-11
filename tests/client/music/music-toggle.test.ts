@@ -49,7 +49,7 @@ describe('MusicToggle', () => {
       expect(button.attributes('aria-pressed')).toBe('false')
       expect(button.attributes('aria-label')).toBe('背景乐关')
       expect(button.get('svg.syn-bar-chip__icon').attributes('stroke-width')).toBe(
-        '2.75',
+        '2',
       )
       await button.trigger('click')
       expect(button.attributes('data-playing')).toBe('true')
