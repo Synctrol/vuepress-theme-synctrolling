@@ -21,7 +21,9 @@ describe('LanguageSwitcher', () => {
 
   it('shows the full current locale label when collapsed', () => {
     const wrapper = mountShell(LanguageSwitcher, { locale: 'zh' })
-    expect(wrapper.get('button.syn-language__toggle').text()).toBe('中文')
+    const toggle = wrapper.get('button.syn-language__toggle')
+    expect(toggle.find('svg.syn-language__icon').exists()).toBe(true)
+    expect(toggle.get('.syn-language__label').text()).toBe('中文')
   })
 
   it('expands upward, navigates, persists preference, and closes', async () => {

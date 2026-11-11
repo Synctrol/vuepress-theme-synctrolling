@@ -233,6 +233,8 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-bar-chip--icon\s*\{[^}]*display:\s*inline-flex/)
     expect(css).toMatch(/\.syn-bar-chip--icon\s*\{[^}]*width:\s*var\(--syn-dock-control-size\)/)
     expect(css).toMatch(/\.syn-theme-mode__button:hover[^{]*\{[^}]*opacity:\s*0\.85/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*display:\s*inline-flex/)
+    expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*gap:\s*4px/)
     expect(css).toMatch(/\.syn-language__toggle\s*\{[^}]*max-width:\s*40vw/)
     expect(css).not.toMatch(/\.syn-language__toggle\s*\{[^}]*background:/)
   })

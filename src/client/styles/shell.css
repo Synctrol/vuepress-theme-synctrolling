@@ -432,9 +432,22 @@ body {
 }
 
 .syn-language__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   max-width: 40vw;
   padding-inline: 8px;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.syn-language__icon {
+  flex-shrink: 0;
+}
+
+.syn-language__label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
