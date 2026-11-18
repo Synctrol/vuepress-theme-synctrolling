@@ -29,10 +29,14 @@ describe('publish workflows', () => {
     expect(ci).toContain('npm run test:consumer-smoke')
   })
 
-  it('publishes tags with an npm token', () => {
+  it('publishes tags with npm Trusted Publishing (OIDC)', () => {
     expect(publish).toContain("tags: ['v*']")
+    expect(publish).toContain('id-token: write')
+    expect(publish).toMatch(/node-version:\s*['"]?24['"]?/)
+    expect(publish).toContain('package-manager-cache: false')
     expect(publish).toContain('npm publish --access public')
-    expect(publish).toContain('NODE_AUTH_TOKEN')
-    expect(publish).toContain('secrets.NPM_TOKEN')
+    expect(publish).not.toContain('NODE_AUTH_TOKEN')
+    expect(publish).not.toContain('secrets.NPM_TOKEN')
   })
 })
+

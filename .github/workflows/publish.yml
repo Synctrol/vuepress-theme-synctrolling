@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: read
+  # Required for npm Trusted Publishing (OIDC).
+  id-token: write
 
 jobs:
   publish:
@@ -15,12 +17,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Trusted Publishing needs Node >= 22.14 and npm >= 11.5.1.
+      # Node 24 ships a compatible npm by default.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 24
           registry-url: https://registry.npmjs.org
+          # Avoid caching publish tooling; a poisoned cache can expose OIDC creds.
+          package-manager-cache: false
 
       - name: Install
         run: npm ci
@@ -28,9 +33,8 @@ jobs:
       - name: Prepublish checks
         run: npm run prepublishOnly
 
+      # Auth is OIDC Trusted Publishing configured on npmjs.com for this
+      # repository + workflow filename `publish.yml`. Provenance attestations
+      # are generated automatically; no long-lived NPM_TOKEN is required.
       - name: Publish to npm
         run: npm publish --access public
-        env:
-          # Requires repository secret NPM_TOKEN (npm Automation access token
-          # with publish permission).
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
