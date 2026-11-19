@@ -25,7 +25,7 @@
 3. **根语言路由器**：在站点根 `/index.html` 按「已保存语言 → 浏览器语言 → `mainLocale`」选择语言首页，并以 `location.replace()` 跳转。
 4. **作品系统**：方图索引网格（无边框密排，按容器空间自动 4/3/2 列；悬浮时封面变暗并在左上角显示专辑名）、详情页、可选 `album.yml` 元数据、内置 Player 与 Button 外链。专辑详情页由作者用全局注册的 Markdown 组件（AlbumArtwork / AlbumIdentity / AlbumTracklist / AlbumCredit / AlbumCovers / Player / Button / TabView / TabPanel）手动组装；ReleaseDetail 布局只渲染草稿标记与 Markdown 正文，并提供 `synctrol-release` 上下文；不生成「返回作品列表」链接；frontmatter 的 `title` 只用于 SEO，不自动渲染 h1。
 5. **新闻系统**：按日期倒序的索引、标签归档、分页。
-6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。
+6. **全局壳层**：顶栏（`topbarText`、主题模式、移动端汉堡菜单）、导航列（含侧栏社交图标与链接云）、底栏（`footbarText` 与语言切换）。通用 Markdown 组件另含 `Member`（横向成员介绍：头像 / 名称 / 介绍插槽）与可独立使用的 `Social`（社交图标外链；写在 `Member` 插槽内时自动归入社交行）。
 7. **全局背景提供者**：单一常驻 `IBackgroundHost`，主题在每次导航时推送「页面申请」，提供者自行编排背景切换（动画 / 交叉淡化 / 硬切），背景可以是图片 / SVG / Canvas / WebGL / WebGPU。上下文可选携带 `spectrum` 音乐频谱通道（见 #12）。
 8. **资源管线**：内容包、全局与主题资源输出带内容哈希的 URL，并应用 VuePress `base`。
 9. **SEO 与订阅**：canonical、Open Graph、仅真实译文的 `hreflang`、JSON-LD、各语言 `/{locale}/rss.xml`、站点 `sitemap.xml`。

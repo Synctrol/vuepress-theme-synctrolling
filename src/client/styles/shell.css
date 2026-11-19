@@ -874,6 +874,104 @@ body {
   color: var(--syn-sub-title-fg);
 }
 
+.syn-member {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  border: var(--syn-border-strong);
+  margin-block: 1.5rem;
+  padding: 1rem;
+}
+
+.syn-member__avatar {
+  flex: 0 0 120px;
+  width: 120px;
+  height: 120px;
+  border: var(--syn-border-strong);
+  background: var(--syn-deco-bg);
+  overflow: hidden;
+}
+
+.syn-member__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.syn-member__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.syn-member__name {
+  margin: 0 0 0.5rem;
+  font-family: var(--syn-font-display);
+  font-size: 1.25rem;
+  letter-spacing: 1px;
+  line-height: 1.2;
+}
+
+.syn-member__bio {
+  font-family: var(--syn-font-body);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--syn-sub-title-fg);
+}
+
+.syn-member__bio > :first-child {
+  margin-block-start: 0;
+}
+
+.syn-member__bio > :last-child {
+  margin-block-end: 0;
+}
+
+.syn-member__socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 0.85rem;
+}
+
+.syn-social {
+  display: inline-flex;
+  width: var(--syn-dock-control-size);
+  height: var(--syn-dock-control-size);
+}
+
+.syn-social__icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.2s ease;
+}
+
+.syn-social:hover .syn-social__icon,
+.syn-social:focus-visible .syn-social__icon {
+  opacity: 0.6;
+}
+
+:root[data-theme='dark'] .syn-social__icon {
+  filter: invert(1);
+}
+
+@media (max-width: 520px) {
+  .syn-member {
+    gap: 1rem;
+  }
+
+  .syn-member__avatar {
+    flex-basis: 88px;
+    width: 88px;
+    height: 88px;
+  }
+
+  .syn-member__name {
+    font-size: 1.1rem;
+  }
+}
+
 .syn-new-album {
   --syn-new-album-scrim: #000;
   --syn-new-album-scrim-opacity: 0.25;

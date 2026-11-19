@@ -402,6 +402,8 @@ discs:
 - `<Accordion label="标题">内容</Accordion>` 渲染可折叠面板，默认折叠，`open` 可设为初始展开。
 - `<Divider>文字</Divider>` 渲染带可选居中文字的分隔线。
 - `<Figure src="./assets/cover.svg" alt="封面" caption="图 1">` 渲染居中图片与灰色说明文字。
+- `<Member name="姓名" avatar="./assets/avatar.webp">介绍正文</Member>` 渲染横向成员介绍（左方图头像，右为名称 / 介绍 / 社交行）。插槽里的 `<Social>` 会自动归入社交行。
+- `<Social icon="./assets/github.svg" href="https://github.com/..." label="GitHub" />` 渲染通用社交图标外链（也可单独使用）；`icon` 可为内容包相对路径、站点根路径或远程 URL。
 
 本地预览：
 

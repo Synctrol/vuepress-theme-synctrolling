@@ -136,6 +136,19 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-button-group\[data-align='stretch'\]\s*>\s*\.syn-button\s*\{[^}]*flex:\s*1/)
   })
 
+  it('defines Member and Social components', () => {
+    expect(css).toMatch(/\.syn-member\s*\{[^}]*display:\s*flex/)
+    expect(css).toMatch(/\.syn-member\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
+    expect(css).toMatch(/\.syn-member__avatar\s*\{[^}]*width:\s*120px/)
+    expect(css).toMatch(/\.syn-member__name\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
+    expect(css).toMatch(/\.syn-member__socials\s*\{[^}]*display:\s*flex/)
+    expect(css).toMatch(/\.syn-social\s*\{[^}]*display:\s*inline-flex/)
+    expect(css).toMatch(/\.syn-social__icon\s*\{[^}]*object-fit:\s*contain/)
+    expect(css).toMatch(
+      /:root\[data-theme='dark'\]\s*\.syn-social__icon\s*\{[^}]*filter:\s*invert\(1\)/,
+    )
+  })
+
   it('defines the general Box, Notice, Accordion, Divider and Figure components', () => {
     expect(css).toMatch(/\.syn-box\s*\{[^}]*border:\s*var\(--syn-border-strong\)/)
     expect(css).toMatch(/\.syn-box\s*\{[^}]*padding:\s*1rem/)
