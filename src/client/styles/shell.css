@@ -938,7 +938,8 @@ body {
   display: inline-flex;
   width: calc(var(--syn-dock-control-size) / 2);
   height: calc(var(--syn-dock-control-size) / 2);
-  margin-inline: 18px;
+  margin-inline: 8px;
+  margin-block: 4px;
 }
 
 .syn-social__icon {
