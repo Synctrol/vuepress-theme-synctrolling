@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-20
+
+### Added
+
+- 新增 Markdown `<Member>` 横向成员介绍组件（头像 / 名称 / 介绍插槽）。
+- 新增通用 Markdown `<Social>` 社交图标外链；写在 `<Member>` 插槽内时自动归入社交行。
+
+### Changed
+
+- `.syn-social` 图标尺寸为 `--syn-dock-control-size` 的一半，默认 `margin-inline: 8px`、`margin-block: 4px`。
+
+## [0.3.0]
+
 ### Added
 
 - 新增作品旁路元数据文件 `album.yml`；`AlbumIdentity`、`AlbumTracklist`、`AlbumCredit`、`AlbumCovers` 通过 `src` 引用。
