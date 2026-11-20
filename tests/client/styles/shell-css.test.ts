@@ -142,7 +142,12 @@ describe('shell.css', () => {
     expect(css).toMatch(/\.syn-member__avatar\s*\{[^}]*width:\s*120px/)
     expect(css).toMatch(/\.syn-member__name\s*\{[^}]*font-family:\s*var\(--syn-font-display\)/)
     expect(css).toMatch(/\.syn-member__socials\s*\{[^}]*display:\s*flex/)
+    expect(css).toMatch(/\.syn-member__socials\s*\{[^}]*gap:\s*12px/)
     expect(css).toMatch(/\.syn-social\s*\{[^}]*display:\s*inline-flex/)
+    expect(css).toMatch(
+      /\.syn-social\s*\{[^}]*width:\s*calc\(var\(--syn-dock-control-size\)\s*\/\s*2\)/,
+    )
+    expect(css).toMatch(/\.syn-social\s*\{[^}]*margin-inline:\s*10px/)
     expect(css).toMatch(/\.syn-social__icon\s*\{[^}]*object-fit:\s*contain/)
     expect(css).toMatch(
       /:root\[data-theme='dark'\]\s*\.syn-social__icon\s*\{[^}]*filter:\s*invert\(1\)/,

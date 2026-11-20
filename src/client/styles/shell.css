@@ -930,14 +930,15 @@ body {
 .syn-member__socials {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   margin-top: 0.85rem;
 }
 
 .syn-social {
   display: inline-flex;
-  width: var(--syn-dock-control-size);
-  height: var(--syn-dock-control-size);
+  width: calc(var(--syn-dock-control-size) / 2);
+  height: calc(var(--syn-dock-control-size) / 2);
+  margin-inline: 10px;
 }
 
 .syn-social__icon {
