@@ -147,7 +147,7 @@ describe('shell.css', () => {
     expect(css).toMatch(
       /\.syn-social\s*\{[^}]*width:\s*calc\(var\(--syn-dock-control-size\)\s*\/\s*2\)/,
     )
-    expect(css).toMatch(/\.syn-social\s*\{[^}]*margin-inline:\s*10px/)
+    expect(css).toMatch(/\.syn-social\s*\{[^}]*margin-inline:\s*18px/)
     expect(css).toMatch(/\.syn-social__icon\s*\{[^}]*object-fit:\s*contain/)
     expect(css).toMatch(
       /:root\[data-theme='dark'\]\s*\.syn-social__icon\s*\{[^}]*filter:\s*invert\(1\)/,
